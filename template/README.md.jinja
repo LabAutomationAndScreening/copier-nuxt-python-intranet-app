@@ -1,4 +1,4 @@
-[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
+{% raw %}[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 [![Copier](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/copier-org/copier/master/img/badge/badge-black.json)](https://github.com/copier-org/copier)
 [![Actions status](https://www.github.com/LabAutomationAndScreening/copier-nuxt-python-intranet-app/actions/workflows/ci.yaml/badge.svg?branch=main)](https://www.github.com/LabAutomationAndScreening/copier-nuxt-python-intranet-app/actions)
 [![Open in Dev Containers](https://img.shields.io/static/v1?label=Dev%20Containers&message=Open&color=blue)](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://www.github.com/LabAutomationAndScreening/copier-nuxt-python-intranet-app)
@@ -16,7 +16,11 @@ To create a new repository using this template:
 
 # Development
 
+## Initializing Nuxt for the app
+At the root of the repo, run `pnpm dlx nuxi@latest init frontend`
+Select "overwrite directory", `pnpm` and do not initialize git repository.
+You can remove the extra .gitignore file `rm frontend/.gitignore`
 
 ## Updating from the template
 This repository uses a copier template. To pull in the latest updates from the template, use the command:
-`copier update --trust --conflict rej --defaults`
+`copier update --trust --conflict rej --defaults`{% endraw %}
