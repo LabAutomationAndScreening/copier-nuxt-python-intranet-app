@@ -21,6 +21,18 @@ use_windows_in_ci:
     help: Should CI in the instantiated template also use Windows runners?
     default: no
 
+node_version:
+    type: str
+    help: What version of NodeJS is used for development?
+    default: 22.14.0
+
+pnpm_version:
+    type: str
+    help: What version of pnpm is used for development?
+    default: 10.6.3
+
+
+
 python_version:
     type: str
     help: What version of Python is used for development?
