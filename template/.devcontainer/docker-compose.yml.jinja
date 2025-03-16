@@ -9,7 +9,10 @@ services:
     volumes:
       - ..:/workspaces/{% endraw %}{{ repo_name }}{% raw %}:cached
       # Break out the venv folder as a separate docker volume for better performance on Windows hosts
-      - python_venv:/workspaces/{% endraw %}{{ repo_name }}{% raw %}/.venv
+      - python_venv:/workspaces/backend/{% endraw %}{{ repo_name }}{% raw %}/.venv
+      # Break out the pnpm store folder as a separate docker volume for better performance on Windows hosts
+      - pnpm_store:/workspaces/{% endraw %}{{ repo_name }}{% raw %}/.pnpm-store
+      - frontend_code_libraries:/workspaces/{% endraw %}{{ repo_name }}{% raw %}/frontend/node_modules
     command: sleep infinity
     ports:
       - "{% endraw %}{{ ssh_port_number }}{% raw %}:2222"
@@ -19,4 +22,6 @@ services:
 
 
 volumes:
-  python_venv: {}{% endraw %}
+  python_venv: {}
+  pnpm_store: {}
+  frontend_code_libraries: {}{% endraw %}
