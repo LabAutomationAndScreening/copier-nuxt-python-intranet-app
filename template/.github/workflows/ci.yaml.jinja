@@ -23,14 +23,9 @@ jobs:
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
 
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@{% endraw %}{{ gha_setup_node }}{% raw %}
         with:
           node-version: {% endraw %}{{ node_version }}{% raw %}
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4.1.0
-        with:
-          version: {% endraw %}{{ pnpm_version }}{% raw %}
 
       - name: Install latest versions of python packages
         uses: ./.github/actions/install_deps_uv
