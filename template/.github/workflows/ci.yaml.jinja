@@ -27,6 +27,11 @@ jobs:
         with:
           node-version: {% endraw %}{{ node_version }}{% raw %}
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4.1.0
+        with:
+          version: {% endraw %}{{ pnpm_version }}{% raw %}
+
       - name: Install latest versions of python packages
         uses: ./.github/actions/install_deps_uv
         with:
