@@ -27,6 +27,12 @@ Locally preview production build:
 pnpm run --dir=frontend preview
 ```
 
+## Backend
+Start the GraphQL server:
+```bash
+uv --directory=backend run uvicorn graphql_service.app:app --reload --host '::' --port 4000
+```
+
 ## Updating from the template
 This repository uses a copier template. To pull in the latest updates from the template, use the command:
 `copier update --trust --conflict rej --defaults`{% endraw %}

@@ -7,7 +7,13 @@ readme = "README.md"
 requires-python = ">={% endraw %}{{ python_version }}{% raw %}"
 
 dependencies = [
+    # Specific to this repository
 
+    # Managed by upstream template
+    "fastapi>={% endraw %}{{ fastapi_version }}{% raw %}",
+    "strawberry-graphql>={% endraw %}{{ strawberry_graphql_version }}{% raw %}",
+    "pydantic>={% endraw %}{{ pydantic_version }}{% raw %}",
+    "uvicorn>={% endraw %}{{ uvicorn_version }}{% raw %}",
 ]
 
 
