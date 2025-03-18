@@ -162,6 +162,34 @@ repos:
 
   # Linting
 
+  - repo: local
+    hooks:
+      - id: typescript-check
+        name: typescript-check
+        entry: bash -c "pnpm --dir frontend run type-check"
+        files: '.+\.ts$|.+\.vue$'
+        # don't pass filenames else the command line sees them twice
+        pass_filenames: false
+        language: system
+        # use require_serial so that script is only called once per commit
+        require_serial: true
+        # print the number of files as a sanity-check
+        verbose: true
+
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint
+        entry: bash -c "pnpm --dir frontend run lint"
+        files: '.+\.ts$|.+\.vue$|.+\.js$'
+        # don't pass filenames else the command line sees them twice
+        pass_filenames: false
+        language: system
+        # use require_serial so that script is only called once per commit
+        require_serial: true
+        # print the number of files as a sanity-check
+        verbose: true
+
   - repo: https://github.com/Lucas-C/pre-commit-hooks-markup
     rev: 501f3d60cee13c712492103343bc23efdc7b3d1f #v1.0.1
     hooks:

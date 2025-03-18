@@ -30,11 +30,11 @@ export UV_PYTHON="$python_version"
 export UV_PYTHON_PREFERENCE=only-system
 
 SCRIPT_DIR="$(dirname "$0")"
-PROJECT_ROOT_DIR="$(realpath "$SCRIPT_DIR/../backend")"
-
+PROJECT_ROOT_DIR="$(realpath "$SCRIPT_DIR/..")"
+PYTHON_PROJECT_DIR="$PROJECT_ROOT_DIR/backend"
 # If optionally_lock is set, decide whether to skip locking based on the presence of uv.lock
 if [ "$optionally_lock" = "true" ]; then
-    if [ ! -f "$PROJECT_ROOT_DIR/uv.lock" ]; then
+    if [ ! -f "$PYTHON_PROJECT_DIR/uv.lock" ]; then
         skip_lock=true
     else
         skip_lock=false
@@ -46,8 +46,11 @@ fi
 
 # Ensure that the lock file is in a good state
 if [ "$skip_lock" = "false" ]; then
-    uv lock --check --directory "$PROJECT_ROOT_DIR"
+    uv lock --check --directory "$PYTHON_PROJECT_DIR"
 fi
 
-uv sync $( [ "$skip_lock" = "false" ] && echo "--frozen" ) --directory "$PROJECT_ROOT_DIR"
-uv pip list --directory "$PROJECT_ROOT_DIR"{% endraw %}
+uv sync $( [ "$skip_lock" = "false" ] && echo "--frozen" ) --directory "$PYTHON_PROJECT_DIR"
+uv pip list --directory "$PYTHON_PROJECT_DIR"
+
+NPM_PROJECT_DIR="$PROJECT_ROOT_DIR/frontend"
+pnpm install --dir="$NPM_PROJECT_DIR"{% endraw %}
