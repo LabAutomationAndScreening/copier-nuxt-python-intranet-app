@@ -61,6 +61,7 @@ repos:
               .devcontainer/devcontainer-lock.json|
               .copier-answers.yml|
               .*\.xml|
+              .*\.graphql|
           )$
       - id: pretty-format-json
         exclude: |
