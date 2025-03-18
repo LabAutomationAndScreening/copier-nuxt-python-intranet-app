@@ -3,7 +3,7 @@ import { defineNuxtConfig } from "nuxt/config";
 export default defineNuxtConfig({
   compatibilityDate: "2024-11-01",
   devtools: { enabled: true },
-  modules: ["@nuxt/eslint", "@nuxt/test-utils", "@nuxt/ui"],
+  modules: ["@nuxt/eslint", "@nuxt/test-utils", "@nuxt/ui", "@nuxtjs/apollo"],
   css: ["~/assets/css/main.css"],
   experimental: { appManifest: false }, // https://github.com/nuxt/nuxt/issues/30461#issuecomment-2572616714
   vite: {
@@ -11,6 +11,13 @@ export default defineNuxtConfig({
     server: {
       watch: {
         usePolling: true,
+      },
+    },
+  },
+  apollo: {
+    clients: {
+      default: {
+        httpEndpoint: "http://localhost:4000/graphql",
       },
     },
   },
