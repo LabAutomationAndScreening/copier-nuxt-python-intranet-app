@@ -52,12 +52,34 @@ jobs:
       - name: Run pre-commit
         run:  pre-commit run -a
 
-  required-check:
+  unit-test-backend:
+    name: Unit Test Backend
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     needs: [ lint ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
+
+      # TODO: don't setup node and figure out how to only install the Python dependencies
+      - name: Setup node
+        uses: actions/setup-node@{% endraw %}{{ gha_setup_node }}{% raw %}
+        with:
+          node-version: {% endraw %}{{ node_version }}{% raw %}
+
+      - name: Install latest versions of python packages
+        uses: ./.github/actions/install_deps_uv
+        with:
+          python-version: {% endraw %}{{ python_version }}{% raw %}
+
+      - name: Unit test
+        run: uv --directory=backend run pytest tests/unit --cov-report=xml --durations=5
+
+  required-check:
+    runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
+    needs: [ lint, unit-test-backend ]
     if: always()
     steps:
       - name: fail if prior job failure
-        if: needs.lint.result != 'success'
+        if: needs.lint.result != 'success' || needs.unit-test-backend.result != 'success'
         run: |
           exit 1{% endraw %}

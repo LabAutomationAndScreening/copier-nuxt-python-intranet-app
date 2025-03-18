@@ -101,7 +101,7 @@
   "pythonPlatform": "Linux",
   "executionEnvironments": [
     {
-      "root": "tests",
+      "root": "backend/tests",
       // reportUninitializedInstanceVariable doesn't make any sense for test cases. See https://github.com/microsoft/pyright/discussions/4834#discussioncomment-8496931
       "reportUninitializedInstanceVariable": false
     }
