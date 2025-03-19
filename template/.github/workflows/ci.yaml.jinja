@@ -50,7 +50,7 @@ jobs:
             {% endraw %}{{ gha_linux_runner }}{% raw %}-py{% endraw %}{{ python_version }}{% raw %}-build-${{ env.cache-name }}-
 
       - name: Run pre-commit
-        run:  pre-commit run -a
+        run:  pre-commit run -a{% endraw %}{% if has_backend %}{% raw %}
 
   unit-test-backend:
     name: Unit Test Backend
@@ -72,14 +72,14 @@ jobs:
           python-version: {% endraw %}{{ python_version }}{% raw %}
 
       - name: Unit test
-        run: uv --directory=backend run pytest tests/unit --cov-report=xml --durations=5
+        run: uv --directory=backend run pytest tests/unit --cov-report=xml --durations=5{% endraw %}{% endif %}{% raw %}
 
   required-check:
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
-    needs: [ lint, unit-test-backend ]
+    needs: [ lint{% endraw %}{% if has_backend %}{% raw %}, unit-test-backend{% endraw %}{% endif %}{% raw %} ]
     if: always()
     steps:
       - name: fail if prior job failure
-        if: needs.lint.result != 'success' || needs.unit-test-backend.result != 'success'
+        if: needs.lint.result != 'success'{% endraw %}{% if has_backend %}{% raw %} || needs.unit-test-backend.result != 'success'{% endraw %}{% endif %}{% raw %}
         run: |
           exit 1{% endraw %}
