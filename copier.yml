@@ -80,6 +80,10 @@ core_infra_base_access_profile_name:
 
 # Questions specific to this template
 
+has_backend:
+    type: bool
+    help: Does this project have a backend?
+    default: yes
 
 # Additional Settings
 _min_copier_version: "9.4"
