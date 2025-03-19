@@ -215,7 +215,7 @@ repos:
         name: ruff-tests
         args: [--fix, --config=./ruff-test.toml]
         files: tests?/.+\.py$
-      - id: ruff-format
+      - id: ruff-format{% endraw %}{% if has_backend %}{% raw %}
 
   - repo: https://github.com/pylint-dev/pylint
     rev: aaab3ccb541532d2bcdf0410ab93ff4fafc266f5 # frozen: v3.3.5
@@ -224,7 +224,7 @@ repos:
         name: pylint
         args:
           - --rcfile=./pylintrc.toml
-        verbose: true{% endraw %}{% if has_backend %}{% raw %}
+        verbose: true{% endraw %}{% endif %}{% raw %}{% endraw %}{% if has_backend %}{% raw %}
 
   - repo: local
     hooks:
