@@ -21,3 +21,4 @@ aws_test_account_id: 211735654321
 aws_development_account_id: 000321456870
 aws_region_for_stack: us-west-1
 # Data added based on the specifics of this template
+has_backend: false

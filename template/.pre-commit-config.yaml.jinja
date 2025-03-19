@@ -1,4 +1,4 @@
-minimum_pre_commit_version: 4.0.1
+{% raw %}minimum_pre_commit_version: 4.0.1
 # run `pre-commit autoupdate --freeze` to update all hooks
 default_install_hook_types: [pre-commit, post-checkout]
 repos:
@@ -224,7 +224,7 @@ repos:
         name: pylint
         args:
           - --rcfile=./pylintrc.toml
-        verbose: true
+        verbose: true{% endraw %}{% if has_backend %}{% raw %}
 
   - repo: local
     hooks:
@@ -239,4 +239,4 @@ repos:
         # use require_serial so that script is only called once per commit
         require_serial: true
         # print the number of files as a sanity-check
-        verbose: true
+        verbose: true{% endraw %}{% endif %}
