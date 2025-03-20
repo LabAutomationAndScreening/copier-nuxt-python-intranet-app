@@ -84,7 +84,7 @@ jobs:
       image_name: {% endraw %}{{ repo_name }}{% raw %}-backend{% endraw %}{% endif %}{% raw %}
 
   build-frontend:
-    needs: [ lint, unit-test-backend ]
+    needs: [ lint{% endraw %}{% if has_backend %}{% raw %}, unit-test-backend{% endraw %}{% endif %}{% raw %} ]
     uses: ./.github/workflows/build-docker-image.yaml
     with:
       tag: ${{ github.sha }}
