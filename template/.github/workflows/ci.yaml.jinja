@@ -81,7 +81,7 @@ jobs:
       tag: ${{ github.sha }}
       context: ./backend
       repository: 183631337349.dkr.ecr.us-east-1.amazonaws.com
-      image_name: orchestrator-health-app-backend{% endraw %}{% endif %}{% raw %}
+      image_name: {% endraw %}{{ repo_name }}{% raw %}-backend{% endraw %}{% endif %}{% raw %}
 
   build-frontend:
     needs: [ lint, unit-test-backend ]
@@ -90,7 +90,7 @@ jobs:
       tag: ${{ github.sha }}
       context: ./frontend
       repository: 183631337349.dkr.ecr.us-east-1.amazonaws.com
-      image_name: orchestrator-health-app-frontend
+      image_name: {% endraw %}{{ repo_name }}{% raw %}-frontend
 
   package-images:
     name: Package Images
@@ -108,19 +108,19 @@ jobs:
     - name: Download Backend Artifact
       uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
       with:
-        name: orchestrator-health-app-backend
+        name: {% endraw %}{{ repo_name }}{% raw %}-backend
         path: deployment-package-folder{% endraw %}{% endif %}{% raw %}
 
     - name: Download Frontend Artifact
       uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
       with:
-        name: orchestrator-health-app-frontend
+        name: {% endraw %}{{ repo_name }}{% raw %}-frontend
         path: deployment-package-folder
 
     - name: Upload deployment package artifact
       uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
       with:
-        name: orchestrator-health-app-deployment-package
+        name: {% endraw %}{{ repo_name }}{% raw %}-deployment-package
         path: deployment-package-folder/**/*
 
   required-check:
