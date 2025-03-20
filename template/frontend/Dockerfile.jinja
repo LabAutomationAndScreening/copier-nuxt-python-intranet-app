@@ -1,0 +1,33 @@
+{% raw %}# ------------ Stage 1: Build ------------
+FROM node:{% endraw %}{{ node_version }}{% raw %}-alpine{% endraw %}{{ alpine_image_version }}{% raw %} AS builder
+
+# docker build -t my-nuxt-app .
+# docker run -p 3000:3000 my-nuxt-app
+
+# Install pnpm globally
+RUN npm install -g pnpm@{% endraw %}{{ pnpm_version }}{% raw %}
+
+WORKDIR /app
+
+# Copy everything before installing dependencies so that the layer cache is invalidated if source files change
+COPY . .
+
+# Install dependencies and build the Nuxt app (generates .output folder in Nuxt 3)
+RUN pnpm install --frozen-lockfile && pnpm list && pnpm run build
+
+# ------------ Stage 2: Production ------------
+FROM node:{% endraw %}{{ node_version }}{% raw %}-alpine{% endraw %}{{ alpine_image_version }}{% raw %} AS production
+
+WORKDIR /app
+
+# Copy the production build files
+COPY --from=builder /app/.output ./.output
+
+# Expose the port Nuxt uses (default 3000)
+EXPOSE {% endraw %}{{ frontend_deployed_port_number }}{% raw %}
+
+# Set environment variable to production
+ENV NODE_ENV=production
+
+# Run the SSR server
+CMD ["node", ".output/server/index.mjs"]{% endraw %}
