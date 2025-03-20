@@ -9,7 +9,7 @@ if not exist {% endraw %}{{ repo_name }}{% raw %}-deployment-package.zip (
 )
 
 echo Extracting {% endraw %}{{ repo_name }}{% raw %}-deployment-package.zip...
-tar -xf {% endraw %}{{ repo_name }}{% raw %}-deployment-package.zip
+tar -xf {% endraw %}{{ repo_name }}{% raw %}-deployment-package.zip{% endraw %}{% if has_backend %}{% raw %}
 
 REM Load the backend Docker image
 echo Loading backend Docker image...
@@ -18,7 +18,7 @@ if %errorlevel% neq 0 (
     echo Failed to load backend Docker image.
     pause
     exit /b 1
-)
+){% endraw %}{% endif %}{% raw %}
 
 REM Load the frontend Docker image
 echo Loading frontend Docker image...
