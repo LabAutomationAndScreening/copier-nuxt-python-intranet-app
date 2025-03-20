@@ -85,6 +85,11 @@ has_backend:
     help: Does this project have a backend?
     default: yes
 
+frontend_deployed_port_number:
+    type: int
+    help: What port should the frontend be deployed to?
+    default: 3000
+
 # Additional Settings
 _min_copier_version: "9.4"
 
