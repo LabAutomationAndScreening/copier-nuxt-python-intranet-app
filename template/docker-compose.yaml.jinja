@@ -1,0 +1,24 @@
+{% raw %}services:{% endraw %}{% if has_backend %}{% raw %}
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: orchestrator-health-app-backend
+    ports:
+      - "4000:4000"
+    restart: unless-stopped
+{% endraw %}{% endif %}{% raw %}
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: orchestrator-health-app-frontend
+    ports:
+      - "3000:3000"{% endraw %}{% if has_backend %}{% raw %}
+    depends_on:
+      - backend{% endraw %}{% endif %}{% raw %}
+    environment:
+      # Set the API endpoint so that the frontend can reach the backend.
+      # The hostname "graphql-backend" resolves to the backend container.
+      GRAPHQL_API_URL: http://graphql-backend:4000/graphql
+    restart: unless-stopped{% endraw %}
