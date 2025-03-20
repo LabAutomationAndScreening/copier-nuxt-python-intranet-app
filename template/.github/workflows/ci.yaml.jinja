@@ -72,14 +72,63 @@ jobs:
           python-version: {% endraw %}{{ python_version }}{% raw %}
 
       - name: Unit test
-        run: uv --directory=backend run pytest tests/unit --cov-report=xml --durations=5{% endraw %}{% endif %}{% raw %}
+        run: uv --directory=backend run pytest tests/unit --cov-report=xml --durations=5
+
+  build-backend:
+    needs: [ lint, unit-test-backend ]
+    uses: ./.github/workflows/build-docker-image.yaml
+    with:
+      tag: ${{ github.sha }}
+      context: ./backend
+      repository: 183631337349.dkr.ecr.us-east-1.amazonaws.com
+      image_name: orchestrator-health-app-backend{% endraw %}{% endif %}{% raw %}
+
+  build-frontend:
+    needs: [ lint, unit-test-backend ]
+    uses: ./.github/workflows/build-docker-image.yaml
+    with:
+      tag: ${{ github.sha }}
+      context: ./frontend
+      repository: 183631337349.dkr.ecr.us-east-1.amazonaws.com
+      image_name: orchestrator-health-app-frontend
+
+  package-images:
+    name: Package Images
+    runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
+    needs: [ build-frontend{% endraw %}{% if has_backend %}{% raw %}, build-backend{% endraw %}{% endif %}{% raw %} ]
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
+    - name: Prepare docker-compose file
+      run: |
+        mkdir -p deployment-package-folder
+        cp deployment/docker-compose.yaml deployment-package-folder/docker-compose.yaml
+        sed -i '/image:/s/:latest/:${{ github.sha }}/g' deployment-package-folder/docker-compose.yaml{% endraw %}{% if has_backend %}{% raw %}
+
+    - name: Download Backend Artifact
+      uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+      with:
+        name: orchestrator-health-app-backend
+        path: deployment-package-folder{% endraw %}{% endif %}{% raw %}
+
+    - name: Download Frontend Artifact
+      uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+      with:
+        name: orchestrator-health-app-frontend
+        path: deployment-package-folder
+
+    - name: Upload deployment package artifact
+      uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
+      with:
+        name: orchestrator-health-app-deployment-package
+        path: deployment-package-folder/**/*
 
   required-check:
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
-    needs: [ lint{% endraw %}{% if has_backend %}{% raw %}, unit-test-backend{% endraw %}{% endif %}{% raw %} ]
+    needs: [ lint, package-images, build-frontend{% endraw %}{% if has_backend %}{% raw %}, unit-test-backend, build-backend{% endraw %}{% endif %}{% raw %} ]
     if: always()
     steps:
       - name: fail if prior job failure
-        if: needs.lint.result != 'success'{% endraw %}{% if has_backend %}{% raw %} || needs.unit-test-backend.result != 'success'{% endraw %}{% endif %}{% raw %}
+        if: needs.lint.result != 'success' || needs.package-images.result != 'success' || needs.build-frontend.result != 'success'{% endraw %}{% if has_backend %}{% raw %} || needs.unit-test-backend.result != 'success' || needs.build-backend.result != 'success'{% endraw %}{% endif %}{% raw %}
         run: |
           exit 1{% endraw %}
