@@ -17,7 +17,7 @@ export default defineNuxtConfig({
   apollo: {
     clients: {
       default: {
-        httpEndpoint: "http://localhost:4000/graphql",
+        httpEndpoint: "placeholder", // must be present but will be overridden in the external config TS file
       },
     },
   },

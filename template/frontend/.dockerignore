@@ -1,0 +1,26 @@
+# Exclude node modules (you'll install these in the container)
+node_modules
+
+# Exclude build directories
+.nuxt
+.output
+dist
+
+# Exclude version control files
+.git
+.gitignore
+
+# Exclude local environment files (modify if you need them for build-time configuration)
+.env
+.env.*.local
+
+# Exclude log files
+*.log
+
+# Exclude IDE/editor directories
+.vscode
+.idea
+
+# Exclude Docker-related files if needed
+Dockerfile*
+docker-compose*

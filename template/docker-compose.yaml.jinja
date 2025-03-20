@@ -1,0 +1,22 @@
+{% raw %}services:{% endraw %}{% if has_backend %}{% raw %}
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: {% endraw %}{{ repo_name }}{% raw %}-backend
+    ports:
+      - "4000:4000"
+    restart: unless-stopped
+{% endraw %}{% endif %}{% raw %}
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: {% endraw %}{{ repo_name }}{% raw %}-frontend
+    ports:
+      - "3000:3000"{% endraw %}{% if has_backend %}{% raw %}
+    depends_on:
+      - backend{% endraw %}{% endif %}{% raw %}
+    environment:
+      GRAPHQL_API_URL: http://backend:4000/graphql
+    restart: unless-stopped{% endraw %}

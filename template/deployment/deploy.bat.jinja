@@ -1,0 +1,54 @@
+{% raw %}@echo off
+setlocal enabledelayedexpansion
+
+REM Check if the artifact zip exists
+if not exist {% endraw %}{{ repo_name }}{% raw %}-deployment-package.zip (
+    echo {% endraw %}{{ repo_name }}{% raw %}-deployment-package.zip not found. Please ensure the artifact is in the current directory.
+    pause
+    exit /b 1
+)
+
+echo Extracting {% endraw %}{{ repo_name }}{% raw %}-deployment-package.zip...
+tar -xf {% endraw %}{{ repo_name }}{% raw %}-deployment-package.zip{% endraw %}{% if has_backend %}{% raw %}
+
+REM Load the backend Docker image
+echo Loading backend Docker image...
+docker load -i {% endraw %}{{ repo_name }}{% raw %}-backend.tar
+if %errorlevel% neq 0 (
+    echo Failed to load backend Docker image.
+    pause
+    exit /b 1
+){% endraw %}{% endif %}{% raw %}
+
+REM Load the frontend Docker image
+echo Loading frontend Docker image...
+docker load -i {% endraw %}{{ repo_name }}{% raw %}-frontend.tar
+if %errorlevel% neq 0 (
+    echo Failed to load frontend Docker image.
+    pause
+    exit /b 1
+)
+
+echo Docker images have been loaded successfully.
+
+REM Ask user if they want to restart the stack
+set /p RESTART_STACK="Do you want to restart the stack? (Y/N): "
+
+if /I "%RESTART_STACK%"=="Y" (
+    REM Set project name explicitly
+    set PROJECT_NAME={% endraw %}{{ repo_name }}{% raw %}
+
+    echo Stopping existing stack...
+    REM Remove everything in the existing stack so we have a clean slate
+    docker-compose --project-name !PROJECT_NAME! down --remove-orphans --volumes
+
+    echo Starting stack...
+    docker-compose --project-name !PROJECT_NAME! up -d
+
+    echo Stack restarted successfully.
+) else (
+    echo Skipping stack restart.
+)
+
+pause
+exit /b 0{% endraw %}
