@@ -1,0 +1,20 @@
+{% raw %}FROM python:{% endraw %}{{ python_version }}{% raw %}-slim-{% endraw %}{{ debian_release_name }}{% raw %}
+
+# docker build -t my-graphql-backend .
+# docker run -p 4000:4000 my-graphql-backend
+
+COPY --from=ghcr.io/astral-sh/uv:{% endraw %}{{ uv_version }}{% raw %}-python{% endraw %}{{ python_version.split('.')[:2]|join('.') }}{% raw %}-{% endraw %}{{ debian_release_name }}{% raw %}-slim /usr/local/bin/uv /usr/local/bin/uvx /bin/
+
+RUN uv --version
+
+WORKDIR /app
+
+# Copy everything before installing dependencies so that the layer cache is invalidated if source files change
+COPY . .
+
+RUN uv sync --frozen --no-dev && uv pip list
+
+EXPOSE 4000
+
+# By default, run Uvicorn to serve the GraphQL app
+CMD ["uv", "run", "uvicorn", "graphql_service.app:app", "--host", "0.0.0.0", "--port", "4000"]{% endraw %}
