@@ -25,4 +25,4 @@
 
 networks:
   internal_net:
-    internal: true # block all outgoing internet access, to mimic the production environment{% endraw %}
+    internal: {% endraw %}{% if create_internal_docker_compose_network %}{% raw %}true # block all outgoing internet access, to mimic the production environment{% endraw %}{% else %}{% raw %}false{% endraw %}{% endif %}{% raw %}{% endraw %}
