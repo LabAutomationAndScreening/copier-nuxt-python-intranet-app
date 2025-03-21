@@ -5,14 +5,14 @@ describe("Index page", async () => {
   describe("regular nuxt build", async () => {
     await setup();
     describe("Static tests of rendered page", async () => {
-      test("component renders Hello world properly", async () => {
+      test("Page displays Hello World", async () => {
         const html = await $fetch("/");
         expect(html).toContain("Hello World");
       });
     });
     describe("Full Browser tests", async () => {
       // TODO: figure out away to display the chromium version so it will show up in logs
-      test("component renders Hello world properly", async () => {
+      test("Page displays Hello World", async () => {
         const page = await createPage();
         await page.goto(url("/"), { waitUntil: "hydration" });
         const text = await page.textContent("div");
@@ -34,15 +34,12 @@ describe("Index page", async () => {
       execSync("docker compose --file=../docker-compose.yaml down", { stdio: "inherit" });
     });
 
-    describe("Full Browser tests", async () => {
-      // TODO: figure out away to display the chromium version so it will show up in logs
-      test("component renders Hello world properly", async () => {
-        const page = await createPage();
-        await page.goto(url("/"), { waitUntil: "hydration" });
-        const text = await page.textContent("div");
+    test("Page displays Hello World", async () => {
+      const page = await createPage();
+      await page.goto(url("/"), { waitUntil: "hydration" });
+      const text = await page.textContent("div");
 
-        expect(text).toContain("Hello World");
-      });
+      expect(text).toContain("Hello World");
     });
   });
 });
