@@ -6,6 +6,8 @@
       - "4000:4000" # TODO: figure out why the deployed server is ignoring the envvar to set the URL, so that we can change this to `expose: 4000` to only make the backend available within the docker network, don't risk conflicts with a port on the host machine
     pull_policy: never  # Prevents Docker from pulling the image
     restart: unless-stopped
+    networks:
+      - internal_net
 {% endraw %}{% endif %}{% raw %}
   frontend:
     image: 183631337349.dkr.ecr.us-east-1.amazonaws.com/{% endraw %}{{ repo_name }}{% raw %}-frontend:latest
@@ -17,4 +19,10 @@
     environment:
       GRAPHQL_API_URL: http://backend:4000/graphql
     pull_policy: never  # Prevents Docker from pulling the image
-    restart: unless-stopped{% endraw %}
+    restart: unless-stopped
+    networks:
+      - internal_net
+
+networks:
+  internal_net:
+    internal: true # block all outgoing internet access, to mimic the production environment{% endraw %}
