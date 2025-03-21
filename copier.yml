@@ -85,6 +85,18 @@ has_backend:
     help: Does this project have a backend?
     default: yes
 
+frontend_uses_graphql:
+    type: bool
+    help: Do you want the standalone frontend to make GraphQL calls?
+    default: |-
+        {% if has_backend == false -%}
+            no
+        {%- else -%}
+            {#- This way if backend is already in use, then we'll automatically include graphql for this variable -#}
+            yes
+        {%- endif %}
+    when: "{{ has_backend == false }}"
+
 frontend_deployed_port_number:
     type: int
     help: What port should the frontend be deployed to?

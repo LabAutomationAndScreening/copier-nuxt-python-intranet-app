@@ -50,7 +50,29 @@ jobs:
             {% endraw %}{{ gha_linux_runner }}{% raw %}-py{% endraw %}{{ python_version }}{% raw %}-build-${{ env.cache-name }}-
 
       - name: Run pre-commit
-        run:  pre-commit run -a{% endraw %}{% if has_backend %}{% raw %}
+        run:  pre-commit run -a
+
+  unit-test-frontend:
+    name: Unit Test Frontend
+    runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
+    needs: [ lint ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
+
+      # TODO: figure out how to only install the Node dependencies (not Python)
+      - name: Setup node
+        uses: actions/setup-node@{% endraw %}{{ gha_setup_node }}{% raw %}
+        with:
+          node-version: {% endraw %}{{ node_version }}{% raw %}
+
+      - name: Install latest versions of python packages
+        uses: ./.github/actions/install_deps_uv
+        with:
+          python-version: {% endraw %}{{ python_version }}{% raw %}
+
+      - name: Unit test
+        run: pnpm run --dir=frontend test{% endraw %}{% if has_backend %}{% raw %}
 
   unit-test-backend:
     name: Unit Test Backend
@@ -75,7 +97,7 @@ jobs:
         run: uv --directory=backend run pytest tests/unit --cov-report=xml --durations=5
 
   build-backend:
-    needs: [ lint, unit-test-backend ]
+    needs: [ lint, unit-test-frontend, unit-test-backend ]
     uses: ./.github/workflows/build-docker-image.yaml
     with:
       tag: ${{ github.sha }}
@@ -84,7 +106,7 @@ jobs:
       image_name: {% endraw %}{{ repo_name }}{% raw %}-backend{% endraw %}{% endif %}{% raw %}
 
   build-frontend:
-    needs: [ lint{% endraw %}{% if has_backend %}{% raw %}, unit-test-backend{% endraw %}{% endif %}{% raw %} ]
+    needs: [ lint, unit-test-frontend{% endraw %}{% if has_backend %}{% raw %}, unit-test-backend{% endraw %}{% endif %}{% raw %} ]
     uses: ./.github/workflows/build-docker-image.yaml
     with:
       tag: ${{ github.sha }}
@@ -125,10 +147,10 @@ jobs:
 
   required-check:
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
-    needs: [ lint, package-images, build-frontend{% endraw %}{% if has_backend %}{% raw %}, unit-test-backend, build-backend{% endraw %}{% endif %}{% raw %} ]
+    needs: [ lint, package-images, build-frontend, unit-test-frontend{% endraw %}{% if has_backend %}{% raw %}, unit-test-backend, build-backend{% endraw %}{% endif %}{% raw %} ]
     if: always()
     steps:
       - name: fail if prior job failure
-        if: needs.lint.result != 'success' || needs.package-images.result != 'success' || needs.build-frontend.result != 'success'{% endraw %}{% if has_backend %}{% raw %} || needs.unit-test-backend.result != 'success' || needs.build-backend.result != 'success'{% endraw %}{% endif %}{% raw %}
+        if: needs.lint.result != 'success' || needs.package-images.result != 'success' || needs.build-frontend.result != 'success' || needs.unit-test-frontend.result != 'success'{% endraw %}{% if has_backend %}{% raw %} || needs.unit-test-backend.result != 'success' || needs.build-backend.result != 'success'{% endraw %}{% endif %}{% raw %}
         run: |
           exit 1{% endraw %}
