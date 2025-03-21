@@ -17,4 +17,4 @@ RUN uv sync --frozen --no-dev && uv pip list
 EXPOSE 4000
 
 # By default, run Uvicorn to serve the GraphQL app
-CMD ["uv", "run", "uvicorn", "graphql_service.app:app", "--host", "0.0.0.0", "--port", "4000"]{% endraw %}
+CMD ["uv", "run", "--no-dev", "uvicorn", "graphql_service.app:app", "--host", "0.0.0.0", "--port", "4000"]{% endraw %}

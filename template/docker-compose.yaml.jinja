@@ -7,6 +7,8 @@
     ports:
       - "4000:4000"
     restart: unless-stopped
+    networks:
+      - internal_net
 {% endraw %}{% endif %}{% raw %}
   frontend:
     build:
@@ -19,4 +21,10 @@
       - backend{% endraw %}{% endif %}{% raw %}
     environment:
       GRAPHQL_API_URL: http://backend:4000/graphql
-    restart: unless-stopped{% endraw %}
+    restart: unless-stopped
+    networks:
+      - internal_net
+
+networks:
+  internal_net:
+    internal: false # TODO: figure out a way to set this to true (like in deployment) but still trigger the VS Code port-forwarding to easily see the previews{% endraw %}
