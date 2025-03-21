@@ -90,6 +90,11 @@ frontend_deployed_port_number:
     help: What port should the frontend be deployed to?
     default: 3000
 
+create_internal_docker_compose_network:
+    type: bool
+    help: Should an internal network be created for the Docker Compose services (this will block all access to anything outside the containers)?
+    default: no
+
 # Additional Settings
 _min_copier_version: "9.4"
 

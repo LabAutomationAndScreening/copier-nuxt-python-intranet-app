@@ -18,3 +18,4 @@ aws_region_for_stack: us-east-2
 # Data added based on the specifics of this template
 has_backend: true
 frontend_deployed_port_number: 3000
+create_internal_docker_compose_network: true
