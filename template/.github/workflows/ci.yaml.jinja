@@ -117,7 +117,7 @@ jobs:
   e2e-test:
     name: End-to-end Testing
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
-    needs: [ lint ]
+    needs: [ build-frontend{% endraw %}{% if has_backend %}{% raw %}, build-backend{% endraw %}{% endif %}{% raw %} ]
     steps:
       - name: Checkout code
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
