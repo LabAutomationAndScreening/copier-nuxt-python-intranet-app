@@ -9,9 +9,11 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare",
-    "test": "vitest run --coverage",
-    "test:watch": "vitest"
+    "postinstall": "nuxt prepare && pnpm exec playwright-core install --only-shell chromium-headless-shell",
+    "test-unit": "vitest --dir tests/unit run --coverage",
+    "test-unit:watch": "vitest --dir tests/unit",
+    "test-e2e": "vitest --dir tests/e2e run",
+    "test-e2e:watch": "vitest --dir tests/e2e"
   },
   "dependencies": {
     "@nuxt/ui": "{% endraw %}{{ nuxt_ui_version }}{% raw %}",

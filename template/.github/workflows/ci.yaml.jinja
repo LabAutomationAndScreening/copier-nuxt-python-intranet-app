@@ -72,7 +72,7 @@ jobs:
           python-version: {% endraw %}{{ python_version }}{% raw %}
 
       - name: Unit test
-        run: pnpm run --dir=frontend test{% endraw %}{% if has_backend %}{% raw %}
+        run: pnpm run --dir=frontend test-unit{% endraw %}{% if has_backend %}{% raw %}
 
   unit-test-backend:
     name: Unit Test Backend
