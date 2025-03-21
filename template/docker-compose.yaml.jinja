@@ -27,4 +27,4 @@
 
 networks:
   internal_net:
-    internal: false # TODO: figure out a way to set this to true (like in deployment) but still trigger the VS Code port-forwarding to easily see the previews{% endraw %}
+    internal: {% endraw %}{% if create_internal_docker_compose_network %}{% raw %}false # TODO: figure out a way to set this to true (like in deployment) but still trigger the VS Code port-forwarding to easily see the previews{% endraw %}{% else %}{% raw %}false{% endraw %}{% endif %}{% raw %}{% endraw %}
