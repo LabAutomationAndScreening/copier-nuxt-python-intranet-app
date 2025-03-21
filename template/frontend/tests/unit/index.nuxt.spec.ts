@@ -1,9 +1,9 @@
 import { test, expect } from "vitest";
-import { mount } from "@vue/test-utils";
+import { mountSuspended } from "@nuxt/test-utils/runtime";
 
 import Index from "~/pages/index.vue";
 
-test("component renders Hello world properly", () => {
-  const wrapper = mount(Index);
+test("component renders Hello world properly", async () => {
+  const wrapper = await mountSuspended(Index);
   expect(wrapper.text()).toContain("Hello");
 });
