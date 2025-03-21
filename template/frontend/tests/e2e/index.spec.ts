@@ -28,7 +28,7 @@ describe("Index page", async () => {
         stdio: "inherit",
       });
       await setup({ host: "http://localhost:3000" });
-    });
+    }, 240 * 1000); // increase timeout in case image needs to be built
     afterAll(() => {
       console.log("Stopping docker-compose...");
       execSync("docker compose --file=../docker-compose.yaml down", { stdio: "inherit" });
