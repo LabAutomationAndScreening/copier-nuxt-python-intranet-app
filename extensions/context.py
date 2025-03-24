@@ -62,5 +62,4 @@ class ContextUpdater(ContextHook):
         # Kludge to be able to help symlinked jinja files in the child and grandchild templates
         context["template_uses_vuejs"] = True
         context["template_uses_javascript"] = True
-        context["install_aws_ssm_port_forwarding_plugin"] = False
         return context
