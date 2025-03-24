@@ -205,7 +205,7 @@ repos:
         description: Runs hadolint to lint Dockerfiles
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 41d2daf392fbf43341a77f24a9c6481a4b66af98 # frozen: v0.9.10
+    rev: 25a8c8da6c24a3b9a1a536e2674683dd0eead5d6  # frozen: v0.11.2
     hooks:
       - id: ruff
         name: ruff-src
@@ -218,7 +218,7 @@ repos:
       - id: ruff-format{% endraw %}{% if has_backend %}{% raw %}
 
   - repo: https://github.com/pylint-dev/pylint
-    rev: 88543500c70e3aa303b6c0861e2a7a006673f6a8
+    rev: 7ac5a4d4f77576df3a00e63f86ca86e0e1780b47  # frozen: v3.3.6
     hooks:
       - id: pylint
         name: pylint
