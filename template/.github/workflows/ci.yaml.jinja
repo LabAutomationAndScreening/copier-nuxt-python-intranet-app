@@ -136,6 +136,28 @@ jobs:
       - name: E2E test
         run: pnpm run --dir=frontend test-e2e
 
+  e2e-test-docker:
+    name: End-to-end Testing with Docker Compose
+    runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
+    needs: [ build-frontend{% endraw %}{% if has_backend %}{% raw %}, build-backend{% endraw %}{% endif %}{% raw %} ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
+
+      # TODO: figure out how to only install the Node dependencies (not Python)
+      - name: Setup node
+        uses: actions/setup-node@{% endraw %}{{ gha_setup_node }}{% raw %}
+        with:
+          node-version: {% endraw %}{{ node_version }}{% raw %}
+
+      - name: Install latest versions of python packages
+        uses: ./.github/actions/install_deps_uv
+        with:
+          python-version: {% endraw %}{{ python_version }}{% raw %}
+
+      - name: E2E test
+        run: pnpm run --dir=frontend test-e2e:docker
+
   package-images:
     name: Package Images
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
@@ -169,10 +191,10 @@ jobs:
 
   required-check:
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
-    needs: [ lint, package-images, build-frontend, unit-test-frontend, e2e-test{% endraw %}{% if has_backend %}{% raw %}, unit-test-backend, build-backend{% endraw %}{% endif %}{% raw %} ]
+    needs: [ lint, package-images, build-frontend, unit-test-frontend, e2e-test, e2e-test-docker{% endraw %}{% if has_backend %}{% raw %}, unit-test-backend, build-backend{% endraw %}{% endif %}{% raw %} ]
     if: always()
     steps:
       - name: fail if prior job failure
-        if: needs.lint.result != 'success' || needs.package-images.result != 'success' || needs.build-frontend.result != 'success' || needs.unit-test-frontend.result != 'success' || needs.e2e-test.result != 'success'{% endraw %}{% if has_backend %}{% raw %} || needs.unit-test-backend.result != 'success' || needs.build-backend.result != 'success'{% endraw %}{% endif %}{% raw %}
+        if: needs.lint.result != 'success' || needs.package-images.result != 'success' || needs.build-frontend.result != 'success' || needs.unit-test-frontend.result != 'success' || needs.e2e-test.result != 'success' || needs.e2e-test-docker.result != 'success'{% endraw %}{% if has_backend %}{% raw %} || needs.unit-test-backend.result != 'success' || needs.build-backend.result != 'success'{% endraw %}{% endif %}{% raw %}
         run: |
           exit 1{% endraw %}
