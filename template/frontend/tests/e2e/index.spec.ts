@@ -8,14 +8,12 @@ describe("Index page", async () => {
     await setup();
   }
   beforeAll(async () => {
-    let options = {};
     if (process.env.USE_DOCKER_COMPOSE_FOR_VITEST_E2E) {
       console.log("Starting docker-compose...");
       execSync("docker compose --file=../docker-compose.yaml up --detach --force-recreate --renew-anon-volumes", {
         stdio: "inherit",
       });
-      options = { host: "http://localhost:3000" };
-      await setup(options);
+      await setup({ host: "http://localhost:3000" });
     }
   }, 240 * 1000); // increase timeout in case image needs to be built
   afterAll(() => {
