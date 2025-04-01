@@ -59,7 +59,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "copier", specifier = ">=9.5.0" },
+    { name = "copier", specifier = ">=9.6.0" },
     { name = "copier-templates-extensions", specifier = ">=0.3.0" },
     { name = "pyright", extras = ["nodejs"], specifier = ">=1.1.398" },
     { name = "pytest", specifier = ">=8.3.5" },
