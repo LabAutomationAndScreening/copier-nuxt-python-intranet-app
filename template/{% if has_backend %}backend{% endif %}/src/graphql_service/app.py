@@ -1,19 +1,19 @@
 import logging
-from pathlib import Path
 
-import strawberry
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from strawberry.fastapi import GraphQLRouter
 
+from .schema_def import schema
+
+logging.getLogger().setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
 
-
-schema = strawberry.Schema(query=int)
-sdl_path = Path(__file__).parent / "schema.graphql"
-_ = sdl_path.write_text(f"{schema.as_str()}\n")
+# using `PYTEST_CURRENT_TEST` doesn't work to protect against executing this code, because pytest hasn't really started yet during imports
+# using `if __name__ == "__main__":` doesn't work with the current way uvicorn launches the app
+# ...so just trying to make sure we never import this file during test suite execution
+# which means inherently this file is excluded from test coverage analysis...so put the minimal amount possible in here
 graphql_app = GraphQLRouter(schema)
-
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
