@@ -6,14 +6,15 @@
     "type-check": "vue-tsc --noEmit",
     "lint": "eslint . --fix --ext .vue,.ts,.js",
     "build": "pnpm run type-check && nuxt build",
-    "dev": "nuxt dev",
+    "comment-about-dev-no-fork": "sometimes it seems needed, other times it seems to work with it...more info https://github.com/nuxt/cli/issues/181",
+    "dev": "nuxt dev --no-fork",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare && pnpm exec playwright-core install --only-shell chromium-headless-shell",
     "test-unit": "vitest --dir tests/unit run --coverage",
     "test-unit:watch": "vitest --dir tests/unit",
     "test-e2e": "vitest --dir tests/e2e run",
-    "test-e2e:docker": "USE_DOCKER_COMPOSE_FOR_VITEST_E2E=1 vitest --dir tests/e2e run",
+    "test-e2e:docker": "docker compose --file=../docker-compose.yaml build && USE_DOCKER_COMPOSE_FOR_VITEST_E2E=1 vitest --dir tests/e2e run",
     "test-e2e:watch": "vitest --dir tests/e2e"
   },
   "dependencies": {
