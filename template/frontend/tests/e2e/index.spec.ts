@@ -15,7 +15,7 @@ describe("Index page", async () => {
       });
       await setup({ host: "http://localhost:3000" });
     }
-  }, 240 * 1000); // increase timeout in case image needs to be built
+  }, 40 * 1000); // increase timeout to allow docker compose to start
   afterAll(() => {
     if (process.env.USE_DOCKER_COMPOSE_FOR_VITEST_E2E) {
       console.log("Stopping docker-compose...");
