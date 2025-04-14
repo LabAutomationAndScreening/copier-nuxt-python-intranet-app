@@ -107,11 +107,11 @@ frontend_ecr_base_url:
     when: "{{ push_to_ecr }}"
     default: "{{ aws_central_infrastructure_account_id }}.dkr.ecr.{{ aws_org_home_region }}.amazonaws.com"
 
-# frontend_ecr_push_role_name:
-#     type: str
-#     help: What is the name of the role to assume for pushing the frontend image to ECR?
-#     when: "{{ push_to_ecr }}"
-#     default: "GHA-ECR-Push-{{ repo_name }}-frontend"
+frontend_ecr_push_role_name:
+    type: str
+    help: What is the name of the role to assume for pushing the frontend image to ECR?
+    when: "{{ push_to_ecr }}"
+    default: "GHA-ECR-Push-{{ repo_name }}-frontend"
 
 # frontend_image_name:
 #     type: str
