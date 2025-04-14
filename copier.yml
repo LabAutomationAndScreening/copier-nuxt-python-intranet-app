@@ -72,7 +72,7 @@ aws_central_infrastructure_account_id:
     type: str
     help: What's the ID of your Organization's AWS Account containing Central Infrastructure (e.g. CodeArtifact)?
     when: "{{ python_package_registry == 'AWS CodeArtifact' }}"
-    default: 000000000000
+    default: "000000000000"
 
 core_infra_base_access_profile_name:
     type: str
@@ -121,13 +121,13 @@ frontend_image_name:
 backend_ecr_base_url:
     type: str
     help: What is the base URL of the ECR repository to push the backend image to? (e.g. 123456789012.dkr.ecr.us-east-1.amazonaws.com)
-    when: "{{ push_to_ecr && has_backend }}"
+    when: "{{ push_to_ecr and has_backend }}"
     default: "{{ frontend_ecr_base_url }}"
 
 backend_ecr_push_role_name:
     type: str
     help: What is the name of the role to assume for pushing the backend image to ECR?
-    when: "{{ push_to_ecr && has_backend }}"
+    when: "{{ push_to_ecr and has_backend }}"
     default: "GHA-ECR-Push-{{ repo_name }}-backend"
 
 backend_image_name:
