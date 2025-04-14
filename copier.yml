@@ -90,15 +90,15 @@ has_backend:
     help: Does this project have a backend?
     default: yes
 
-# create_docker_image_tar_artifact:
-#     type: bool
-#     help: During CI, should the docker images be bundled up into a tar file for manual deployment?
-#     default: no
+create_docker_image_tar_artifact:
+    type: bool
+    help: During CI, should the docker images be bundled up into a tar file for manual deployment?
+    default: no
 
-# push_to_ecr:
-#     type: bool
-#     help: During CI, should the docker images be pushed to an ECR?
-#     default: no
+push_to_ecr:
+    type: bool
+    help: During CI, should the docker images be pushed to an ECR?
+    default: no
 
 # frontend_ecr_base_url:
 #     type: str
