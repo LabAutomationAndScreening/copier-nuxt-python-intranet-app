@@ -32,11 +32,6 @@ node_version:
     help: What version of NodeJS is used for development?
     default: 22.14.0
 
-pnpm_version:
-    type: str
-    help: What version of pnpm is used for development?
-    default: 10.6.3
-
 
 install_aws_ssm_port_forwarding_plugin:
     type: bool
@@ -72,6 +67,7 @@ aws_central_infrastructure_account_id:
     type: str
     help: What's the ID of your Organization's AWS Account containing Central Infrastructure (e.g. CodeArtifact)?
     when: "{{ python_package_registry == 'AWS CodeArtifact' }}"
+    default: "000000000000"
 
 core_infra_base_access_profile_name:
     type: str
@@ -89,6 +85,51 @@ has_backend:
     type: bool
     help: Does this project have a backend?
     default: yes
+
+create_docker_image_tar_artifact:
+    type: bool
+    help: During CI, should the docker images be bundled up into a tar file for manual deployment?
+    default: no
+
+push_to_ecr:
+    type: bool
+    help: During CI, should the docker images be pushed to an ECR?
+    default: no
+
+frontend_ecr_base_url:
+    type: str
+    help: What is the base URL of the ECR repository to push the frontend image to? (e.g. 123456789012.dkr.ecr.us-east-1.amazonaws.com)
+    when: "{{ push_to_ecr }}"
+    default: "{{ aws_central_infrastructure_account_id }}.dkr.ecr.{{ aws_org_home_region }}.amazonaws.com"
+
+frontend_ecr_push_role_name:
+    type: str
+    help: What is the name of the role to assume for pushing the frontend image to ECR?
+    when: "{{ push_to_ecr }}"
+    default: "GHA-ECR-Push-{{ repo_name }}-frontend"
+
+frontend_image_name:
+    type: str
+    help: What is the name of the frontend image?
+    default: "{{ repo_name }}/frontend"
+
+backend_ecr_base_url:
+    type: str
+    help: What is the base URL of the ECR repository to push the backend image to? (e.g. 123456789012.dkr.ecr.us-east-1.amazonaws.com)
+    when: "{{ push_to_ecr and has_backend }}"
+    default: "{{ frontend_ecr_base_url }}"
+
+backend_ecr_push_role_name:
+    type: str
+    help: What is the name of the role to assume for pushing the backend image to ECR?
+    when: "{{ push_to_ecr and has_backend }}"
+    default: "GHA-ECR-Push-{{ repo_name }}-backend"
+
+backend_image_name:
+    type: str
+    help: What is the name of the backend image?
+    default: "{{ repo_name }}/backend"
+    when: "{{ has_backend }}"
 
 frontend_uses_graphql:
     type: bool

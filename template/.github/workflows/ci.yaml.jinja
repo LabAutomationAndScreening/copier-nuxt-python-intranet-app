@@ -100,19 +100,23 @@ jobs:
     needs: [ lint, unit-test-frontend, unit-test-backend ]
     uses: ./.github/workflows/build-docker-image.yaml
     with:
-      tag: ${{ github.sha }}
       context: ./backend
-      repository: 183631337349.dkr.ecr.us-east-1.amazonaws.com
-      image_name: {% endraw %}{{ repo_name }}{% raw %}-backend{% endraw %}{% endif %}{% raw %}
+      save-as-artifact: true
+      tag-for-production: ${{ github.ref == 'refs/heads/main' }}
+      repository: {% endraw %}{{ backend_ecr_base_url }}{% raw %}
+      image_name: {% endraw %}{{ backend_image_name }}{% raw %}
+{% endraw %}{% if push_to_ecr %}{% raw %}      push-role-name: {% endraw %}{{ backend_ecr_push_role_name }}{% endif %}{% endif %}{% raw %}
 
   build-frontend:
     needs: [ lint, unit-test-frontend{% endraw %}{% if has_backend %}{% raw %}, unit-test-backend{% endraw %}{% endif %}{% raw %} ]
     uses: ./.github/workflows/build-docker-image.yaml
     with:
-      tag: ${{ github.sha }}
       context: ./frontend
-      repository: 183631337349.dkr.ecr.us-east-1.amazonaws.com
-      image_name: {% endraw %}{{ repo_name }}{% raw %}-frontend
+      save-as-artifact: true
+      tag-for-production: ${{ github.ref == 'refs/heads/main' }}
+      repository: {% endraw %}{{ frontend_ecr_base_url }}{% raw %}
+      image_name: {% endraw %}{{ frontend_image_name }}{% raw %}
+{% endraw %}{% if push_to_ecr %}{% raw %}      push-role-name: {% endraw %}{{ frontend_ecr_push_role_name }}{% endif %}{% raw %}
 
   e2e-test:
     name: End-to-end Testing
@@ -153,12 +157,30 @@ jobs:
       - name: Install latest versions of python packages
         uses: ./.github/actions/install_deps_uv
         with:
-          python-version: {% endraw %}{{ python_version }}{% raw %}
+          python-version: {% endraw %}{{ python_version }}{% raw %}{% endraw %}{% if has_backend %}{% raw %}
+
+      - name: Download Backend Artifact
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: {% endraw %}{{ backend_image_name | replace('/', '-') }}{% raw %}
+          path: deployment-package-folder{% endraw %}{% endif %}{% raw %}
+
+      - name: Download Frontend Artifact
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: {% endraw %}{{ frontend_image_name | replace('/', '-') }}{% raw %}
+          path: deployment-package-folder
+
+      - name: Load docker images
+        run: |
+          ls deployment-package-folder -a
+          # load all images in the folder
+          ls -1 deployment-package-folder/*.tar | xargs --no-run-if-empty -L 1 docker load -i
 
       - name: E2E test
         run: pnpm run --dir=frontend test-e2e:docker
 
-  package-images:
+{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}  package-images:
     name: Package Images
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     needs: [ build-frontend{% endraw %}{% if has_backend %}{% raw %}, build-backend{% endraw %}{% endif %}{% raw %} ]
@@ -187,14 +209,14 @@ jobs:
       uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
       with:
         name: {% endraw %}{{ repo_name }}{% raw %}-deployment-package
-        path: deployment-package-folder/**/*
+        path: deployment-package-folder/**/*{% endraw %}{% endif %}{% raw %}
 
   required-check:
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
-    needs: [ lint, package-images, build-frontend, unit-test-frontend, e2e-test, e2e-test-docker{% endraw %}{% if has_backend %}{% raw %}, unit-test-backend, build-backend{% endraw %}{% endif %}{% raw %} ]
+    needs: [ lint{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}, package-images{% endraw %}{% endif %}{% raw %}, build-frontend, unit-test-frontend, e2e-test, e2e-test-docker{% endraw %}{% if has_backend %}{% raw %}, unit-test-backend, build-backend{% endraw %}{% endif %}{% raw %} ]
     if: always()
     steps:
       - name: fail if prior job failure
-        if: needs.lint.result != 'success' || needs.package-images.result != 'success' || needs.build-frontend.result != 'success' || needs.unit-test-frontend.result != 'success' || needs.e2e-test.result != 'success' || needs.e2e-test-docker.result != 'success'{% endraw %}{% if has_backend %}{% raw %} || needs.unit-test-backend.result != 'success' || needs.build-backend.result != 'success'{% endraw %}{% endif %}{% raw %}
+        if: needs.lint.result != 'success'{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %} || needs.package-images.result != 'success'{% endraw %}{% endif %}{% raw %} || needs.build-frontend.result != 'success' || needs.unit-test-frontend.result != 'success' || needs.e2e-test.result != 'success' || needs.e2e-test-docker.result != 'success'{% endraw %}{% if has_backend %}{% raw %} || needs.unit-test-backend.result != 'success' || needs.build-backend.result != 'success'{% endraw %}{% endif %}{% raw %}
         run: |
           exit 1{% endraw %}

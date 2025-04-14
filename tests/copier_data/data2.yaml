@@ -8,7 +8,6 @@ use_windows_in_ci: true
 install_aws_ssm_port_forwarding_plugin: false
 
 node_version: 22.14.0
-pnpm_version: 10.6.3
 
 python_package_registry: AWS CodeArtifact
 aws_central_infrastructure_account_id: 012321432543
@@ -26,3 +25,11 @@ has_backend: false
 frontend_uses_graphql: false
 frontend_deployed_port_number: 8000
 create_internal_docker_compose_network: false
+push_to_ecr: false
+create_docker_image_tar_artifact: true
+frontend_ecr_base_url: 012321432543.dkr.ecr.us-east-1.amazonaws.com
+frontend_ecr_push_role_name: not-being-used
+frontend_image_name: best-image-ever
+backend_ecr_base_url: 543215433233.dkr.ecr.eu-west-1.amazonaws.com
+backend_ecr_push_role_name: not-being-used-either
+backend_image_name: notusedeither
