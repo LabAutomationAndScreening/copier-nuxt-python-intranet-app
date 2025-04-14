@@ -195,6 +195,6 @@ jobs:
     if: always()
     steps:
       - name: fail if prior job failure
-        if: needs.lint.result != 'success' || needs.package-images.result != 'success' || needs.build-frontend.result != 'success' || needs.unit-test-frontend.result != 'success' || needs.e2e-test.result != 'success' || needs.e2e-test-docker.result != 'success'{% endraw %}{% if has_backend %}{% raw %} || needs.unit-test-backend.result != 'success' || needs.build-backend.result != 'success'{% endraw %}{% endif %}{% raw %}
+        if: needs.lint.result != 'success'{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %} || needs.package-images.result != 'success'{% endraw %}{% endif %}{% raw %} || needs.build-frontend.result != 'success' || needs.unit-test-frontend.result != 'success' || needs.e2e-test.result != 'success' || needs.e2e-test-docker.result != 'success'{% endraw %}{% if has_backend %}{% raw %} || needs.unit-test-backend.result != 'success' || needs.build-backend.result != 'success'{% endraw %}{% endif %}{% raw %}
         run: |
           exit 1{% endraw %}
