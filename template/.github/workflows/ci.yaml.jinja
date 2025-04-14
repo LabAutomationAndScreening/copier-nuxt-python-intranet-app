@@ -172,8 +172,8 @@ jobs:
       - name: Load docker images
         run: |
           ls deployment-package-folder -a
-          docker load -i deployment-package-folder/{{ backend_image_name | replace('/', '-') }}.tar
-          docker load -i deployment-package-folder/{{ frontend_image_name | replace('/', '-') }}.tar
+          # load all images in the folder
+          ls -1 deployment-package-folder/*.tar | xargs --no-run-if-empty -L 1 docker load -i
 
       - name: E2E test
         run: pnpm run --dir=frontend test-e2e:docker
