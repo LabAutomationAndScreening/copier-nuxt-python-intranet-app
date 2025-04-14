@@ -100,19 +100,21 @@ jobs:
     needs: [ lint, unit-test-frontend, unit-test-backend ]
     uses: ./.github/workflows/build-docker-image.yaml
     with:
-      tag: ${{ github.sha }}
       context: ./backend
-      repository: 183631337349.dkr.ecr.us-east-1.amazonaws.com
-      image_name: {% endraw %}{{ repo_name }}{% raw %}-backend{% endraw %}{% endif %}{% raw %}
+      save-as-artifact: true
+      repository: {% endraw %}{{ backend_ecr_base_url }}{% raw %}
+      image_name: {% endraw %}{{ backend_image_name }}{% raw %}
+{% endraw %}{% if push_to_ecr %}{% raw %}      push-role-name: {% endraw %}{{ backend_ecr_push_role_name }}{% endif %}{% endif %}{% raw %}
 
   build-frontend:
     needs: [ lint, unit-test-frontend{% endraw %}{% if has_backend %}{% raw %}, unit-test-backend{% endraw %}{% endif %}{% raw %} ]
     uses: ./.github/workflows/build-docker-image.yaml
     with:
-      tag: ${{ github.sha }}
       context: ./frontend
-      repository: 183631337349.dkr.ecr.us-east-1.amazonaws.com
-      image_name: {% endraw %}{{ repo_name }}{% raw %}-frontend
+      save-as-artifact: true
+      repository: {% endraw %}{{ frontend_ecr_base_url }}{% raw %}
+      image_name: {% endraw %}{{ frontend_image_name }}{% raw %}
+{% endraw %}{% if push_to_ecr %}{% raw %}      push-role-name: {% endraw %}{{ frontend_ecr_push_role_name }}{% endif %}{% raw %}
 
   e2e-test:
     name: End-to-end Testing
