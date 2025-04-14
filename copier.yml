@@ -100,11 +100,11 @@ push_to_ecr:
     help: During CI, should the docker images be pushed to an ECR?
     default: no
 
-# frontend_ecr_base_url:
-#     type: str
-#     help: What is the base URL of the ECR repository to push the frontend image to? (e.g. 123456789012.dkr.ecr.us-east-1.amazonaws.com)
-#     when: "{{ push_to_ecr }}"
-#     default: "{{ aws_central_infrastructure_account_id }}.dkr.ecr.{{ aws_org_home_region }}.amazonaws.com"
+frontend_ecr_base_url:
+    type: str
+    help: What is the base URL of the ECR repository to push the frontend image to? (e.g. 123456789012.dkr.ecr.us-east-1.amazonaws.com)
+    when: "{{ push_to_ecr }}"
+    default: "{{ aws_central_infrastructure_account_id }}.dkr.ecr.{{ aws_org_home_region }}.amazonaws.com"
 
 # frontend_ecr_push_role_name:
 #     type: str
