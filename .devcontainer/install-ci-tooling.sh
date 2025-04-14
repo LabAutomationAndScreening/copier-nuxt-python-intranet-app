@@ -6,7 +6,7 @@ set -ex
 
 
 npm -v
-npm install -g pnpm@10.7.0
+npm install -g pnpm@10.8.1
 pnpm -v
 
 curl -LsSf https://astral.sh/uv/0.6.11/install.sh | sh
