@@ -32,11 +32,6 @@ node_version:
     help: What version of NodeJS is used for development?
     default: 22.14.0
 
-pnpm_version:
-    type: str
-    help: What version of pnpm is used for development?
-    default: 10.6.3
-
 
 install_aws_ssm_port_forwarding_plugin:
     type: bool
