@@ -90,50 +90,50 @@ has_backend:
     help: Does this project have a backend?
     default: yes
 
-create_docker_image_tar_artifact:
-    type: bool
-    help: During CI, should the docker images be bundled up into a tar file for manual deployment?
-    default: no
+# create_docker_image_tar_artifact:
+#     type: bool
+#     help: During CI, should the docker images be bundled up into a tar file for manual deployment?
+#     default: no
 
-push_to_ecr:
-    type: bool
-    help: During CI, should the docker images be pushed to an ECR?
-    default: no
+# push_to_ecr:
+#     type: bool
+#     help: During CI, should the docker images be pushed to an ECR?
+#     default: no
 
-frontend_ecr_base_url:
-    type: str
-    help: What is the base URL of the ECR repository to push the frontend image to? (e.g. 123456789012.dkr.ecr.us-east-1.amazonaws.com)
-    when: "{{ push_to_ecr }}"
-    default: "{{ aws_central_infrastructure_account_id }}.dkr.ecr.{{ aws_org_home_region }}.amazonaws.com"
+# frontend_ecr_base_url:
+#     type: str
+#     help: What is the base URL of the ECR repository to push the frontend image to? (e.g. 123456789012.dkr.ecr.us-east-1.amazonaws.com)
+#     when: "{{ push_to_ecr }}"
+#     default: "{{ aws_central_infrastructure_account_id }}.dkr.ecr.{{ aws_org_home_region }}.amazonaws.com"
 
-frontend_ecr_push_role_name:
-    type: str
-    help: What is the name of the role to assume for pushing the frontend image to ECR?
-    when: "{{ push_to_ecr }}"
-    default: "GHA-ECR-Push-{{ repo_name }}-frontend"
+# frontend_ecr_push_role_name:
+#     type: str
+#     help: What is the name of the role to assume for pushing the frontend image to ECR?
+#     when: "{{ push_to_ecr }}"
+#     default: "GHA-ECR-Push-{{ repo_name }}-frontend"
 
-frontend_image_name:
-    type: str
-    help: What is the name of the frontend image?
-    default: "{{ repo_name }}/frontend"
+# frontend_image_name:
+#     type: str
+#     help: What is the name of the frontend image?
+#     default: "{{ repo_name }}/frontend"
 
-backend_ecr_base_url:
-    type: str
-    help: What is the base URL of the ECR repository to push the backend image to? (e.g. 123456789012.dkr.ecr.us-east-1.amazonaws.com)
-    when: "{{ push_to_ecr && has_backend }}"
-    default: "{{ aws_central_infrastructure_account_id }}.dkr.ecr.{{ aws_org_home_region }}.amazonaws.com"
+# backend_ecr_base_url:
+#     type: str
+#     help: What is the base URL of the ECR repository to push the backend image to? (e.g. 123456789012.dkr.ecr.us-east-1.amazonaws.com)
+#     when: "{{ push_to_ecr && has_backend }}"
+#     default: "{{ aws_central_infrastructure_account_id }}.dkr.ecr.{{ aws_org_home_region }}.amazonaws.com"
 
-backend_ecr_push_role_name:
-    type: str
-    help: What is the name of the role to assume for pushing the backend image to ECR?
-    when: "{{ push_to_ecr && has_backend }}"
-    default: "GHA-ECR-Push-{{ repo_name }}-backend"
+# backend_ecr_push_role_name:
+#     type: str
+#     help: What is the name of the role to assume for pushing the backend image to ECR?
+#     when: "{{ push_to_ecr && has_backend }}"
+#     default: "GHA-ECR-Push-{{ repo_name }}-backend"
 
-backend_image_name:
-    type: str
-    help: What is the name of the backend image?
-    default: "{{ repo_name }}/backend"
-    when: "{{ has_backend }}"
+# backend_image_name:
+#     type: str
+#     help: What is the name of the backend image?
+#     default: "{{ repo_name }}/backend"
+#     when: "{{ has_backend }}"
 
 frontend_uses_graphql:
     type: bool
