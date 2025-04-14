@@ -21,3 +21,11 @@ has_backend: true
 frontend_uses_graphql: true
 frontend_deployed_port_number: 3000
 create_internal_docker_compose_network: true
+push_to_ecr: true
+create_docker_image_tar_artifact: false
+frontend_ecr_base_url: 012321432543.dkr.ecr.us-west-2.amazonaws.com
+frontend_ecr_push_role_name: blarg-role
+frontend_image_name: my-namespace/ooga-booga
+backend_ecr_base_url: 543215433233.dkr.ecr.us-east-2.amazonaws.com
+backend_ecr_push_role_name: wakka-WAKKA
+backend_image_name: cool-project/foobar

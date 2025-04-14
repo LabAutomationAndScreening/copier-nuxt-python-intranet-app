@@ -26,3 +26,5 @@ has_backend: false
 frontend_uses_graphql: false
 frontend_deployed_port_number: 8000
 create_internal_docker_compose_network: false
+push_to_ecr: false
+create_docker_image_tar_artifact: true
