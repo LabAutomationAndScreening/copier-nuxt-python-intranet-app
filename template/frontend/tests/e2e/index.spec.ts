@@ -1,6 +1,6 @@
-import { test, expect, describe, beforeAll, afterAll } from "vitest";
-import { setup, createPage, url } from "@nuxt/test-utils/e2e";
+import { createPage, setup, url } from "@nuxt/test-utils/e2e";
 import { execSync } from "child_process";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 describe("Index page", async () => {
   if (!process.env.USE_DOCKER_COMPOSE_FOR_VITEST_E2E) {

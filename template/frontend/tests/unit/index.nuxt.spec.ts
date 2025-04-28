@@ -1,5 +1,5 @@
-import { test, expect } from "vitest";
 import { mountSuspended } from "@nuxt/test-utils/runtime";
+import { expect, test } from "vitest";
 
 import Index from "~/pages/index.vue";
 
