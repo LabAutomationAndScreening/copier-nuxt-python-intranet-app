@@ -77,9 +77,11 @@ repos:
     rev: 748e40d32e076a6aaaf3353a2564c8fe43764f79  # frozen: v2.0.0-beta.1
     hooks:
       - id: biome-check
+        # exclude generated files from codegen and strawberry
         exclude: |
           (?x)^(
               .*generated/graphql.ts|
+              schema.graphql|
           )$
 
   - repo: https://github.com/pre-commit/mirrors-prettier # TODO: switch to a different approach...this was archived in 2024
