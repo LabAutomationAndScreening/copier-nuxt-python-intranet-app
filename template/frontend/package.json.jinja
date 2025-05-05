@@ -15,7 +15,8 @@
     "test-unit:watch": "vitest --dir tests/unit",
     "test-e2e": "vitest --test-timeout=7000 --dir tests/e2e run",
     "test-e2e:docker": "docker compose --file=../docker-compose.yaml build && USE_DOCKER_COMPOSE_FOR_VITEST_E2E=1 vitest --test-timeout=7000 --dir tests/e2e run",
-    "test-e2e:watch": "vitest --dir tests/e2e"
+    "test-e2e:watch": "vitest --dir tests/e2e"{% endraw %}{% if frontend_uses_graphql %}{% raw %},
+    "codegen": "graphql-codegen --config codegen.ts"{% endraw %}{% endif %}{% raw %}
   },
   "dependencies": {
     "@nuxt/ui": "{% endraw %}{{ nuxt_ui_version }}{% raw %}",
