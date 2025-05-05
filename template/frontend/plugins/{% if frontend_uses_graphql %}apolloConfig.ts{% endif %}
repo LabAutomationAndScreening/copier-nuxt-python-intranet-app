@@ -1,30 +1,39 @@
+// @ts-expect-error // until v4 of @apollo/client is released, there is no typing for these deeper imports
 import { createHttpLink, from } from "@apollo/client/core";
+// @ts-expect-error // until v4 of @apollo/client is released, there is no typing for these deeper imports
+import type { ErrorResponse } from "@apollo/client/link/error";
+// @ts-expect-error // until v4 of @apollo/client is released, there is no typing for these deeper imports
 import { onError } from "@apollo/client/link/error";
 import { provideApolloClient } from "@vue/apollo-composable";
-
+import { useRuntimeConfig } from "nuxt/app";
 /**
  * See example: https://github.com/nuxt-modules/apollo/issues/442
  */
-export default defineNuxtPlugin((nuxtApp) => {
-  const { $apollo } = nuxtApp;
+export default defineNuxtPlugin(() => {
+  const config = useRuntimeConfig();
 
   // trigger the error hook on an error
-  const errorLink = onError((err) => {
-    nuxtApp.callHook("apollo:error", err); // must be called bc `@nuxtjs/apollo` will not do it anymore
+  const errorLink = onError(({ graphQLErrors, networkError }: ErrorResponse) => {
+    // Manually emit the nuxt apollo:error hook
+    useNuxtApp().callHook("apollo:error", graphQLErrors ?? networkError); // must be called bc `@nuxtjs/apollo` will not do it anymore
   });
 
   // Default httpLink (main communication for apollo)
-  const endpoint_uri = process.env.GRAPHQL_API_URL || "http://localhost:4000/graphql";
+  const endpoint_uri = config.public.graphql_api_url;
   console.log("Connecting to Backend API at:", endpoint_uri);
   const httpLink = createHttpLink({
     uri: endpoint_uri,
   });
 
+  // Retrieve the default client from the Vue Apollo composable (typed)
+  const { resolveClient } = useApolloClient();
+  const client = resolveClient("default");
+
   // Set custom links in the apollo client.
   // This is the link chain. Will be walked through from top to bottom. It can only contain 1 terminating
   // Apollo link, see: https://www.apollographql.com/docs/react/api/link/introduction/#the-terminating-link
-  $apollo.defaultClient.setLink(from([errorLink, httpLink]));
+  client.setLink(from([errorLink, httpLink]));
 
-  // For using useQuery in `@vue/apollo-composable`
-  provideApolloClient($apollo.defaultClient);
+  // Provide the configured client for useQuery, useMutation, etc.
+  provideApolloClient(client);
 });
