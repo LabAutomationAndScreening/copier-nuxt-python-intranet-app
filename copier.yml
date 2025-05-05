@@ -86,6 +86,11 @@ has_backend:
     help: Does this project have a backend?
     default: yes
 
+backend_uses_graphql:
+    type: bool
+    help: Is the backend GraphQL?
+    default: yes
+
 create_docker_image_tar_artifact:
     type: bool
     help: During CI, should the docker images be bundled up into a tar file for manual deployment?
@@ -133,15 +138,14 @@ backend_image_name:
 
 frontend_uses_graphql:
     type: bool
-    help: Do you want the standalone frontend to make GraphQL calls?
+    help: Do you want the frontend to make GraphQL calls?
     default: |-
         {% if has_backend == false -%}
             no
         {%- else -%}
             {#- This way if backend is already in use, then we'll automatically include graphql for this variable -#}
-            yes
+            {{ backend_uses_graphql }}
         {%- endif %}
-    when: "{{ has_backend == false }}"
 
 frontend_deployed_port_number:
     type: int
