@@ -22,6 +22,7 @@ aws_development_account_id: 000321456870
 aws_region_for_stack: us-west-1
 # Data added based on the specifics of this template
 has_backend: false
+backend_uses_graphql: false
 frontend_uses_graphql: false
 frontend_deployed_port_number: 8000
 create_internal_docker_compose_network: false
