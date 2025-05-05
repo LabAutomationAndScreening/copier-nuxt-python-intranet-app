@@ -9,10 +9,5 @@ export default defineAppConfig({
       error: "red",
       neutral: "slate",
     },
-    tooltip: {
-      default: {
-        openDelay: 500,
-      },
-    },
   },
 });
