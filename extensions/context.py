@@ -33,7 +33,7 @@ class ContextUpdater(ContextHook):
         context["strawberry_graphql_version"] = "0.264.0"
         context["fastapi_version"] = "0.115.12"
         context["uvicorn_version"] = "0.34.0"
-        context["lab_auto_pulumi_version"] = "0.1.11"
+        context["lab_auto_pulumi_version"] = "0.1.12"
 
         context["nuxt_ui_version"] = "^3.0.2"
         context["nuxt_version"] = "^3.16.2"
@@ -52,6 +52,8 @@ class ContextUpdater(ContextHook):
         context["gha_setup_node"] = "v4.3.0"
         context["gha_action_gh_release"] = "v2.2.1"
         context["gha_mutex"] = "1ebad517141198e08d47cf72f3c0975316620a65 # v1.0.0-alpha.10"
+        context["gha_pypi_publish"] = "v1.12.4"
+        context["gha_sleep"] = "v2.0.3"
         context["gha_linux_runner"] = "ubuntu-24.04"
         context["gha_windows_runner"] = "windows-2025"
 
