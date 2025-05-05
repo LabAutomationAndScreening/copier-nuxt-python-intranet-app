@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
+
 @app.get("/healthcheck")
 async def healthcheck() -> JSONResponse:
     return JSONResponse(content={"version": version("backend-api")})
