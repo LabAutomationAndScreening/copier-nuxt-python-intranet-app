@@ -23,7 +23,7 @@ try:{% endraw %}{% if backend_uses_graphql %}{% raw %}
         CORSMiddleware,
         allow_origins=["*"],  # Super permissive CORS setting since this is for intranet
         allow_credentials=True,
-        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["*"],
     ){% endraw %}{% if backend_uses_graphql %}{% raw %}
     app.include_router(graphql_app, prefix="/graphql"){% endraw %}{% endif %}{% raw %}
