@@ -2,7 +2,7 @@
 FROM node:{% endraw %}{{ node_version }}{% raw %}-alpine{% endraw %}{{ alpine_image_version }}{% raw %} AS builder
 
 # docker build -t my-nuxt-app .
-# docker run -p 3000:3000 my-nuxt-app
+# docker run -p {% endraw %}{{ frontend_deployed_port_number }}{% raw %}:3000 my-nuxt-app
 
 # Install pnpm globally
 RUN npm install -g pnpm@{% endraw %}{{ pnpm_version }}{% raw %}
