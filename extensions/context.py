@@ -1,4 +1,5 @@
 # adapted from https://github.com/copier-org/copier-templates-extensions#context-hook-extension
+import random
 from typing import Any
 from typing import override
 
@@ -20,7 +21,7 @@ class ContextUpdater(ContextHook):
         context["copier_version"] = "9.6.0"
         context["copier_templates_extension_version"] = "0.3.0"
         context["sphinx_version"] = "8.1.3"
-        context["pulumi_version"] = "3.163.0"
+        context["pulumi_version"] = "3.167.0"
         context["pulumi_aws_version"] = "6.77.0"
         context["pulumi_aws_native_version"] = "1.27.0"
         context["pulumi_command_version"] = "1.0.2"
@@ -67,4 +68,30 @@ class ContextUpdater(ContextHook):
         # Kludge to be able to help symlinked jinja files in the child and grandchild templates
         context["template_uses_vuejs"] = True
         context["template_uses_javascript"] = True
+        context["random_ssh_port"] = (
+            random.choice(  # Pick a random port, but ensure it's not in the excluded port range on Windows (powershell: `netsh int ipv4 show excludedportrange protocol=tcp`)
+                [
+                    p
+                    for p in range(49152, 65536)
+                    if not any(
+                        start <= p <= end
+                        for start, end in [
+                            (49752, 49851),
+                            (50000, 50059),
+                            (50060, 50159),
+                            (50160, 50259),
+                            (50260, 50359),
+                            (50914, 51013),
+                            (51114, 51213),
+                            (51214, 51313),
+                            (51314, 51413),
+                            (51623, 51722),
+                            (51723, 51822),
+                            (65269, 65368),
+                            (65369, 65468),
+                        ]
+                    )
+                ]
+            )
+        )
         return context
