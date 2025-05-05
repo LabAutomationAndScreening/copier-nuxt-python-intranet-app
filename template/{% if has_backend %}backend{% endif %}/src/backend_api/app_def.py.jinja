@@ -28,6 +28,6 @@ try:
     ){% endraw %}{% if backend_uses_graphql %}{% raw %}
     graphql_app = GraphQLRouter(schema)
     app.include_router(graphql_app, prefix="/graphql"){% endraw %}{% endif %}{% raw %}
-except Exception:
+except Exception: # pragma: no cover # This is just logging unexpected errors, and it's very challenging to explicitly unit test
     logger.exception("Unhandled error")
     raise{% endraw %}
