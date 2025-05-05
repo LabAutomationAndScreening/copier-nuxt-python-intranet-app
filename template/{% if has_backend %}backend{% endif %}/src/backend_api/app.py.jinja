@@ -21,5 +21,5 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
-)
-{% endraw %}{% if backend_uses_graphql %}{% raw %}app.include_router(graphql_app, prefix="/graphql"){% endraw %}{% endif %}
+){% endraw %}{% if backend_uses_graphql %}{% raw %}
+app.include_router(graphql_app, prefix="/graphql"){% endraw %}{% endif %}
