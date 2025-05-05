@@ -86,10 +86,17 @@ has_backend:
     help: Does this project have a backend?
     default: yes
 
+backend_deployed_port_number:
+    type: int
+    help: What port should the backend be deployed to?
+    default: 4000
+    when: "{{ has_backend }}"
+
 backend_uses_graphql:
     type: bool
     help: Is the backend GraphQL?
     default: yes
+    when: "{{ has_backend }}"
 
 create_docker_image_tar_artifact:
     type: bool
