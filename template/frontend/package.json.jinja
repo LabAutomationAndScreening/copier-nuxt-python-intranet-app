@@ -22,13 +22,13 @@
     "@nuxt/ui": "{% endraw %}{{ nuxt_ui_version }}{% raw %}",
     "nuxt": "{% endraw %}{{ nuxt_version }}{% raw %}",
     "typescript": "{% endraw %}{{ typescript_version }}{% raw %}",
-    "vue": "^3.5.13",
-    "vue-router": "^4.5.0"
+    "vue": "{% endraw %}{{ vue_version }}{% raw %}",
+    "vue-router": "{% endraw %}{{ vue_router_version }}{% raw %}",
   },
   "devDependencies": {
-    "@faker-js/faker": "^9.7.0",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
-    "@graphql-codegen/cli": "^5.0.5",
-    "@graphql-codegen/typescript": "^4.1.6",
+    "@faker-js/faker": "{% endraw %}{{ faker_version }}{% raw %}",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
+    "@graphql-codegen/cli": "{% endraw %}{{ graphql_codegen_version }}{% raw %}",
+    "@graphql-codegen/typescript": "{% endraw %}{{ graphql_codegen_version }}{% raw %}",
     "@graphql-codegen/typescript-operations": "^4.6.0",
     "@graphql-codegen/typescript-vue-apollo": "^4.1.1",
     "@graphql-tools/mock": "^9.0.22",
