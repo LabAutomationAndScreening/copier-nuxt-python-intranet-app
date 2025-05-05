@@ -16,6 +16,7 @@ app = FastAPI()
 async def healthcheck() -> JSONResponse:
     return JSONResponse(content={"version": version("backend-api")})
 
+
 try:
     app.add_middleware(
         CORSMiddleware,
