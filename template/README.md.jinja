@@ -35,7 +35,7 @@ pnpm run --dir=frontend preview
 ## Backend
 Start the GraphQL server:
 ```bash
-uv --directory=backend run uvicorn backend_api.app:app --reload --host '::' --port 4000
+uv --directory=backend run uvicorn backend_api.entrypoint:app --reload --host '::' --port 4000
 ```
 
 ## Updating from the template
