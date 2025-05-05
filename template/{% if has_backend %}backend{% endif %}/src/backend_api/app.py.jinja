@@ -21,7 +21,7 @@ try:
     app = FastAPI()
 
     @app.get("/healthcheck")
-    async def healthcheck()->JSONResponse:
+    async def healthcheck() -> JSONResponse:
         return JSONResponse(content={"version": version("backend-api")})
 
     app.add_middleware(
