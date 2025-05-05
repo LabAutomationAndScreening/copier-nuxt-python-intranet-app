@@ -11,8 +11,7 @@ from .schema_def import schema{% endraw %}{% endif %}{% raw %}
 logging.getLogger().setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
 
-try:
-{% endraw %}{% if backend_uses_graphql %}{% raw %}
+try:{% endraw %}{% if backend_uses_graphql %}{% raw %}
     graphql_app = GraphQLRouter(schema){% endraw %}{% endif %}{% raw %}
     app = FastAPI()
 
