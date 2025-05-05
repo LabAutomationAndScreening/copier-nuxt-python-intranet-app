@@ -3,6 +3,7 @@ import { defineNuxtConfig } from "nuxt/config";
 export default defineNuxtConfig({
   compatibilityDate: "2024-11-01",
   devtools: { enabled: true },
+  // prettier-ignore // the conditional modules added in by the template make it complicated to format consistently...at least with only 3 'always included' modules
   modules: [
     "@nuxt/ui"{% endraw %}{% if frontend_uses_graphql %}{% raw %},
     "@nuxtjs/apollo"{% endraw %}{% endif %}{% raw %},
