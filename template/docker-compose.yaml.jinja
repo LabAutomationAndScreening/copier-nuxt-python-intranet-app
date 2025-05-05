@@ -5,7 +5,7 @@
       dockerfile: Dockerfile
     container_name: {% endraw %}{{ repo_name }}{% raw %}-backend
     ports:
-      - "4000:4000"
+      - "{% endraw %}{{ backend_deployed_port_number }}{% raw %}:4000"
     restart: unless-stopped
     networks:
       - internal_net
