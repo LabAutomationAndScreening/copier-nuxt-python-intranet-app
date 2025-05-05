@@ -1,9 +1,9 @@
 # Data managed by upstream template
-repo_name: the_best_repo
-repo_org_name: great-company
-is_open_source: true
-description: Doing amazing things
-ssh_port_number: 12345
+repo_name: ooga-chaka
+repo_org_name: bj-thomas
+is_open_source: false
+description: Hooked on a feeling
+ssh_port_number: 54322
 use_windows_in_ci: false
 install_aws_ssm_port_forwarding_plugin: true
 
@@ -17,15 +17,15 @@ use_staging_environment: false
 aws_region_for_stack: us-east-2
 # Data added based on the specifics of this template
 has_backend: true
-backend_uses_graphql: true
-frontend_uses_graphql: true
+backend_uses_graphql: false
+frontend_uses_graphql: false
 frontend_deployed_port_number: 3000
-create_internal_docker_compose_network: true
+create_internal_docker_compose_network: false
 push_to_ecr: true
 create_docker_image_tar_artifact: false
 frontend_ecr_base_url: 012321432543.dkr.ecr.us-west-2.amazonaws.com
-frontend_ecr_push_role_name: blarg-role
-frontend_image_name: my-namespaceaaooga/booga
+frontend_ecr_push_role_name: thirsty-for
+frontend_image_name: another-cup/of-wine
 backend_ecr_base_url: 543215433233.dkr.ecr.us-east-2.amazonaws.com
-backend_ecr_push_role_name: wakka-WAKKA
-backend_image_name: cool-project/foobar
+backend_ecr_push_role_name: got-it-bad
+backend_image_name: for-you-girl

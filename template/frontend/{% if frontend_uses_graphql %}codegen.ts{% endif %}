@@ -1,0 +1,21 @@
+import type { CodegenConfig } from "@graphql-codegen/cli";
+
+const config: CodegenConfig = {
+  schema: process.env.GRAPHQL_ENDPOINT || "http://localhost:4000/graphql",
+  documents: "./graphql/queries/**/*.gql",
+  generates: {
+    "./graphql/generated/graphql.ts": {
+      plugins: ["typescript", "typescript-operations", "typescript-vue-apollo"], // cannot use `preset: "client"` because it causes duplications with typescript-vue-apollo
+      config: {
+        documentMode: "graphQLTag",
+        vueCompositionApiImportFrom: "vue",
+        useTypeImports: true,
+        scalars: {
+          DateTime: "string",
+        },
+      },
+    },
+  },
+};
+
+export default config;

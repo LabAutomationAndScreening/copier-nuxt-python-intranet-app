@@ -1,11 +1,13 @@
 export default defineAppConfig({
   ui: {
-    primary: "sky",
-    gray: "cool",
-    tooltip: {
-      default: {
-        openDelay: 500,
-      },
+    colors: {
+      primary: "cyan",
+      secondary: "blue",
+      success: "green",
+      info: "blue",
+      warning: "yellow",
+      error: "red",
+      neutral: "slate",
     },
   },
 });

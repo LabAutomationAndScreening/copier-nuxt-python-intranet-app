@@ -1,5 +1,5 @@
 {% raw %}[project]
-name = "graphql-service"
+name = "backend-api"
 version = "0.1.0"
 description = "API to run GraphQL queries"
 
@@ -10,8 +10,8 @@ dependencies = [
     # Specific to this repository
 
     # Managed by upstream template
-    "fastapi>={% endraw %}{{ fastapi_version }}{% raw %}",
-    "strawberry-graphql>={% endraw %}{{ strawberry_graphql_version }}{% raw %}",
+    "fastapi>={% endraw %}{{ fastapi_version }}{% raw %}",{% endraw %}{% if backend_uses_graphql %}{% raw %}
+    "strawberry-graphql>={% endraw %}{{ strawberry_graphql_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
     "pydantic>={% endraw %}{{ pydantic_version }}{% raw %}",
     "uvicorn>={% endraw %}{{ uvicorn_version }}{% raw %}",
 ]
@@ -23,6 +23,7 @@ dev = [
 
 
     # Managed by upstream template
+    "httpx>=0.28.1",
     "pyright>={% endraw %}{{ pyright_version }}{% raw %}",
     "pytest>={% endraw %}{{ pytest_version }}{% raw %}",
     "pytest-cov>={% endraw %}{{ pytest_cov_version }}{% raw %}",
