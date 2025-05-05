@@ -2,8 +2,8 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware{% endraw %}{% if backend_uses_graphql %}{% raw %}
-from strawberry.fastapi import GraphQLRouter{% endraw %}{% endif %}{% raw %}
-{% endraw %}{% if backend_uses_graphql %}{% raw %}
+from strawberry.fastapi import GraphQLRouter{% endraw %}{% endif %}{% raw %}{% endraw %}{% if backend_uses_graphql %}{% raw %}
+
 from .schema_def import schema{% endraw %}{% endif %}{% raw %}
 
 logging.getLogger().setLevel(logging.INFO)
