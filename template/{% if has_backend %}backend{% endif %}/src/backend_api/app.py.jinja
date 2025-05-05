@@ -1,10 +1,10 @@
-import logging
+{% raw %}import logging
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from strawberry.fastapi import GraphQLRouter
-
-from .schema_def import schema
+from fastapi.middleware.cors import CORSMiddleware{% endraw %}{% if backend_uses_graphql %}{% raw %}
+from strawberry.fastapi import GraphQLRouter{% endraw %}{% endif %}{% raw %}
+{% endraw %}{% if backend_uses_graphql %}{% raw %}
+from .schema_def import schema{% endraw %}{% endif %}{% raw %}
 
 logging.getLogger().setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
@@ -22,4 +22,4 @@ app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
-app.include_router(graphql_app, prefix="/graphql")
+{% endraw %}{% if backend_uses_graphql %}{% raw %}app.include_router(graphql_app, prefix="/graphql"){% endraw %}{% endif %}
