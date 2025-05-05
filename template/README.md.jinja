@@ -10,7 +10,7 @@
 
 # Development
 
-To spin up the docker stack (frontend accessible on port 3000):
+To spin up the docker stack (frontend accessible on port {% endraw %}{{ frontend_deployed_port_number }}{% raw %}{% endraw %}{% if has_backend %}{% raw %}, backend accessible on port {% endraw %}{{ backend_deployed_port_number }}{% endif %}{% raw %}), run:
 ```bash
 docker compose up
 ```

@@ -1,7 +1,7 @@
 {% raw %}FROM python:{% endraw %}{{ python_version }}{% raw %}-slim-{% endraw %}{{ debian_release_name }}{% raw %}
 
 # docker build -t my-graphql-backend .
-# docker run -p 4000:4000 my-graphql-backend
+# docker run -p {% endraw %}{{ backend_deployed_port_number }}{% raw %}:4000 my-graphql-backend
 
 # tell uv to treat /usr/local as the project env
 ENV UV_PROJECT_ENVIRONMENT=/usr/local
