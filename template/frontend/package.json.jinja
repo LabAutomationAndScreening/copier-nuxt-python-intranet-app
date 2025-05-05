@@ -25,6 +25,13 @@
     "vue-router": "^4.5.0"
   },
   "devDependencies": {
+    "@faker-js/faker": "^9.7.0",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
+    "@graphql-codegen/cli": "^5.0.5",
+    "@graphql-codegen/typescript": "^4.1.6",
+    "@graphql-codegen/typescript-operations": "^4.6.0",
+    "@graphql-codegen/typescript-vue-apollo": "^4.1.1",
+    "@graphql-tools/mock": "^9.0.22",
+    "@graphql-tools/schema": "^10.0.23",{% endraw %}{% endif %}{% raw %}
     "@nuxt/eslint": "^1.2.0",
     "@nuxt/schema": "^3.0.0",
     "@nuxt/test-utils": "^3.17.2",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
@@ -36,9 +43,12 @@
     "@vue/test-utils": "^2.4.6",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.22.0",
-    "flush-promises": "^1.0.2",
+    "flush-promises": "^1.0.2",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
+    "graphql": "^16.10.0",
+    "graphql-tag": "^2.12.6",{% endraw %}{% endif %}{% raw %}
     "happy-dom": "^17.4.4",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
-    "mock-apollo-client": "^1.3.1",{% endraw %}{% endif %}{% raw %}
+    "mock-apollo-client": "^1.3.1",
+    "nuxt-codegen": "^1.3.1",{% endraw %}{% endif %}{% raw %}
     "playwright-core": "^1.51.1",
     "postcss": "^8.5.3",
     "tailwindcss": "^4.0.14",
