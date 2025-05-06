@@ -9,7 +9,7 @@ python_ci_versions:
 python_version: 3.12.7
 repo_name: copier-nuxt-python-intranet-app
 repo_org_name: LabAutomationAndScreening
-ssh_port_number: 51425
+ssh_port_number: 15173
 template_might_want_to_install_aws_ssm_port_forwarding_plugin: true
 template_uses_javascript: true
 template_uses_pulumi: false
