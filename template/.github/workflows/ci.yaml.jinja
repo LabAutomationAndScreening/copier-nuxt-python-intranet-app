@@ -213,4 +213,3 @@ jobs:
             "/repos/${{ github.repository }}/statuses/${{ needs.get-values.outputs.new-dependabot-sha }}" \
             -f state=success -f context="required-check" -f description="Initial CI run passed" \
             -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"{% endraw %}
-{% endraw %}
