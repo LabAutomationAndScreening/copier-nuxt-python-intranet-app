@@ -10,7 +10,7 @@ class ContextUpdater(ContextHook):
 
     @override
     def hook(self, context: dict[Any, Any]) -> dict[Any, Any]:
-        context["uv_version"] = "0.6.17"
+        context["uv_version"] = "0.7.3"
         context["pnpm_version"] = "10.10.0"
         context["pre_commit_version"] = "4.2.0"
         context["pyright_version"] = "1.1.400"
@@ -45,10 +45,11 @@ class ContextUpdater(ContextHook):
         context["graphql_codegen_typescript_version"] = "^4.1.6"
 
         context["gha_checkout"] = "v4.2.2"
-        context["gha_setup_python"] = "v5.5.0"
+        context["gha_setup_python"] = "v5.6.0"
         context["gha_cache"] = "v4.2.2"
         context["gha_upload_artifact"] = "v4.6.2"
         context["gha_download_artifact"] = "v4.2.1"
+        context["gha_github_script"] = "v7.0.1"
         context["gha_setup_buildx"] = "v3.10.0"
         context["buildx_version"] = "v0.22.0"
         context["gha_docker_build_push"] = "v6.15.0"
