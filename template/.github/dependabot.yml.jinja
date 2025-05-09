@@ -1,8 +1,8 @@
 {% raw %}version: 2
-updates:
+updates:{% endraw %}{% if has_backend %}{% raw %}
   - package-ecosystem: "uv"
     directories:
-      - "/"
+      - "/backend"
     schedule:
       interval: "weekly"
       day: "sunday"
@@ -17,6 +17,25 @@ updates:
           - "version-update:semver-minor"
           - "version-update:semver-patch"
 
+    groups:
+      prod-dependencies:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      dev-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"{% endraw %}{% endif %}{% raw %}
+  - package-ecosystem: "npm"
+    directories:
+      - "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "16:00"
+    open-pull-requests-limit: 5
     groups:
       prod-dependencies:
         dependency-type: "production"
