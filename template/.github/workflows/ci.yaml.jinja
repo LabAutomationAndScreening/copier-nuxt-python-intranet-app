@@ -196,7 +196,8 @@ jobs:
       - unit-test-frontend
       - e2e-test
       - e2e-test-docker{% endraw %}{% if has_backend %}{% raw %}
-      - unit-test-backend, build-backend{% endraw %}{% endif %}{% raw %}
+      - unit-test-backend
+      - build-backend{% endraw %}{% endif %}{% raw %}
     if: always()
     steps:
       - name: fail if prior job failure
