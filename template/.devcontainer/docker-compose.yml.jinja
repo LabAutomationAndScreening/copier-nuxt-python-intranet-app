@@ -8,7 +8,7 @@
     volumes:
       - ..:/workspaces/{% endraw %}{{ repo_name }}{% raw %}:cached
       # Break out the venv folder as a separate docker volume for better performance on Windows hosts
-      - python_venv:/workspaces/backend/{% endraw %}{{ repo_name }}{% raw %}/.venv
+      - python_venv:/workspaces/{% endraw %}{{ repo_name }}{% raw %}/backend/.venv
       # Break out the pnpm store folder as a separate docker volume for better performance on Windows hosts
       - pnpm_store:/workspaces/{% endraw %}{{ repo_name }}{% raw %}/.pnpm-store
       - frontend_code_libraries:/workspaces/{% endraw %}{{ repo_name }}{% raw %}/frontend/node_modules
