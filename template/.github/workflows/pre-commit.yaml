@@ -29,10 +29,15 @@ jobs:
     runs-on: ubuntu-24.04
     name: Pre-commit
     steps:
-      - name: Checkout code
+      - name: Checkout code during push
+        if: ${{ github.event_name == 'push' }}
         uses: actions/checkout@v4.2.2
         with:
           ref: ${{ github.ref_name }} # explicitly get the head of the branch, which will include any new commits pushed if this is a dependabot branch
+
+      - name: Checkout code not during push
+        if: ${{ github.event_name != 'push' }}
+        uses: actions/checkout@v4.2.2
 
       - name: Setup node
         uses: actions/setup-node@v4.4.0
