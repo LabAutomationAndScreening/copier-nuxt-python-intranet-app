@@ -117,7 +117,7 @@ class TestCliArgParsing:
         )
 
         self.mocked_uvicorn_launch.assert_called_once_with(
-            ANY, log_level=expected_log_level, host=ANY, port=ANY, workers=ANY
+            ANY, log_level=expected_log_level.lower(), host=ANY, port=ANY, workers=ANY
         )
 
     def test_Given_port_specified__Then_port_passed_to_uvicorn(self):
@@ -174,4 +174,4 @@ class TestCliArgParsing:
     def test_Given_no_args__Then_default_log_config_used_for_uvicorn(self):
         assert entrypoint(GENERIC_REQUIRED_CLI_ARGS) == 0
 
-        self.mocked_uvicorn_launch.assert_called_once_with(ANY, host=ANY, port=ANY, log_level="INFO", workers=ANY)
+        self.mocked_uvicorn_launch.assert_called_once_with(ANY, host=ANY, port=ANY, log_level="info", workers=ANY)

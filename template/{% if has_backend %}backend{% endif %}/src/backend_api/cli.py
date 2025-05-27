@@ -51,7 +51,7 @@ def entrypoint(argv: Sequence[str]) -> int:
                 app,
                 host=cli_args.host,
                 port=cli_args.port,
-                log_level=cli_args.log_level,
+                log_level=cli_args.log_level.lower(),
                 workers=1,  # explicitly ensure only single threaded so we don't need to deal with race conditions
             )
     except Exception:
