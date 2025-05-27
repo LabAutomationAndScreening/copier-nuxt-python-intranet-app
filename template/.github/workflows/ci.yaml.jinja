@@ -71,17 +71,6 @@ jobs:
 
       - name: Unit test
         run: uv --directory=backend run pytest tests/unit --cov-report=xml --durations=5
-{% endraw %}{% if not deploy_as_executable %}{% raw %}
-  build-backend:
-    needs: [ lint, unit-test-frontend, unit-test-backend ]
-    uses: ./.github/workflows/build-docker-image.yaml
-    with:
-      context: ./backend
-      save-as-artifact: true
-      tag-for-production: ${{ github.ref == 'refs/heads/main' }}
-      repository: {% endraw %}{{ backend_ecr_base_url }}{% raw %}
-      image_name: {% endraw %}{{ backend_image_name }}{% raw %}
-{% endraw %}{% if push_to_ecr %}{% raw %}      push-role-name: {% endraw %}{{ backend_ecr_push_role_name }}{% endif %}{% endif %}{% endif %}{% raw %}
 
   build-frontend:
     needs: [ lint, unit-test-frontend{% endraw %}{% if has_backend %}{% raw %}, unit-test-backend{% endraw %}{% endif %}{% raw %} ]
@@ -93,6 +82,25 @@ jobs:
       repository: {% endraw %}{{ frontend_ecr_base_url }}{% raw %}
       image_name: {% endraw %}{{ frontend_image_name }}{% raw %}
 {% endraw %}{% if push_to_ecr %}{% raw %}      push-role-name: {% endraw %}{{ frontend_ecr_push_role_name }}{% endif %}{% raw %}
+
+{% endraw %}{% if not deploy_as_executable %}{% raw %}
+  build-backend:
+    needs: [ lint, unit-test-frontend, unit-test-backend ]
+    uses: ./.github/workflows/build-docker-image.yaml
+    with:
+      context: ./backend
+      save-as-artifact: true
+      tag-for-production: ${{ github.ref == 'refs/heads/main' }}
+      repository: {% endraw %}{{ backend_ecr_base_url }}{% raw %}
+      image_name: {% endraw %}{{ backend_image_name }}{% raw %}
+{% endraw %}{% if push_to_ecr %}{% raw %}      push-role-name: {% endraw %}{{ backend_ecr_push_role_name }}{% endif %}{% endif %}{% else %}{% raw %}
+  build-backend:
+    needs: [ lint, unit-test-frontend, unit-test-backend, build-frontend ]
+    runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
+{% endraw %}{% endif %}{% raw %}
 
   e2e-test:
     name: End-to-end Testing
