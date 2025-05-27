@@ -1,6 +1,4 @@
 {% raw %}#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-# -*- mode: python -*-
 
 # the shebang identifies this file as a 'python' 'type' for pre-commit hooks
 
@@ -47,9 +45,9 @@ a = Analysis(
     cipher=block_cipher,
 )
 
-print("Modules/packages found during analysis:")  # allow-print
+print("Modules/packages found during analysis:")
 for this_info in sorted(a.pure, key=lambda x: x[0]):
-    print(this_info)  # allow-print
+    print(this_info)
 
 
 pyz = PYZ(  # type: ignore # noqa: F821   the 'PYZ' object is special to how pyinstaller reads the file
@@ -59,7 +57,7 @@ exe = EXE(  # type: ignore # noqa: F821   the 'EXE' object is special to how pyi
     pyz,
     a.scripts,
     exclude_binaries=True,
-    name="cloud-courier",
+    name="{% endraw %}{{ repo_name }}{% raw %}",
     debug=False,
     strip=False,
     upx=use_upx,
