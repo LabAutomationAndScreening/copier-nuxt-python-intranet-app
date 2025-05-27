@@ -74,7 +74,7 @@ jobs:
 
   build-frontend:
     needs: [ lint, unit-test-frontend{% endraw %}{% if has_backend %}{% raw %}, unit-test-backend{% endraw %}{% endif %}{% raw %} ]
-{% endraw %}{% if not deploy_as_executable %}    uses: ./.github/workflows/build-docker-image.yaml
+{% endraw %}{% if not deploy_as_executable %}{% raw %}    uses: ./.github/workflows/build-docker-image.yaml
     with:
       context: ./frontend
       save-as-artifact: true
