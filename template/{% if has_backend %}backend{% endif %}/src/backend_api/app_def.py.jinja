@@ -22,7 +22,7 @@ app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 
 
 class HealthcheckResponse(BaseModel):
-    version: str
+    version: str = Field(description="Version of the application")
 
 
 @app.get("/api-docs", include_in_schema=False)
