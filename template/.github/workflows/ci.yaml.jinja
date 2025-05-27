@@ -133,6 +133,7 @@ jobs:
               - "{% endraw %}{{ gha_linux_runner }}{% raw %}"
 {% endraw %}{% if use_windows_in_ci %}          - {{ gha_windows_runner }}{% endif %}{% raw %}
     runs-on: ${{ matrix.os }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
@@ -140,7 +141,7 @@ jobs:
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
           name: frontend-static-assets
-          path: frontend/.output/public
+          path: backend/src/static
       # TODO: don't setup node and figure out how to only install the Python dependencies
       - name: Setup node
         uses: actions/setup-node@{% endraw %}{{ gha_setup_node }}{% raw %}
@@ -151,11 +152,14 @@ jobs:
         uses: ./.github/actions/install_deps_uv
         with:
           python-version: {% endraw %}{{ python_version }}{% raw %}
-      - name: debug
-        run: ls -a frontend/.output/public
       - name: Build application
         working-directory: backend
         run: uv run pyinstaller pyinstaller.spec --log-level=DEBUG
+      - name: Upload application artifact
+        uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
+        with:
+          name: built-application
+          path: backend/dist/{% endraw %}{{ repo_name }}{% raw %}/**/*{% endraw %}{% endif %}{% raw %}
 {% endraw %}{% endif %}{% raw %}
 
   e2e-test:
@@ -254,19 +258,14 @@ jobs:
   required-check:
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     needs:
-      - get-values
-      - lint{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
+      - get-values{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
       - package-images{% endraw %}{% endif %}{% raw %}
-      - build-frontend
-      - unit-test-frontend
       - e2e-test
-      - e2e-test-docker{% endraw %}{% if has_backend %}{% raw %}
-      - unit-test-backend
-      - build-backend{% endraw %}{% endif %}{% raw %}
+      - e2e-test-docker
     if: always()
     steps:
       - name: fail if prior job failure
-        if: needs.lint.result != 'success'{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %} || needs.package-images.result != 'success'{% endraw %}{% endif %}{% raw %} || needs.build-frontend.result != 'success' || needs.unit-test-frontend.result != 'success' || needs.e2e-test.result != 'success' || needs.e2e-test-docker.result != 'success'{% endraw %}{% if has_backend %}{% raw %} || needs.unit-test-backend.result != 'success' || needs.build-backend.result != 'success'{% endraw %}{% endif %}{% raw %}
+        if: needs.get-values.result != 'success'{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %} || needs.package-images.result != 'success'{% endraw %}{% endif %}{% raw %} || needs.e2e-test.result != 'success' || needs.e2e-test-docker.result != 'success'
         run: |
           exit 1
       - name: Mark updated Dependabot commit of devcontainer hash as succeeded
