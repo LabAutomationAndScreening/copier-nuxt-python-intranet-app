@@ -21,7 +21,7 @@ def _app_specific_setup():
 
 def entrypoint(argv: Sequence[str]) -> int:
     try:
-        launched_by_uvicorn = argv[0] == "src.entrypoint:app"
+        launched_by_uvicorn = len(argv) > 0 and argv[0] == "src.entrypoint:app"
         if not launched_by_uvicorn:
             try:
                 cli_args = parser.parse_args(argv)
