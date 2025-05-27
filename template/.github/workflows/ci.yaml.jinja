@@ -52,8 +52,13 @@ jobs:
 
   unit-test-backend:
     name: Unit Test Backend
-    runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     needs: [ lint ]
+    strategy:
+          matrix:
+            os:
+              - "{% endraw %}{{ gha_linux_runner }}{% raw %}"
+{% endraw %}{% if use_windows_in_ci %}          - {{ gha_windows_runner }}{% endif %}{% raw %}
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
@@ -122,7 +127,12 @@ jobs:
 {% endraw %}{% if push_to_ecr %}{% raw %}      push-role-name: {% endraw %}{{ backend_ecr_push_role_name }}{% endif %}{% else %}{% raw %}
   build-backend:
     needs: [ lint, unit-test-frontend, unit-test-backend, build-frontend ]
-    runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
+    strategy:
+          matrix:
+            os:
+              - "{% endraw %}{{ gha_linux_runner }}{% raw %}"
+{% endraw %}{% if use_windows_in_ci %}          - {{ gha_windows_runner }}{% endif %}{% raw %}
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
