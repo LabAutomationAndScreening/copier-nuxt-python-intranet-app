@@ -27,5 +27,10 @@ export default defineNuxtConfig({
         httpEndpoint: "placeholder", // must be present but will be overridden in the external config TS file
       },
     },
+  },
+  runtimeConfig: {
+    public: {
+      graphql_api_url: "http://localhost:4000/api/graphql",
+    },
   },{% endraw %}{% endif %}{% raw %}
 });{% endraw %}
