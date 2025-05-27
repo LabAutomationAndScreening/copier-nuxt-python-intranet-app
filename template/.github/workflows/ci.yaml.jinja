@@ -141,8 +141,21 @@ jobs:
         with:
           name: frontend-static-assets
           path: frontend/.output/public
+      # TODO: don't setup node and figure out how to only install the Python dependencies
+      - name: Setup node
+        uses: actions/setup-node@{% endraw %}{{ gha_setup_node }}{% raw %}
+        with:
+          node-version: {% endraw %}{{ node_version }}{% raw %}
+
+      - name: Install latest versions of python packages
+        uses: ./.github/actions/install_deps_uv
+        with:
+          python-version: {% endraw %}{{ python_version }}{% raw %}
+      - name: debug
+        run: ls -a frontend/.output/public
       - name: Build application
-        run: ls -a backend/src/static/
+        working-directory: backend
+        run: uv run pyinstaller pyinstaller.spec --log-level=DEBUG
 {% endraw %}{% endif %}{% raw %}
 
   e2e-test:
