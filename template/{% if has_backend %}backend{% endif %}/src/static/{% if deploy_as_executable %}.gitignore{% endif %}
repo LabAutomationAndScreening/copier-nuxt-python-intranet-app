@@ -1,0 +1,2 @@
+# when deployed as executable, don't commit anything in this folder since it all comes from the build of the frontend
+*
