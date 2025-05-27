@@ -85,7 +85,7 @@ class TestCliArgParsing:
 
         self.spied_configure_logging.assert_called_once_with(log_level=expected_log_level, log_filename_prefix=ANY)
 
-    def test_Given_log_folder_specified__Then_log_folder_passed_to_configure_logging(self, mocker: MockerFixture):
+    def test_Given_log_folder_specified__Then_log_folder_passed_to_configure_logging(self):
         self._spy_on_configure_logging()
         with tempfile.TemporaryDirectory() as temp_dir:
             expected_log_folder = temp_dir
