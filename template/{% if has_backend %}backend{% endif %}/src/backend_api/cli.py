@@ -21,20 +21,23 @@ def _app_specific_setup():
 
 def entrypoint(argv: Sequence[str]) -> int:
     try:
-        try:
-            cli_args = parser.parse_args(argv)
-        except argparse.ArgumentError:
-            logger.exception("Error parsing command line arguments")
-            return 2  # this is the exit code that is normally returned when exit_on_error=True for argparse
-        configure_logging()
+        launched_by_uvicorn = argv[0] == "src.entrypoint:app"
+        if not launched_by_uvicorn:
+            try:
+                cli_args = parser.parse_args(argv)
+            except argparse.ArgumentError:
+                logger.exception("Error parsing command line arguments")
+                return 2  # this is the exit code that is normally returned when exit_on_error=True for argparse
+            configure_logging()
         _app_specific_setup()
-        uvicorn.run(
-            app,
-            host="localhost",  # this should only be interacted with locally
-            port=8000,
-            log_level="info",
-            workers=1,  # explicitly ensure only single threaded so we don't need to deal with race conditions
-        )
+        if not launched_by_uvicorn:
+            uvicorn.run(
+                app,
+                host="localhost",  # this should only be interacted with locally
+                port=8000,
+                log_level="info",
+                workers=1,  # explicitly ensure only single threaded so we don't need to deal with race conditions
+            )
     except Exception:
         logger.exception("An unhandled exception occurred")
         raise
