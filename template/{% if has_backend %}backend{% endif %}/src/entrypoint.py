@@ -8,4 +8,7 @@ from backend_api.cli import (
 )  # pragma: no cover # we can't unit test the entrypoint itself. It is tested in the E2E test of the app
 
 
-sys.exit(entrypoint(sys.argv[1:]))
+_ = app  # pragma: no cover # we can't unit test the entrypoint itself. It is tested in the E2E test of the app
+sys.exit(
+    entrypoint(sys.argv[1:])
+)  # pragma: no cover # we can't unit test the entrypoint itself. It is tested in the E2E test of the app
