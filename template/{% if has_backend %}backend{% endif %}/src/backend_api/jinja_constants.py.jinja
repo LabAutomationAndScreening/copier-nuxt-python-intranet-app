@@ -1,3 +1,3 @@
 {% raw %}APP_NAME = "{% endraw %}{{ repo_name }}{% raw %}"
 DEPLOYED_PORT_NUMBER = {% endraw %}{{ backend_deployed_port_number }}{% raw %}
-DEFAULT_DEPLOYED_HOST = "{% endraw %}{{ 'localhost"' if deploy_as_executable else '0.0.0.0"  # noqa: S104 # this is intentionally allowing connections from all hosts' }}{% raw %}"{% endraw %}
+DEFAULT_DEPLOYED_HOST = "{% endraw %}{{ 'localhost"' if deploy_as_executable else '0.0.0.0"  # noqa: S104 # this is intentionally allowing connections from all hosts' }}{% raw %}{% endraw %}
