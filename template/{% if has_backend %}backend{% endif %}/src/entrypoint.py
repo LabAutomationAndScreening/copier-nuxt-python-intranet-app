@@ -1,6 +1,6 @@
 import logging
 
-from .app_def import app
+from backend_api.app_def import app
 
 logging.getLogger().setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
