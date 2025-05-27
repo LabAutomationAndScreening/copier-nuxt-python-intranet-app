@@ -33,7 +33,7 @@ def custom_swagger_ui_html(_: Request) -> HTMLResponse:
         title=app.title + " - Swagger UI",
         swagger_favicon_url="static/favicon.ico",
     )
-    
+
 
 @app.get("/api/healthcheck", summary="Check API health", tags=["system"])
 def healthcheck() -> HealthcheckResponse:
