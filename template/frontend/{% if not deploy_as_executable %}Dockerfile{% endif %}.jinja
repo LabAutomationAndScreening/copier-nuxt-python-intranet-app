@@ -29,7 +29,7 @@ WORKDIR /app
 COPY --from=builder /app/.output ./.output
 
 # Expose the port Nuxt uses (default 3000)
-EXPOSE {% endraw %}{{ frontend_deployed_port_number }}{% raw %}
+EXPOSE 3000
 
 # Set environment variable to production
 ENV NODE_ENV=production
