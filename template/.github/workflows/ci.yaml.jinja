@@ -141,6 +141,8 @@ jobs:
         with:
           name: frontend-static-assets
           path: frontend/.output/public
+      - name: Build application
+        run: ls -a backend/src/static/
 {% endraw %}{% endif %}{% raw %}
 
   e2e-test:
