@@ -2,8 +2,7 @@
 
 # the shebang identifies this file as a 'python' 'type' for pre-commit hooks
 
-import inspect
-import os
+from pathlib import Path
 import sys
 
 # https://stackoverflow.com/questions/37319911/python-how-to-specify-output-folders-in-pyinstaller-spec-file?rq=1
@@ -15,10 +14,13 @@ sys.modules["FixTk"] = None
 
 
 a = Analysis(
-    [os.path.join("src", "entrypoint.py")],
+    [Path("src") / "entrypoint.py"],
     pathex=["dist"],
     binaries=[],
-    datas=[], # spellchecker:disable-line
+    datas=[  # spellchecker:disable-line
+        (Path("src") / "static" / "*.*", Path("static")),
+        (Path("src") / "static" / "_nuxt" / "*.*", Path("static") / "_nuxt"),
+    ],
     hiddenimports=[
         "eventlet.hubs.epolls",
         "eventlet.hubs.kqueue",

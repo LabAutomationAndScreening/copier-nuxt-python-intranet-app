@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 def test_Given_healthy__When_healthcheck__Then_version_in_response():
     client = TestClient(app)
 
-    response = client.get("/healthcheck")
+    response = client.get("/api/healthcheck")
 
     assert response.status_code == 200  # noqa: PLR2004 # this is the standard HTTP status code for OK
     response_json = response.json()
