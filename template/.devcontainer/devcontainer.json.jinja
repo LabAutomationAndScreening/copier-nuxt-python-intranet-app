@@ -10,7 +10,8 @@
     },
     "ghcr.io/devcontainers/features/python:1.7.1": {
       // https://github.com/devcontainers/features/blob/main/src/python/devcontainer-feature.json
-      "version": "{% endraw %}{{ python_version }}{% raw %}",
+      "version": "{% endraw %}{{ python_version }}{% raw %}",{% endraw %}{% if deploy_as_executable %}{% raw %}
+      "enableShared": true,{% endraw %}{% endif %}{% raw %}
       "installTools": false,
       "optimize": true
     }{% endraw %}{% if is_child_of_copier_base_template is not defined and template_uses_javascript is defined and template_uses_javascript is sameas(true) %}{% raw %},
