@@ -87,6 +87,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
 
+      - name: Setup node
+        uses: actions/setup-node@{% endraw %}{{ gha_setup_node }}{% raw %}
+        with:
+          node-version: {% endraw %}{{ node_version }}{% raw %}
+
+      # TODO: figure out how to only install the Node dependencies (not Python)
+      - name: Install latest versions of python packages
+        uses: ./.github/actions/install_deps_uv
+        with:
+          python-version: {% endraw %}{{ python_version }}{% raw %}
+
+      - name: Build frontend
+        run: pnpm run --dir=frontend generate
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
+        with:
+          name: frontend-static-assets
+          path: frontend/.output/public/**/*
+
 {% endraw %}{% endif %}{% raw %}
 
 {% endraw %}{% if not deploy_as_executable %}{% raw %}
@@ -106,6 +126,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
+      - name: Download Frontend Static Assets
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: frontend-static-assets
+          path: frontend/.output/public
 {% endraw %}{% endif %}{% raw %}
 
   e2e-test:
