@@ -28,7 +28,8 @@ dev = [
     "pyright=={% endraw %}{{ pyright_version }}{% raw %}", # temporarily pin due to bug in 1.1.401 https://github.com/microsoft/pyright/issues/10487
     "pytest>={% endraw %}{{ pytest_version }}{% raw %}",
     "pytest-cov>={% endraw %}{{ pytest_cov_version }}{% raw %}",
-    "pytest-randomly>={% endraw %}{{ pytest_randomly_version }}{% raw %}",{% endraw %}{% if deploy_as_executable %}{% raw %}
+    "pytest-randomly>={% endraw %}{{ pytest_randomly_version }}{% raw %}",
+    "pytest-mock>=3.14.0",{% endraw %}{% if deploy_as_executable %}{% raw %}
     "pyinstaller>={% endraw %}{{ pyinstaller_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
 ]
 
