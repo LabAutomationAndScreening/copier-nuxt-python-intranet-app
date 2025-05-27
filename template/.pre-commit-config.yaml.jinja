@@ -128,7 +128,7 @@ repos:
     hooks:
       - id: check-added-large-files
         args: ["--maxkb=123"]
-        exclude: (uv.lock)|(pnpm-lock.yaml)
+        exclude: (uv.lock)|(pnpm-lock.yaml)|(frontend/public/favicon.ico)
       - id: check-json
         # exclude JSON5 or JSONC files with comments
         exclude: |
