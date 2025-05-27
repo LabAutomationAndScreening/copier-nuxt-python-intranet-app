@@ -31,7 +31,7 @@ try:
         allow_headers=["*"],
     ){% endraw %}{% if backend_uses_graphql %}{% raw %}
     graphql_app = GraphQLRouter(schema)
-    app.include_router(graphql_app, prefix="/graphql"){% endraw %}{% endif %}{% raw %}
+    app.include_router(graphql_app, prefix="/api/graphql"){% endraw %}{% endif %}{% raw %}
 except (  # pragma: no cover # This is just logging unexpected errors, and it's very challenging to explicitly unit test
     Exception
 ):
