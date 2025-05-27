@@ -1,5 +1,6 @@
 from backend_api.app_def import app
 from fastapi.testclient import TestClient
+from httpx import codes
 
 
 def test_Given_healthy__When_healthcheck__Then_version_in_response():
@@ -14,3 +15,12 @@ def test_Given_healthy__When_healthcheck__Then_version_in_response():
 
     assert len(actual_version) > 2  # noqa: PLR2004 # just asserting there's some content that isn't just the period
     assert "." in actual_version
+
+
+def test_When_swagger_routed_called__Then_rendered():
+    client = TestClient(app)
+
+    response = client.get("/api-docs")
+
+    assert response.status_code == codes.OK
+    assert "Swagger UI" in response.text
