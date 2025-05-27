@@ -36,7 +36,7 @@ def custom_swagger_ui_html(_: Request) -> HTMLResponse:
 
 @app.get("/api/healthcheck", summary="Check API health", tags=["system"])
 def healthcheck() -> HealthcheckResponse:
-    return HealthcheckResponse(version=version("git-sherpa"))
+    return HealthcheckResponse(version=version("backend-api"))
 
 
 app.mount(
