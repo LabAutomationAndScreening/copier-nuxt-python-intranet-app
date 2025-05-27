@@ -76,5 +76,5 @@ coll = COLLECT(
         "vcruntime140.dll",  # UPX breaks this dll  https://github.com/pyinstaller/pyinstaller/pull/3821
         "qwindows.dll",  # UPX also has trouble with PyQt https://github.com/upx/upx/issues/107
     ],
-    name="{% endraw %}{% repo_name %}{% raw %}",
+    name="{% endraw %}{{ repo_name }}{% raw %}",
 ){% endraw %}
