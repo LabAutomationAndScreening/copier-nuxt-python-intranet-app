@@ -70,7 +70,7 @@ jobs:
           python-version: {% endraw %}{{ python_version }}{% raw %}
 
       - name: Unit test
-        run: uv --directory=backend run pytest tests/unit --cov-report=xml --durations=5
+        run: uv --directory=backend run pytest tests/unit --cov-report=xml --durations=5{% endraw %}{% endif %}{% raw %}
 
   build-frontend:
     needs: [ lint, unit-test-frontend{% endraw %}{% if has_backend %}{% raw %}, unit-test-backend{% endraw %}{% endif %}{% raw %} ]
