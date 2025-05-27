@@ -18,8 +18,7 @@ a = Analysis(
     pathex=["dist"],
     binaries=[],
     datas=[  # spellchecker:disable-line
-        (Path("src") / "static" / "*.*", Path("static")),
-        (Path("src") / "static" / "_nuxt" / "*.*", Path("static") / "_nuxt"),
+        (Path("src") / "static", Path("static")),
     ],
     hiddenimports=[
         "eventlet.hubs.epolls",
