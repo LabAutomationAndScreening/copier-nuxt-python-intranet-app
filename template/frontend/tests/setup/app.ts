@@ -16,7 +16,7 @@ const executableExtension = process.platform === "win32" ? ".exe" : "";
 const repoRoot = path.resolve(__dirname, "../../../");
 const executablePath = path.resolve(repoRoot, `./backend/dist/${APP_NAME}/${APP_NAME}${executableExtension}`);
 if (isBuiltBackendE2E) {
-  if (!fs.existsSync(executablePath)) {
+  if (!fs.existsSync(executablePath) || !fs.statSync(executablePath).isFile()) {
     throw new Error(`File not found: ${executablePath}`);
   }
 }
@@ -86,7 +86,7 @@ if (isE2E) {
         const logFilePath = path.resolve(repoRoot, `./frontend/logs/${APP_NAME}-backend.log`);
         // sometimes it takes a second for the log file to be fully written to disk
         await new Promise((resolve) => setTimeout(resolve, 1000));
-        if (!fs.existsSync(logFilePath)) {
+        if (!fs.existsSync(logFilePath) || !fs.statSync(logFilePath).isFile()) {
           throw new Error(`Log file not found: ${logFilePath}`, { cause: error });
         }
         const logData = fs.readFileSync(logFilePath, "utf-8");
