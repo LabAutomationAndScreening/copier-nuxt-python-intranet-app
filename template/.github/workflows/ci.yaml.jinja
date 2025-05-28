@@ -111,6 +111,7 @@ jobs:
         with:
           name: frontend-static-assets
           path: frontend/.output/public/**/*
+          if-no-files-found: error
 
 {% endraw %}{% endif %}{% raw %}
 
@@ -160,6 +161,7 @@ jobs:
         with:
           name: built-application-${{ matrix.os }}
           path: backend/dist/{% endraw %}{{ repo_name }}{% raw %}/**/*{% endraw %}{% endif %}{% raw %}
+          if-no-files-found: error
 
   test-compiled-frontend:
     name: Test the compiled Frontend
@@ -264,6 +266,7 @@ jobs:
       with:
         name: {% endraw %}{{ repo_name }}{% raw %}-deployment-package
         path: deployment-package-folder/**/*{% endraw %}{% endif %}{% raw %}
+        if-no-files-found: error
 
   required-check:
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
