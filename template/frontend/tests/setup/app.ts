@@ -1,4 +1,3 @@
-import { setup } from "@nuxt/test-utils/e2e";
 import { execSync, spawn } from "child_process";
 import fs from "fs";
 import path from "path";
@@ -23,7 +22,13 @@ if (isBuiltBackendE2E) {
 export const BASE_URL = `http://localhost:${
   isBuiltBackendE2E ? DEPLOYED_BACKEND_PORT_NUMBER : DEPLOYED_FRONTEND_PORT_NUMBER
 }`;
-
+export function url(path: string): string {
+  if (!path.startsWith("/")) {
+    path = `/${path}`;
+  }
+  return `${BASE_URL}${path}`;
+}
+const healthCheckUrl = `http://localhost:${DEPLOYED_BACKEND_PORT_NUMBER}/api/healthcheck`;
 if (isE2E) {
   beforeAll(async () => {
     if (isBuiltBackendE2E) {
@@ -34,23 +39,21 @@ if (isE2E) {
       child.on("close", (code) => {
         console.log(`Process exited with code ${code}`);
       });
-
-      browser = await chromium.launch(); // headless by default
-      page = await browser.newPage();
     }
     if (isDockerE2E) {
       console.log("Starting docker-compose...");
       execSync("docker compose --file=../docker-compose.yaml up --detach --force-recreate --renew-anon-volumes", {
         stdio: "inherit",
       });
-      await setup({ host: BASE_URL });
     }
+    browser = await chromium.launch(); // headless by default
+    page = await browser.newPage();
     // Wait for /api/healthcheck to become available
     const maxAttempts = 10;
     let attempts = 0;
     while (attempts < maxAttempts) {
       try {
-        const res = await fetch(`${BASE_URL}/api/healthcheck`);
+        const res = await fetch(healthCheckUrl);
         if (res.ok) {
           break;
         }
@@ -58,11 +61,11 @@ if (isE2E) {
         // ignore errors // TODO: make this more specific (e.g., only ignore network errors)
       }
       attempts++;
-      console.log(`Waiting for /api/healthcheck to become available... Attempt ${attempts}`);
+      console.log(`Waiting for ${healthCheckUrl} to become available... Attempt ${attempts}`);
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
     if (attempts === maxAttempts) {
-      throw new Error("Timeout waiting for /api/healthcheck");
+      throw new Error(`Timeout waiting for ${healthCheckUrl}`);
     }
   }, 40 * 1000); // increase timeout to allow application to start
 
@@ -87,10 +90,4 @@ export function getPage(): Page {
     throw new Error("Page is not initialized. Make sure to run the tests in E2E mode.");
   }
   return page;
-}
-export function url(path: string): string {
-  if (!path.startsWith("/")) {
-    path = `/${path}`;
-  }
-  return `${BASE_URL}${path}`;
 }
