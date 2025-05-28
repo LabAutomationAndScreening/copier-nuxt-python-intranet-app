@@ -18,7 +18,7 @@ describe("Index page", async () => {
   afterAll(() => {
     console.log("Stopping docker-compose...");
     execSync("docker compose --file=../docker-compose.yaml down", { stdio: "inherit" });
-  });
+  }, 40 * 1000); // increase timeout to allow docker compose to stop
   test("Page displays Hello World", async () => {
     expect.assertions(1);
     const page = await createPage();
