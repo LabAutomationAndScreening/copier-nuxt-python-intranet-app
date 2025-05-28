@@ -35,7 +35,7 @@ if (isE2E) {
   beforeAll(async () => {
     if (isBuiltBackendE2E) {
       console.log(`Starting app at ${executablePath} ...`);
-      const child = spawn(executablePath, [], {
+      const child = spawn(executablePath, ["--host", "0.0.0.0"], {
         stdio: "inherit",
       });
       child.on("close", (code) => {
