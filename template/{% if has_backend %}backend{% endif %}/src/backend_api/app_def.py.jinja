@@ -1,4 +1,7 @@
 {% raw %}import logging
+import os
+import threading
+import time
 from importlib.metadata import version
 from pathlib import Path
 
@@ -21,7 +24,14 @@ app = FastAPI()
 
 
 class HealthcheckResponse(BaseModel):
-    version: str = Field(description="Version of the application")
+    version: str = Field(description="Version of the application", default="1.0.0")
+
+
+class ShutdownResponse(BaseModel):
+    message: str = Field(
+        default="Shutdown request received. Server will exit shortly.",
+        description="Message indicating the shutdown request was received",
+    )
 
 
 @app.get("/api-docs", include_in_schema=False)
@@ -37,6 +47,21 @@ def custom_swagger_ui_html(_: Request) -> HTMLResponse:
 @app.get("/api/healthcheck", summary="Check API health", tags=["system"])
 def healthcheck() -> HealthcheckResponse:
     return HealthcheckResponse(version=version("backend-api"))
+
+
+@app.get("/api/shutdown", summary="Shut down the server", tags=["system"])
+def shutdown() -> ShutdownResponse:
+    logger.info("Server shutdown request received")
+
+    def do_shutdown():
+        time.sleep(0.1)  # Give time for the request to return a success response
+        logger.info("Server is shutting down.")
+        os._exit(
+            0
+        )  # sys.exit just causes an internal server error, it doesn't actually stop the server. So a hard exit is needed
+
+    threading.Thread(target=do_shutdown, name="execute_shutdown").start()
+    return ShutdownResponse()
 
 
 app.mount(
