@@ -36,16 +36,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
 
-      # TODO: figure out how to only install the Node dependencies (not Python)
-      - name: Setup node
-        uses: actions/setup-node@{% endraw %}{{ gha_setup_node }}{% raw %}
+      - name: Install latest versions of packages
+        uses: ./.github/actions/install_deps
         with:
           node-version: {% endraw %}{{ node_version }}{% raw %}
-
-      - name: Install latest versions of python packages
-        uses: ./.github/actions/install_deps_uv
-        with:
-          python-version: {% endraw %}{{ python_version }}{% raw %}
 
       - name: Unit test
         run: pnpm run --dir=frontend test-unit{% endraw %}{% if has_backend %}{% raw %}
@@ -63,14 +57,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
 
-      # TODO: don't setup node and figure out how to only install the Python dependencies
-      - name: Setup node
-        uses: actions/setup-node@{% endraw %}{{ gha_setup_node }}{% raw %}
-        with:
-          node-version: {% endraw %}{{ node_version }}{% raw %}
-
       - name: Install latest versions of python packages
-        uses: ./.github/actions/install_deps_uv
+        uses: ./.github/actions/install_deps
         with:
           python-version: {% endraw %}{{ python_version }}{% raw %}
 
@@ -92,16 +80,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
 
-      - name: Setup node
-        uses: actions/setup-node@{% endraw %}{{ gha_setup_node }}{% raw %}
+      - name: Install latest versions of node packages
+        uses: ./.github/actions/install_deps
         with:
           node-version: {% endraw %}{{ node_version }}{% raw %}
-
-      # TODO: figure out how to only install the Node dependencies (not Python)
-      - name: Install latest versions of python packages
-        uses: ./.github/actions/install_deps_uv
-        with:
-          python-version: {% endraw %}{{ python_version }}{% raw %}
 
       - name: Build frontend
         run: pnpm run --dir=frontend generate
@@ -143,16 +125,12 @@ jobs:
         with:
           name: frontend-static-assets
           path: backend/src/static
-      # TODO: don't setup node and figure out how to only install the Python dependencies
-      - name: Setup node
-        uses: actions/setup-node@{% endraw %}{{ gha_setup_node }}{% raw %}
-        with:
-          node-version: {% endraw %}{{ node_version }}{% raw %}
 
       - name: Install latest versions of python packages
-        uses: ./.github/actions/install_deps_uv
+        uses: ./.github/actions/install_deps
         with:
           python-version: {% endraw %}{{ python_version }}{% raw %}
+
       - name: Build application
         working-directory: backend
         run: uv run pyinstaller pyinstaller.spec --log-level=DEBUG
@@ -182,16 +160,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
 
-      # TODO: figure out how to only install the Node dependencies (not Python)
-      - name: Setup node
-        uses: actions/setup-node@{% endraw %}{{ gha_setup_node }}{% raw %}
+      - name: Install latest versions of node packages
+        uses: ./.github/actions/install_deps
         with:
           node-version: {% endraw %}{{ node_version }}{% raw %}
-
-      - name: Install latest versions of python packages
-        uses: ./.github/actions/install_deps_uv
-        with:
-          python-version: {% endraw %}{{ python_version }}{% raw %}
 
       - name: Test
         run: pnpm run --dir=frontend test-compiled
@@ -209,16 +181,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
 
-      # TODO: figure out how to only install the Node dependencies (not Python)
-      - name: Setup node
-        uses: actions/setup-node@{% endraw %}{{ gha_setup_node }}{% raw %}
+      - name: Install latest versions of node packages
+        uses: ./.github/actions/install_deps
         with:
-          node-version: {% endraw %}{{ node_version }}{% raw %}
-
-      - name: Install latest versions of python packages
-        uses: ./.github/actions/install_deps_uv
-        with:
-          python-version: {% endraw %}{{ python_version }}{% raw %}{% endraw %}{% if not deploy_as_executable %}{% raw %}
+          node-version: {% endraw %}{{ node_version }}{% raw %}{% endraw %}{% if not deploy_as_executable %}{% raw %}
 {% endraw %}{% if has_backend %}{% raw %}
       - name: Download Backend Artifact
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
