@@ -9,7 +9,7 @@
     "build": "pnpm run type-check && nuxt build",
     "comment-about-dev-no-fork": "sometimes it seems needed, other times it seems to work with it...more info https://github.com/nuxt/cli/issues/181",
     "dev": "nuxt dev --no-fork",
-    "generate": "nuxt generate",
+    "generate": "pnpm run type-check && nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare && pnpm exec playwright-core install --only-shell chromium-headless-shell",
     "test-unit": "vitest --dir tests/unit --run --coverage",
