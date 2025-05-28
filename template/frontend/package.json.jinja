@@ -15,7 +15,7 @@
     "test-unit": "vitest --dir tests/unit --run --coverage",
     "test-unit:watch": "vitest --dir tests/unit",
     "test-compiled": "vitest --test-timeout=15000 --dir tests/compiled --run",
-    "test-e2e": "{% endraw %}{% if not deploy_as_executable %}{% raw %}docker compose --file=../docker-compose.yaml build && USE_DOCKER_COMPOSE_FOR_VITEST_E2E=1 {% endraw %}{% else %}{% raw %}USE_BUILT_BACKEND_FOR_VITEST_E2E=1 {% endraw %}{% endif %}{% raw %}vitest --test-timeout=15000 --dir tests/e2e --run",
+    "test-e2e": "{% endraw %}{% if not deploy_as_executable %}{% raw %}docker compose --file=../docker-compose.yaml build && USE_DOCKER_COMPOSE_FOR_VITEST_E2E=1 {% endraw %}{% else %}{% raw %}USE_BUILT_BACKEND_FOR_VITEST_E2E=1 {% endraw %}{% endif %}{% raw %}dotenv-run -- vitest --test-timeout=15000 --dir tests/e2e --run",
     "test-compiled:watch": "vitest --dir tests/compiled"{% endraw %}{% if frontend_uses_graphql %}{% raw %},
     "codegen": "graphql-codegen --config codegen.ts"{% endraw %}{% endif %}{% raw %}
   },
@@ -27,6 +27,7 @@
     "vue-router": "{% endraw %}{{ vue_router_version }}{% raw %}"
   },
   "devDependencies": {
+    "@dotenv-run/cli": "^1.3.6",
     "@faker-js/faker": "{% endraw %}{{ faker_version }}{% raw %}",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
     "@graphql-codegen/cli": "{% endraw %}{{ graphql_codegen_cli_version }}{% raw %}",
     "@graphql-codegen/typescript": "{% endraw %}{{ graphql_codegen_typescript_version }}{% raw %}",
