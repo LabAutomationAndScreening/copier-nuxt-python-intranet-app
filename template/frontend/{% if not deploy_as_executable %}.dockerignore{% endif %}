@@ -21,6 +21,10 @@ dist
 .vscode
 .idea
 
+# Exclude test files
+tests
+
 # Exclude Docker-related files if needed
 Dockerfile*
+.dockerignore
 docker-compose*
