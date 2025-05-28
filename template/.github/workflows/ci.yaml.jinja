@@ -156,12 +156,23 @@ jobs:
       - name: Build application
         working-directory: backend
         run: uv run pyinstaller pyinstaller.spec --log-level=DEBUG
-      - name: Upload application artifact
+      - name: Tar files to preserve permissions on Linux during artifact upload # https://github.com/actions/upload-artifact?tab=readme-ov-file#permission-loss
+        run: tar -cvf app.tar backend/dist/{% endraw %}{{ repo_name }}{% raw %}
+      - name: Upload application artifact (Windows)
+        if: runner.os == 'Windows'
         uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
         with:
           name: built-application-${{ matrix.os }}
-          path: backend/dist/{% endraw %}{{ repo_name }}{% raw %}/**/*{% endraw %}{% endif %}{% raw %}
+          path: backend/dist/{% endraw %}{{ repo_name }}{% raw %}/**/*
           if-no-files-found: error
+      - name: Upload application artifact (Linux)
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
+        with:
+          name: built-application-${{ matrix.os }}
+          path: app.tar
+          if-no-files-found: error{% endraw %}{% endif %}{% raw %}
+
 
   test-compiled-frontend:
     name: Test the compiled Frontend
@@ -232,6 +243,9 @@ jobs:
         with:
           name: built-application-${{ matrix.os }}
           path: backend/dist/{% endraw %}{{ repo_name }}{% raw %}
+      - name: Untar the artifact (on Linux)
+        if: runner.os == 'Linux'
+        run: tar -xvf backend/dist/{% endraw %}{{ repo_name }}{% raw %}/app.tar -C backend/dist/{% endraw %}{{ repo_name }}{% raw %}
 {% endraw %}{% endif %}{% raw %}
       - name: E2E test
         run: pnpm run --dir=frontend test-e2e
