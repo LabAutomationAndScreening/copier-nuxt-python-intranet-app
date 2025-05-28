@@ -25,7 +25,7 @@ $env:Path = "C:\Users\runneradmin\.local\bin;$env:Path"
 
 
 $SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$PROJECT_ROOT_DIR = Resolve-Path (Join-Path $SCRIPT_DIR ".." "backend") # TODO: figure out a better approach than this hack way of specifying backend directory
+$PROJECT_ROOT_DIR = Resolve-Path (Join-Path $SCRIPT_DIR -ChildPath ".." | Join-Path -ChildPath ".." | Join-Path -ChildPath ".." | Join-Path -ChildPath "backend") # TODO: figure out a better approach than this hack way of specifying backend directory
 
 # Ensure that the lock file is in a good state
 & uv lock --check --directory $PROJECT_ROOT_DIR
