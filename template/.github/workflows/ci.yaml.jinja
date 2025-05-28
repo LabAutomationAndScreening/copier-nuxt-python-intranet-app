@@ -161,8 +161,8 @@ jobs:
           name: built-application
           path: backend/dist/{% endraw %}{{ repo_name }}{% raw %}/**/*{% endraw %}{% endif %}{% raw %}
 
-  e2e-test:
-    name: End-to-end Testing
+  test-compiled-frontend:
+    name: Test the compiled Frontend
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     needs: [ build-frontend{% endraw %}{% if has_backend %}{% raw %}, build-backend{% endraw %}{% endif %}{% raw %} ]
     steps:
@@ -180,11 +180,11 @@ jobs:
         with:
           python-version: {% endraw %}{{ python_version }}{% raw %}
 
-      - name: E2E test
-        run: pnpm run --dir=frontend test-e2e
+      - name: Test
+        run: pnpm run --dir=frontend test-compiled
 
-  e2e-test-docker:
-    name: End-to-end Testing with Docker Compose
+  e2e-test:
+    name: End-to-end Testing
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     needs: [ build-frontend{% endraw %}{% if has_backend %}{% raw %}, build-backend{% endraw %}{% endif %}{% raw %} ]
     steps:
@@ -221,7 +221,7 @@ jobs:
           ls -1 deployment-package-folder/*.tar | xargs --no-run-if-empty -L 1 docker load -i
 
       - name: E2E test
-        run: pnpm run --dir=frontend test-e2e:docker
+        run: pnpm run --dir=frontend test-e2e
 
 {% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}  package-images:
     name: Package Images
@@ -259,12 +259,12 @@ jobs:
     needs:
       - get-values{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
       - package-images{% endraw %}{% endif %}{% raw %}
+      - test-compiled-frontend
       - e2e-test
-      - e2e-test-docker
     if: always()
     steps:
       - name: fail if prior job failure
-        if: needs.get-values.result != 'success'{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %} || needs.package-images.result != 'success'{% endraw %}{% endif %}{% raw %} || needs.e2e-test.result != 'success' || needs.e2e-test-docker.result != 'success'
+        if: needs.get-values.result != 'success'{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %} || needs.package-images.result != 'success'{% endraw %}{% endif %}{% raw %} || needs.test-compiled-frontend.result != 'success' || needs.e2e-test.result != 'success'
         run: |
           exit 1
       - name: Mark updated Dependabot commit of devcontainer hash as succeeded
