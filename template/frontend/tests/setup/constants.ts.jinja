@@ -1,3 +1,3 @@
-{% raw %}export const DEPLOYED_FRONTEND_PORT_NUMBER = {% endraw %}{{ frontend_deployed_port_number }}{% raw %};{% endraw %}{% if has_backend %}{% raw %}
-export const DEPLOYED_BACKEND_PORT_NUMBER = {% endraw %}{{ backend_deployed_port_number }}{% raw %};{% endraw %}{% endif %}{% raw %}
+{% raw %}export const DEPLOYED_FRONTEND_PORT_NUMBER = {% endraw %}{{ frontend_deployed_port_number }}{% raw %};
+export const DEPLOYED_BACKEND_PORT_NUMBER = {% endraw %}{{ backend_deployed_port_number if has_backend else 0 }}{% raw %};
 export const APP_NAME = "{% endraw %}{{ repo_name }}{% raw %}";{% endraw %}
