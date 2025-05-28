@@ -20,5 +20,6 @@ export default defineVitestConfig({
       },
       exclude: ["**/generated/graphql.ts", "**/codegen.ts", "**/nuxt.config.ts", ...coverageConfigDefaults.exclude],
     },
+    setupFiles: ["./tests/setup/faker.ts", "./tests/setup/app.ts"],
   },
 });
