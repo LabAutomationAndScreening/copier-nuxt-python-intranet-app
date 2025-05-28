@@ -72,8 +72,8 @@ if (isE2E) {
   }, 40 * 1000); // increase timeout to allow application to start
 
   afterAll(async () => {
+    await browser.close();
     if (isBuiltBackendE2E) {
-      await browser.close();
       console.log("Stopping application...");
       const res = await fetch(`${BASE_URL}/api/shutdown`);
       if (!res.ok) {
