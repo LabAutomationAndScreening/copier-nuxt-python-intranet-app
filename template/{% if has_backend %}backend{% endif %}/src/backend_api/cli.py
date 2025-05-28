@@ -47,6 +47,7 @@ def entrypoint(argv: Sequence[str]) -> int:
         _app_specific_setup()
         if not launched_by_uvicorn:
             assert cli_args  # type: ignore[reportPossiblyUnboundVariable] # false positive, the conditional above ensures this is always set
+            logger.info(f"Starting uvicorn server based on CLI arguments: {cli_args}")
             uvicorn.run(
                 app,
                 host=cli_args.host,

@@ -77,11 +77,21 @@ if (isE2E) {
     await browser.close();
     if (isBuiltBackendE2E) {
       console.log("Stopping application...");
-      const res = await fetch(`${BASE_URL}/api/shutdown`);
-      const logData = fs.readFileSync(path.resolve(repoRoot, `./frontend/logs/${APP_NAME}-backend.log`), "utf-8");
-      console.log("Application logs:\n", logData);
-      if (!res.ok) {
-        throw new Error(`Failed to stop the application: ${res.statusText}`);
+      try {
+        const res = await fetch(`${BASE_URL}/api/shutdown`);
+        if (!res.ok) {
+          throw new Error(`Failed to stop the application: ${res.statusText}`);
+        }
+      } catch (error) {
+        const logFilePath = path.resolve(repoRoot, `./frontend/logs/${APP_NAME}-backend.log`);
+        // sometimes it takes a second for the log file to be fully written to disk
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        if (!fs.existsSync(logFilePath)) {
+          throw new Error(`Log file not found: ${logFilePath}`, { cause: error });
+        }
+        const logData = fs.readFileSync(logFilePath, "utf-8");
+        console.log("Application logs:\n", logData);
+        throw error;
       }
     }
     if (isDockerE2E) {
