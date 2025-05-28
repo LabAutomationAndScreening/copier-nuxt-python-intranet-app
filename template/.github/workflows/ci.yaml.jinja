@@ -245,7 +245,7 @@ jobs:
           path: backend/dist/{% endraw %}{{ repo_name }}{% raw %}
       - name: Untar the artifact (on Linux)
         if: runner.os == 'Linux'
-        run: tar -xvf backend/dist/{% endraw %}{{ repo_name }}{% raw %}/app.tar -C backend/dist/{% endraw %}{{ repo_name }}{% raw %}
+        run: tar -xvf backend/dist/{% endraw %}{{ repo_name }}{% raw %}/app.tar -C .
 {% endraw %}{% endif %}{% raw %}
       - name: E2E test
         run: pnpm run --dir=frontend test-e2e
