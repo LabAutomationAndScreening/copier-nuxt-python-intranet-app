@@ -36,6 +36,7 @@ if (isE2E) {
     if (isBuiltBackendE2E) {
       console.log(`Starting app at ${executablePath} ...`);
       const child = spawn(executablePath, ["--host", "0.0.0.0"], {
+        // TODO: figure out why Github CI pipelines fail without setting all allowed hosts
         stdio: "inherit",
       });
       child.on("close", (code) => {
