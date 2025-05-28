@@ -201,7 +201,7 @@ jobs:
         uses: ./.github/actions/install_deps_uv
         with:
           python-version: {% endraw %}{{ python_version }}{% raw %}{% endraw %}{% if has_backend %}{% raw %}
-
+{% endraw %}{% if not deploy_as_executable %}{% raw %}
       - name: Download Backend Artifact
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
@@ -219,7 +219,13 @@ jobs:
           ls deployment-package-folder -a
           # load all images in the folder
           ls -1 deployment-package-folder/*.tar | xargs --no-run-if-empty -L 1 docker load -i
-
+{% endraw %}{% else %}{% raw %}
+      - name: Download Built executable
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: built-application
+          path: backend/dist/{% endraw %}{{ repo_name }}{% raw %}/**/*
+{% endraw %}{% endif %}{% raw %}
       - name: E2E test
         run: pnpm run --dir=frontend test-e2e
 

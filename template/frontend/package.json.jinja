@@ -15,7 +15,7 @@
     "test-unit": "vitest --dir tests/unit run --coverage",
     "test-unit:watch": "vitest --dir tests/unit",
     "test-compiled": "vitest --test-timeout=15000 --dir tests/compiled run",
-    "test-e2e": "docker compose --file=../docker-compose.yaml build && USE_DOCKER_COMPOSE_FOR_VITEST_E2E=1 vitest --test-timeout=15000 --dir tests/e2e run",
+    "test-e2e": "{% endraw %}{% if not deploy_as_executable %}{% raw %}docker compose --file=../docker-compose.yaml build && USE_DOCKER_COMPOSE_FOR_VITEST_E2E=1 {% endraw %}{% endif %}{% raw %}vitest --test-timeout=15000 --dir tests/e2e run",
     "test-compiled:watch": "vitest --dir tests/compiled"{% endraw %}{% if frontend_uses_graphql %}{% raw %},
     "codegen": "graphql-codegen --config codegen.ts"{% endraw %}{% endif %}{% raw %}
   },
