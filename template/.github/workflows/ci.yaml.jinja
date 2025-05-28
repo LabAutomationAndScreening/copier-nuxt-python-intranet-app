@@ -200,8 +200,8 @@ jobs:
       - name: Install latest versions of python packages
         uses: ./.github/actions/install_deps_uv
         with:
-          python-version: {% endraw %}{{ python_version }}{% raw %}{% endraw %}{% if has_backend %}{% raw %}
-{% endraw %}{% if not deploy_as_executable %}{% raw %}
+          python-version: {% endraw %}{{ python_version }}{% raw %}{% endraw %}{% if not deploy_as_executable %}{% raw %}
+{% endraw %}{% if has_backend %}{% raw %}
       - name: Download Backend Artifact
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
