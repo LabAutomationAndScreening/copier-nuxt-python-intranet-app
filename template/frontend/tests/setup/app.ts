@@ -13,7 +13,8 @@ const isBuiltBackendE2E = process.env.USE_BUILT_BACKEND_FOR_VITEST_E2E;
 let browser: Browser;
 let page: Page;
 const executableExtension = process.platform === "win32" ? ".exe" : "";
-const executablePath = path.resolve(__dirname, `../../../backend/dist/${APP_NAME}/${APP_NAME}${executableExtension}`);
+const repoRoot = path.resolve(__dirname, "../../../");
+const executablePath = path.resolve(repoRoot, `./backend/dist/${APP_NAME}/${APP_NAME}${executableExtension}`);
 if (isBuiltBackendE2E) {
   if (!fs.existsSync(executablePath)) {
     throw new Error(`File not found: ${executablePath}`);
@@ -77,6 +78,8 @@ if (isE2E) {
     if (isBuiltBackendE2E) {
       console.log("Stopping application...");
       const res = await fetch(`${BASE_URL}/api/shutdown`);
+      const logData = fs.readFileSync(path.resolve(repoRoot, `./frontend/logs/${APP_NAME}-backend.log`), "utf-8");
+      console.log("Application logs:\n", logData);
       if (!res.ok) {
         throw new Error(`Failed to stop the application: ${res.statusText}`);
       }
