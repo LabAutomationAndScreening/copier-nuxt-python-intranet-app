@@ -3,7 +3,6 @@ branch = True
 omit =
     # omit anything supplied by vendors
     */vendor_files/*
-    entrypoint.py
 
 [report]
 # Regexes for lines to exclude from consideration

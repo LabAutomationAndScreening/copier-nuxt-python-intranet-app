@@ -17,7 +17,7 @@
     depends_on:
       - backend{% endraw %}{% endif %}{% raw %}
     environment:
-      GRAPHQL_API_URL: http://backend:4000/graphql
+      GRAPHQL_API_URL: http://backend:4000/api/graphql
     pull_policy: never  # Prevents Docker from pulling the image
     restart: unless-stopped
     networks:

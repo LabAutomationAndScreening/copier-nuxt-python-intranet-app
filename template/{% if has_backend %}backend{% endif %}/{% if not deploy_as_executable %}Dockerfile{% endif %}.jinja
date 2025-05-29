@@ -12,12 +12,16 @@ RUN uv --version
 
 WORKDIR /app
 
-# Copy everything before installing dependencies so that the layer cache is invalidated if source files change
+# First just copy in the dependency information for better caching
+COPY pyproject.toml uv.lock .python-version ./
+
+RUN uv sync --frozen --no-dev --no-cache-dir
+
 COPY . .
 
-RUN uv sync --frozen --no-dev && uv pip list
+RUN uv pip list --format=columns --verbose
 
 EXPOSE 4000
 
-# By default, run Uvicorn to serve the GraphQL app
-CMD ["uvicorn", "backend_api.entrypoint:app", "--host", "0.0.0.0", "--port", "4000"]{% endraw %}
+# By default, run the entrypoint to serve the GraphQL app
+CMD ["python", "src/entrypoint.py", "--host", "0.0.0.0", "--port", "4000"]{% endraw %}

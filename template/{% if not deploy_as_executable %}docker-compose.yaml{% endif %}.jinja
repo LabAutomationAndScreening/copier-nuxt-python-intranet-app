@@ -20,7 +20,7 @@
     depends_on:
       - backend{% endraw %}{% endif %}{% raw %}
     environment:
-      GRAPHQL_API_URL: http://backend:4000/graphql
+      GRAPHQL_API_URL: http://backend:4000/api/graphql
     restart: unless-stopped
     networks:
       - internal_net

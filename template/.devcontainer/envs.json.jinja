@@ -1,0 +1,12 @@
+{% raw %}[
+  {
+    "description": "frontend",
+    "relative_directory": "frontend",
+    "package_manager": "pnpm"
+  }{% endraw %}{% if has_backend %}{% raw %},
+  {
+    "description": "backend",
+    "relative_directory": "backend",
+    "package_manager": "uv"
+  }{% endraw %}{% endif %}{% raw %}
+]{% endraw %}

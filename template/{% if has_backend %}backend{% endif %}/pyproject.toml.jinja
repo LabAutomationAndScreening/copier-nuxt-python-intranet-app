@@ -14,6 +14,7 @@ dependencies = [
     "strawberry-graphql>={% endraw %}{{ strawberry_graphql_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
     "pydantic>={% endraw %}{{ pydantic_version }}{% raw %}",
     "uvicorn>={% endraw %}{{ uvicorn_version }}{% raw %}",
+    "structlog>=25.3.0",
 ]
 
 
@@ -28,6 +29,8 @@ dev = [
     "pytest>={% endraw %}{{ pytest_version }}{% raw %}",
     "pytest-cov>={% endraw %}{{ pytest_cov_version }}{% raw %}",
     "pytest-randomly>={% endraw %}{{ pytest_randomly_version }}{% raw %}",
+    "pytest-mock>=3.14.0",{% endraw %}{% if deploy_as_executable %}{% raw %}
+    "pyinstaller>={% endraw %}{{ pyinstaller_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
 ]
 
 [tool.uv]

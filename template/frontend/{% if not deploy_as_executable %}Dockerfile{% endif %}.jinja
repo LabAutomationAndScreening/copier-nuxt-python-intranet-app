@@ -9,11 +9,17 @@ RUN npm install -g pnpm@{% endraw %}{{ pnpm_version }}{% raw %}
 
 WORKDIR /app
 
-# Copy everything before installing dependencies so that the layer cache is invalidated if source files change
+# First just copy in the dependency information for better caching
+COPY package.json pnpm-lock.yaml ./
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
 COPY . .
 
-# Install dependencies and build the Nuxt app (generates .output folder in Nuxt 3)
-RUN pnpm install --frozen-lockfile && pnpm list && pnpm run build
+# build the Nuxt app (generates .output folder in Nuxt 3)
+RUN pnpm list
+RUN pnpm nuxt prepare && pnpm run build
 
 # ------------ Stage 2: Production ------------
 FROM node:{% endraw %}{{ node_version }}{% raw %}-alpine{% endraw %}{{ alpine_image_version }}{% raw %} AS production
@@ -24,7 +30,7 @@ WORKDIR /app
 COPY --from=builder /app/.output ./.output
 
 # Expose the port Nuxt uses (default 3000)
-EXPOSE {% endraw %}{{ frontend_deployed_port_number }}{% raw %}
+EXPOSE 3000
 
 # Set environment variable to production
 ENV NODE_ENV=production

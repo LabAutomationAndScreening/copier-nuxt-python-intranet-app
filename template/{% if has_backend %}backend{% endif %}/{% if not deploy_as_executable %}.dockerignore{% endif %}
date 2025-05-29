@@ -32,3 +32,11 @@ htmlcov/
 # Local environment files (adjust if you need them at build time)
 .env
 .env.*
+
+# Exclude test files
+tests
+
+# Exclude Docker-related files if needed
+Dockerfile*
+.dockerignore
+docker-compose*

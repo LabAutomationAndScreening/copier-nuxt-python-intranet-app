@@ -1,11 +1,13 @@
+import { createPage, setup, url } from "@nuxt/test-utils/e2e";
 import { describe, expect, test } from "vitest";
-import { getPage, url } from "~/tests/setup/app";
 
 describe("Index page", async () => {
+  await setup();
   test("Page displays Hello World", async () => {
     expect.assertions(1);
-    const page = getPage();
-    await page.goto(url("/"));
+    const page = await createPage();
+
+    await page.goto(url("/"), { waitUntil: "hydration" });
 
     const text = await page.textContent("div");
 

@@ -98,15 +98,23 @@ backend_uses_graphql:
     default: yes
     when: "{{ has_backend }}"
 
+deploy_as_executable:
+    type: bool
+    help: Should this application be deployed as a single standalone executable?
+    default: no
+    when: "{{ has_backend }}"
+
 create_docker_image_tar_artifact:
     type: bool
     help: During CI, should the docker images be bundled up into a tar file for manual deployment?
     default: no
+    when: "{{ not deploy_as_executable }}"
 
 push_to_ecr:
     type: bool
     help: During CI, should the docker images be pushed to an ECR?
     default: no
+    when: "{{ not deploy_as_executable }}"
 
 frontend_ecr_base_url:
     type: str
@@ -124,6 +132,7 @@ frontend_image_name:
     type: str
     help: What is the name of the frontend image?
     default: "{{ repo_name }}/frontend"
+    when: "{{ not deploy_as_executable }}"
 
 backend_ecr_base_url:
     type: str
@@ -141,7 +150,7 @@ backend_image_name:
     type: str
     help: What is the name of the backend image?
     default: "{{ repo_name }}/backend"
-    when: "{{ has_backend }}"
+    when: "{{ has_backend and not deploy_as_executable }}"
 
 frontend_uses_graphql:
     type: bool
@@ -158,11 +167,13 @@ frontend_deployed_port_number:
     type: int
     help: What port should the frontend be deployed to?
     default: 3000
+    when: "{{ not deploy_as_executable }}"
 
 create_internal_docker_compose_network:
     type: bool
     help: Should an internal network be created for the Docker Compose services (this will block all access to anything outside the containers)?
     default: no
+    when: "{{ not deploy_as_executable }}"
 
 # Additional Settings
 _min_copier_version: "9.4"

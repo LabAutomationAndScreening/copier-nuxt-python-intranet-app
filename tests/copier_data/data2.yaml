@@ -24,6 +24,7 @@ aws_region_for_stack: us-west-1
 has_backend: false
 backend_deployed_port_number: 4001
 backend_uses_graphql: false
+deploy_as_executable: false
 frontend_uses_graphql: false
 frontend_deployed_port_number: 8000
 create_internal_docker_compose_network: false

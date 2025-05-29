@@ -36,42 +36,68 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
 
-      # TODO: figure out how to only install the Node dependencies (not Python)
-      - name: Setup node
-        uses: actions/setup-node@{% endraw %}{{ gha_setup_node }}{% raw %}
+      - name: Install latest versions of packages
+        uses: ./.github/actions/install_deps
         with:
           node-version: {% endraw %}{{ node_version }}{% raw %}
-
-      - name: Install latest versions of python packages
-        uses: ./.github/actions/install_deps_uv
-        with:
-          python-version: {% endraw %}{{ python_version }}{% raw %}
 
       - name: Unit test
         run: pnpm run --dir=frontend test-unit{% endraw %}{% if has_backend %}{% raw %}
 
   unit-test-backend:
     name: Unit Test Backend
-    runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     needs: [ lint ]
+    strategy:
+      matrix:
+        os:
+          - "{% endraw %}{{ gha_linux_runner }}{% raw %}"{% endraw %}{% if use_windows_in_ci %}
+          - {{ gha_windows_runner }}{% endif %}{% raw %}
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
 
-      # TODO: don't setup node and figure out how to only install the Python dependencies
-      - name: Setup node
-        uses: actions/setup-node@{% endraw %}{{ gha_setup_node }}{% raw %}
-        with:
-          node-version: {% endraw %}{{ node_version }}{% raw %}
-
       - name: Install latest versions of python packages
-        uses: ./.github/actions/install_deps_uv
+        uses: ./.github/actions/install_deps
         with:
           python-version: {% endraw %}{{ python_version }}{% raw %}
 
       - name: Unit test
-        run: uv --directory=backend run pytest tests/unit --cov-report=xml --durations=5
+        run: uv --directory=backend run pytest tests/unit --cov-report=xml --durations=5{% endraw %}{% endif %}{% raw %}
 
+  build-frontend:
+    needs: [ lint, unit-test-frontend{% endraw %}{% if has_backend %}{% raw %}, unit-test-backend{% endraw %}{% endif %}{% raw %} ]
+{% endraw %}{% if not deploy_as_executable %}{% raw %}    uses: ./.github/workflows/build-docker-image.yaml
+    with:
+      context: ./frontend
+      save-as-artifact: true
+      tag-for-production: ${{ github.ref == 'refs/heads/main' }}
+      repository: {% endraw %}{{ frontend_ecr_base_url }}{% raw %}
+      image_name: {% endraw %}{{ frontend_image_name }}{% raw %}
+{% endraw %}{% if push_to_ecr %}{% raw %}      push-role-name: {% endraw %}{{ frontend_ecr_push_role_name }}{% endif %}{% else %}{% raw %}
+    runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
+
+      - name: Install latest versions of node packages
+        uses: ./.github/actions/install_deps
+        with:
+          node-version: {% endraw %}{{ node_version }}{% raw %}
+
+      - name: Build frontend
+        run: pnpm run --dir=frontend generate
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
+        with:
+          name: frontend-static-assets
+          path: frontend/.output/public/**/*
+          if-no-files-found: error
+
+{% endraw %}{% endif %}{% raw %}
+
+{% endraw %}{% if not deploy_as_executable %}{% raw %}
   build-backend:
     needs: [ lint, unit-test-frontend, unit-test-backend ]
     uses: ./.github/workflows/build-docker-image.yaml
@@ -81,60 +107,85 @@ jobs:
       tag-for-production: ${{ github.ref == 'refs/heads/main' }}
       repository: {% endraw %}{{ backend_ecr_base_url }}{% raw %}
       image_name: {% endraw %}{{ backend_image_name }}{% raw %}
-{% endraw %}{% if push_to_ecr %}{% raw %}      push-role-name: {% endraw %}{{ backend_ecr_push_role_name }}{% endif %}{% endif %}{% raw %}
+{% endraw %}{% if push_to_ecr %}{% raw %}      push-role-name: {% endraw %}{{ backend_ecr_push_role_name }}{% endif %}{% else %}{% raw %}
+  build-backend:
+    needs: [ lint, unit-test-frontend, unit-test-backend, build-frontend ]
+    strategy:
+      matrix:
+        os:
+          - "{% endraw %}{{ gha_linux_runner }}{% raw %}"{% endraw %}{% if use_windows_in_ci %}
+          - {{ gha_windows_runner }}{% endif %}{% raw %}
+    runs-on: ${{ matrix.os }}
 
-  build-frontend:
-    needs: [ lint, unit-test-frontend{% endraw %}{% if has_backend %}{% raw %}, unit-test-backend{% endraw %}{% endif %}{% raw %} ]
-    uses: ./.github/workflows/build-docker-image.yaml
-    with:
-      context: ./frontend
-      save-as-artifact: true
-      tag-for-production: ${{ github.ref == 'refs/heads/main' }}
-      repository: {% endraw %}{{ frontend_ecr_base_url }}{% raw %}
-      image_name: {% endraw %}{{ frontend_image_name }}{% raw %}
-{% endraw %}{% if push_to_ecr %}{% raw %}      push-role-name: {% endraw %}{{ frontend_ecr_push_role_name }}{% endif %}{% raw %}
-
-  e2e-test:
-    name: End-to-end Testing
-    runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
-    needs: [ build-frontend{% endraw %}{% if has_backend %}{% raw %}, build-backend{% endraw %}{% endif %}{% raw %} ]
     steps:
       - name: Checkout code
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
-
-      # TODO: figure out how to only install the Node dependencies (not Python)
-      - name: Setup node
-        uses: actions/setup-node@{% endraw %}{{ gha_setup_node }}{% raw %}
+      - name: Download Frontend Static Assets
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
-          node-version: {% endraw %}{{ node_version }}{% raw %}
+          name: frontend-static-assets
+          path: backend/src/static
 
       - name: Install latest versions of python packages
-        uses: ./.github/actions/install_deps_uv
+        uses: ./.github/actions/install_deps
         with:
           python-version: {% endraw %}{{ python_version }}{% raw %}
 
-      - name: E2E test
-        run: pnpm run --dir=frontend test-e2e
+      - name: Build application
+        working-directory: backend
+        run: uv run pyinstaller pyinstaller.spec --log-level=DEBUG
+      - name: Tar files to preserve permissions on Linux during artifact upload # https://github.com/actions/upload-artifact?tab=readme-ov-file#permission-loss
+        run: tar -cvf app.tar backend/dist/{% endraw %}{{ repo_name }}{% raw %}
+      - name: Upload application artifact (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
+        with:
+          name: built-application-${{ matrix.os }}
+          path: backend/dist/{% endraw %}{{ repo_name }}{% raw %}/**/*
+          if-no-files-found: error
+      - name: Upload application artifact (Linux)
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
+        with:
+          name: built-application-${{ matrix.os }}
+          path: app.tar
+          if-no-files-found: error{% endraw %}{% endif %}{% raw %}
 
-  e2e-test-docker:
-    name: End-to-end Testing with Docker Compose
+
+  test-compiled-frontend:
+    name: Test the compiled Frontend
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     needs: [ build-frontend{% endraw %}{% if has_backend %}{% raw %}, build-backend{% endraw %}{% endif %}{% raw %} ]
     steps:
       - name: Checkout code
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
 
-      # TODO: figure out how to only install the Node dependencies (not Python)
-      - name: Setup node
-        uses: actions/setup-node@{% endraw %}{{ gha_setup_node }}{% raw %}
+      - name: Install latest versions of node packages
+        uses: ./.github/actions/install_deps
         with:
           node-version: {% endraw %}{{ node_version }}{% raw %}
 
-      - name: Install latest versions of python packages
-        uses: ./.github/actions/install_deps_uv
-        with:
-          python-version: {% endraw %}{{ python_version }}{% raw %}{% endraw %}{% if has_backend %}{% raw %}
+      - name: Test
+        run: pnpm run --dir=frontend test-compiled
 
+  e2e-test:
+    name: End-to-end Testing
+    strategy:
+      matrix:
+        os:
+          - "{% endraw %}{{ gha_linux_runner }}{% raw %}"{% endraw %}{% if use_windows_in_ci %}
+          - {{ gha_windows_runner }}{% endif %}{% raw %}
+    runs-on: ${{ matrix.os }}
+    needs: [ build-frontend{% endraw %}{% if has_backend %}{% raw %}, build-backend{% endraw %}{% endif %}{% raw %} ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
+
+      - name: Install latest versions of node packages
+        uses: ./.github/actions/install_deps
+        with:
+          node-version: {% endraw %}{{ node_version }}{% raw %}{% endraw %}{% if not deploy_as_executable %}{% raw %}
+{% endraw %}{% if has_backend %}{% raw %}
       - name: Download Backend Artifact
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
@@ -152,9 +203,18 @@ jobs:
           ls deployment-package-folder -a
           # load all images in the folder
           ls -1 deployment-package-folder/*.tar | xargs --no-run-if-empty -L 1 docker load -i
-
+{% endraw %}{% else %}{% raw %}
+      - name: Download Built executable
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: built-application-${{ matrix.os }}
+          path: backend/dist/{% endraw %}{{ repo_name }}{% raw %}
+      - name: Untar the artifact (on Linux)
+        if: runner.os == 'Linux'
+        run: tar -xvf backend/dist/{% endraw %}{{ repo_name }}{% raw %}/app.tar -C .
+{% endraw %}{% endif %}{% raw %}
       - name: E2E test
-        run: pnpm run --dir=frontend test-e2e:docker
+        run: pnpm run --dir=frontend test-e2e
 
 {% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}  package-images:
     name: Package Images
@@ -185,24 +245,20 @@ jobs:
       uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
       with:
         name: {% endraw %}{{ repo_name }}{% raw %}-deployment-package
-        path: deployment-package-folder/**/*{% endraw %}{% endif %}{% raw %}
+        path: deployment-package-folder/**/*
+        if-no-files-found: error{% endraw %}{% endif %}{% raw %}
 
   required-check:
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     needs:
-      - get-values
-      - lint{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
+      - get-values{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
       - package-images{% endraw %}{% endif %}{% raw %}
-      - build-frontend
-      - unit-test-frontend
+      - test-compiled-frontend
       - e2e-test
-      - e2e-test-docker{% endraw %}{% if has_backend %}{% raw %}
-      - unit-test-backend
-      - build-backend{% endraw %}{% endif %}{% raw %}
     if: always()
     steps:
       - name: fail if prior job failure
-        if: needs.lint.result != 'success'{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %} || needs.package-images.result != 'success'{% endraw %}{% endif %}{% raw %} || needs.build-frontend.result != 'success' || needs.unit-test-frontend.result != 'success' || needs.e2e-test.result != 'success' || needs.e2e-test-docker.result != 'success'{% endraw %}{% if has_backend %}{% raw %} || needs.unit-test-backend.result != 'success' || needs.build-backend.result != 'success'{% endraw %}{% endif %}{% raw %}
+        if: needs.get-values.result != 'success'{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %} || needs.package-images.result != 'success'{% endraw %}{% endif %}{% raw %} || needs.test-compiled-frontend.result != 'success' || needs.e2e-test.result != 'success'
         run: |
           exit 1
       - name: Mark updated Dependabot commit of devcontainer hash as succeeded
