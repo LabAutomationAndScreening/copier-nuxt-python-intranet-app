@@ -150,7 +150,7 @@ backend_image_name:
     type: str
     help: What is the name of the backend image?
     default: "{{ repo_name }}/backend"
-    when: "{{ has_backend and not deploy_as_executable}}"
+    when: "{{ has_backend and not deploy_as_executable }}"
 
 frontend_uses_graphql:
     type: bool
