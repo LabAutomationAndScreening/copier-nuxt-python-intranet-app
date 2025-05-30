@@ -175,6 +175,9 @@ create_internal_docker_compose_network:
     default: no
     when: "{{ not deploy_as_executable }}"
 
+_skip_if_exists:
+    - backend/src/static/favicon.ico # TODO: figure out if there's another way to stop the template from overriding a changed icon
+
 # Additional Settings
 _min_copier_version: "9.4"
 
