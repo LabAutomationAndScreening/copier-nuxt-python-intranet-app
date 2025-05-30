@@ -61,6 +61,7 @@ repos:
               .devcontainer/devcontainer-lock.json|
               .copier-answers.yml|
               .*\.xml|
+              .*/vendor_files/.*|
           )$
       - id: pretty-format-json
         exclude: |
@@ -120,6 +121,7 @@ repos:
         exclude: |
           (?x)^(
               .*/__snapshots__/.*|
+              .*/vendor_files/.*|
           )$
 
   # Invalid File Checks
