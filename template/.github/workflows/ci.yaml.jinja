@@ -71,8 +71,7 @@ jobs:
         with:
           name: backend-test-coverage-${{ matrix.os }}
           path: backend/coverage-report-pytest
-          if-no-files-found: error
-        {% endraw %}{% endif %}{% raw %}
+          if-no-files-found: error{% endraw %}{% endif %}{% raw %}
 
   build-frontend:
     needs: [ lint, unit-test-frontend{% endraw %}{% if has_backend %}{% raw %}, unit-test-backend{% endraw %}{% endif %}{% raw %} ]
