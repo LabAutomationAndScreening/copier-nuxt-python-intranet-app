@@ -63,7 +63,15 @@ jobs:
           python-version: {% endraw %}{{ python_version }}{% raw %}
 
       - name: Unit test
-        run: uv --directory=backend run pytest tests/unit --cov-report=xml --durations=5{% endraw %}{% endif %}{% raw %}
+        run: uv --directory=backend run pytest tests/unit --durations=5
+
+      - name: Upload test coverage on failure
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
+        with:
+          name: backend-test-coverage-${{ matrix.os }}
+          path: backend/coverage-report-pytest
+          if-no-files-found: error{% endraw %}{% endif %}{% raw %}
 
   build-frontend:
     needs: [ lint, unit-test-frontend{% endraw %}{% if has_backend %}{% raw %}, unit-test-backend{% endraw %}{% endif %}{% raw %} ]
