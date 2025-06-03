@@ -64,9 +64,6 @@ def shutdown() -> ShutdownResponse:
     return ShutdownResponse()
 
 
-app.mount(
-    "/", StaticFiles(directory=STATIC_DIR, html=True), name="static"
-)  # this needs to go after any defined routes so that the routes take precedence
 try:
     app.add_middleware(
         CORSMiddleware,
@@ -77,6 +74,9 @@ try:
     ){% endraw %}{% if backend_uses_graphql %}{% raw %}
     graphql_app = GraphQLRouter(schema)
     app.include_router(graphql_app, prefix="/api/graphql"){% endraw %}{% endif %}{% raw %}
+    app.mount(
+        "/", StaticFiles(directory=STATIC_DIR, html=True), name="static"
+    )  # this needs to go after any defined routes so that the routes take precedence
 except (  # pragma: no cover # This is just logging unexpected errors, and it's very challenging to explicitly unit test
     Exception
 ):
