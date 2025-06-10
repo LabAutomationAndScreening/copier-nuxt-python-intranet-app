@@ -27,6 +27,7 @@ const healthCheckUrl = `http://127.0.0.1:${
 }`; // TODO: if there is a backend, check that too, even if it's a docker-compose situation
 
 export async function setup(project: TestProject) {
+  project.provide("baseUrl", BASE_URL);
   if (isE2E) {
     if (isBuiltBackendE2E) {
       console.log(`Starting app at ${executablePath} ...`);
@@ -45,7 +46,6 @@ export async function setup(project: TestProject) {
       });
     }
     browser = await chromium.launch(); // headless by default
-    project.provide("baseUrl", BASE_URL);
     // Wait for /api/healthcheck to become available
     const maxAttempts = 10;
     let attempts = 0;
