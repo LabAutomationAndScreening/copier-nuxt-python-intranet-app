@@ -11,6 +11,7 @@ export default defineVitestConfig({
     sequence: {
       shuffle: true,
     },
+    include: ["tests/**/*.spec.ts"],
     coverage: {
       provider: "istanbul",
       reporter: ["text", "json", "html"],
@@ -21,5 +22,6 @@ export default defineVitestConfig({
       exclude: ["**/generated/graphql.ts", "**/codegen.ts", "**/nuxt.config.ts", ...coverageConfigDefaults.exclude],
     },
     setupFiles: ["./tests/setup/faker.ts", "./tests/setup/app.ts"],
+    globalSetup: "./tests/setup/globalSetup.ts",
   },
 });
