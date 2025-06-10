@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { getPage, url } from "~/tests/setup/app";
+import { url } from "~/tests/e2e/helpers/playwright";
+import { getPage } from "~/tests/setup/app";
 
 describe("Index page", async () => {
   test("Page displays Hello World", async () => {
