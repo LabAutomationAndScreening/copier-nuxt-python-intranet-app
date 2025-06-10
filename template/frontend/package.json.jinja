@@ -15,7 +15,7 @@
     "test-unit": "vitest --exclude=\"tests/e2e/**\" --exclude=\"tests/compiled/**\" --run --coverage",
     "test-unit:watch": "vitest --exclude=\"tests/e2e/**\" --exclude=\"tests/compiled/**\"",
     "test-compiled": "vitest --exclude=\"tests/e2e/**\" --exclude=\"tests/unit/**\" --test-timeout=15000 --run",
-    "test-e2e": "docker compose --file=../docker-compose.yaml build && dotenv -v USE_DOCKER_COMPOSE_FOR_VITEST_E2E=1 -- vitest --exclude=\"tests/unit/**\" --exclude=\"tests/compiled/**\" --test-timeout=15000 --run",
+    "test-e2e": "{% endraw %}{% if not deploy_as_executable %}{% raw %}docker compose --file=../docker-compose.yaml build && dotenv -v USE_DOCKER_COMPOSE_FOR_VITEST_E2E=1{% endraw %}{% else %}{% raw %}dotenv -v USE_BUILT_BACKEND_FOR_VITEST_E2E=1{% endraw %}{% endif %}{% raw %} -- vitest --exclude=\"tests/unit/**\" --exclude=\"tests/compiled/**\" --test-timeout=15000 --run",
     "test-compiled:watch": "vitest --exclude=\"tests/e2e/**\" --exclude=\"tests/unit/**\" --test-timeout=15000"{% endraw %}{% if frontend_uses_graphql %}{% raw %},
     "codegen": "graphql-codegen --config codegen.ts"{% endraw %}{% endif %}{% raw %}
   },
