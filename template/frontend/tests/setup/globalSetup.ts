@@ -22,12 +22,6 @@ if (isBuiltBackendE2E) {
 export const BASE_URL = `http://127.0.0.1:${
   isBuiltBackendE2E ? DEPLOYED_BACKEND_PORT_NUMBER : DEPLOYED_FRONTEND_PORT_NUMBER
 }`;
-export function url(path: string): string {
-  if (!path.startsWith("/")) {
-    path = `/${path}`;
-  }
-  return `${BASE_URL}${path}`;
-}
 const healthCheckUrl = `http://127.0.0.1:${
   isBuiltBackendE2E ? DEPLOYED_BACKEND_PORT_NUMBER.toString() + "/api/healthcheck" : DEPLOYED_FRONTEND_PORT_NUMBER
 }`; // TODO: if there is a backend, check that too, even if it's a docker-compose situation
