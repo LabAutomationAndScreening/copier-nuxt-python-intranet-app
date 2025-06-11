@@ -7,8 +7,7 @@
     ports:
       - "{% endraw %}{{ backend_deployed_port_number }}{% raw %}:4000"
     restart: unless-stopped
-    networks:
-      - internal_net
+    network_mode: host
 {% endraw %}{% endif %}{% raw %}
   frontend:
     build:
@@ -16,15 +15,12 @@
       dockerfile: Dockerfile
     container_name: {% endraw %}{{ repo_name }}{% raw %}-frontend
     ports:
-      - "{% endraw %}{{ frontend_deployed_port_number }}{% raw %}:3000"{% endraw %}{% if has_backend %}{% raw %}
+      - "{% endraw %}{{ frontend_deployed_port_number }}{% raw %}:{% endraw %}{{ frontend_deployed_port_number }}{% raw %}"{% endraw %}{% if has_backend %}{% raw %}
     depends_on:
       - backend{% endraw %}{% endif %}{% raw %}
     environment:
-      GRAPHQL_API_URL: http://backend:4000/api/graphql
+      BACKEND_HOST: host.docker.internal
+      BACKEND_PORT: {% endraw %}{{ backend_deployed_port_number }}{% raw %}
     restart: unless-stopped
-    networks:
-      - internal_net
-
-networks:
-  internal_net:
-    internal: {% endraw %}{% if create_internal_docker_compose_network %}{% raw %}false # TODO: figure out a way to set this to true (like in deployment) but still trigger the VS Code port-forwarding to easily see the previews{% endraw %}{% else %}{% raw %}false{% endraw %}{% endif %}{% raw %}{% endraw %}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"{% endraw %}

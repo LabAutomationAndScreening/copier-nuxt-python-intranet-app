@@ -10,11 +10,11 @@ class ContextUpdater(ContextHook):
 
     @override
     def hook(self, context: dict[Any, Any]) -> dict[Any, Any]:
-        context["uv_version"] = "0.7.8"
-        context["pnpm_version"] = "10.11.0"
+        context["uv_version"] = "0.7.12"
+        context["pnpm_version"] = "10.12.1"
         context["pre_commit_version"] = "4.2.0"
         context["pyright_version"] = "1.1.400"
-        context["pytest_version"] = "8.3.5"
+        context["pytest_version"] = "8.4.0"
         context["pytest_randomly_version"] = "3.16.0"
         context["pytest_cov_version"] = "6.1.1"
         context["copier_version"] = "9.7.1"
@@ -41,7 +41,7 @@ class ContextUpdater(ContextHook):
         context["typescript_version"] = "^5.8.2"
         context["vue_version"] = "^3.5.13"
         context["vue_router_version"] = "^4.5.0"
-        context["faker_version"] = "^9.7.0"
+        context["faker_version"] = "^9.8.0"
         context["graphql_codegen_cli_version"] = "^5.0.5"
         context["graphql_codegen_typescript_version"] = "^4.1.6"
 
@@ -69,7 +69,8 @@ class ContextUpdater(ContextHook):
         context["py313_version"] = "3.13.2"
 
         context["debian_release_name"] = "bookworm"
-        context["alpine_image_version"] = "3.20"
+        context["alpine_image_version"] = "3.21"
+        context["nginx_image_version"] = "1.28.0"
 
         # Kludge to be able to help symlinked jinja files in the child and grandchild templates
         context["template_uses_vuejs"] = True

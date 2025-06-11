@@ -169,12 +169,6 @@ frontend_deployed_port_number:
     default: 3000
     when: "{{ not deploy_as_executable }}"
 
-create_internal_docker_compose_network:
-    type: bool
-    help: Should an internal network be created for the Docker Compose services (this will block all access to anything outside the containers)?
-    default: no
-    when: "{{ not deploy_as_executable }}"
-
 _skip_if_exists:
     - backend/src/static/favicon.ico # TODO: figure out if there's another way to stop the template from overriding a changed icon
 
