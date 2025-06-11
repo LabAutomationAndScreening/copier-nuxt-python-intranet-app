@@ -27,7 +27,6 @@ backend_uses_graphql: false
 deploy_as_executable: false
 frontend_uses_graphql: false
 frontend_deployed_port_number: 8000
-create_internal_docker_compose_network: false
 push_to_ecr: false
 create_docker_image_tar_artifact: true
 frontend_ecr_base_url: 012321432543.dkr.ecr.us-east-1.amazonaws.com
