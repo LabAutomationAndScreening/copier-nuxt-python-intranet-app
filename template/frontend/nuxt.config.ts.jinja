@@ -16,25 +16,37 @@ export default defineNuxtConfig({
     ["@nuxt/test-utils/module", { devOnly: true }],
   ],
   css: ["~/assets/css/main.css"],
-  experimental: { appManifest: false }, // https://github.com/nuxt/nuxt/issues/30461#issuecomment-2572616714
+  experimental: { appManifest: false }, // https://github.com/nuxt/nuxt/issues/30461#issuecomment-2572616714{% endraw %}{% if has_backend and not deploy_as_executable %}{% raw %}
+  nitro: {
+    devProxy: {
+      // this is just a proxy used for `pnpm run dev`
+      "/api": {
+        target: "http://localhost:4000", // backend dev port
+        changeOrigin: true, // rewrite Host header
+        prependPath: false, // keep /api prefix
+      },
+    },
+  },{% endraw %}{% endif %}{% raw %}
   vite: {
     // this seems to be explicitly needed when in a devcontainer in order for hot reloading to work
     server: {
       watch: {
         usePolling: true,
-      },
+      },{% endraw %}{% if has_backend and not deploy_as_executable %}{% raw %}
+      proxy: {
+        // this is just a proxy used for `pnpm run dev`
+        "/api": {
+          target: "http://localhost:4000", // backend dev port
+          changeOrigin: true,
+        },
+      },{% endraw %}{% endif %}{% raw %}
     },
   },{% endraw %}{% if frontend_uses_graphql %}{% raw %}
   apollo: {
     clients: {
       default: {
-        httpEndpoint: "placeholder", // must be present but will be overridden in the external config TS file
+        httpEndpoint: "/api/graphql",
       },
-    },
-  },
-  runtimeConfig: {
-    public: {
-      graphql_api_url: "http://127.0.0.1:4000/api/graphql",
     },
   },{% endraw %}{% endif %}{% raw %}
 });{% endraw %}
