@@ -15,6 +15,13 @@ export default defineNuxtConfig({
     ["@nuxt/eslint", { devOnly: true }],
     ["@nuxt/test-utils/module", { devOnly: true }],
   ],
+  icon: {
+    provider: "none", // bundle all icons into the build for air-gapped deployments
+    clientBundle: {
+      scan: true,
+      sizeLimitKb: 256, // fail the build if there's somehow more than this amount of icons
+    },
+  },
   css: ["~/assets/css/main.css"],
   experimental: { appManifest: false }, // https://github.com/nuxt/nuxt/issues/30461#issuecomment-2572616714{% endraw %}{% if has_backend and not deploy_as_executable %}{% raw %}
   nitro: {
