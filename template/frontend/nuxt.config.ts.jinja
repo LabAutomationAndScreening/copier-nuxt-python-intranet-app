@@ -19,6 +19,7 @@ export default defineNuxtConfig({
     provider: "none", // bundle all icons into the build for air-gapped deployments
     clientBundle: {
       scan: true,
+      icons: ["lucide:check", "lucide:chevron-down"], // the way @nuxt/ui creates checkboxes, the check mark doesn't seem to be picked up by scanning. same for accordions and chevron-down
       sizeLimitKb: 256, // fail the build if there's somehow more than this amount of icons
     },
   },
