@@ -3,10 +3,12 @@ import os
 import threading
 import time
 from importlib.metadata import version
-from pathlib import Path
+from pathlib import Path{% endraw %}{% if backend_uses_graphql %}{% raw %}
+from typing import override{% endraw %}{% endif %}{% raw %}
 
 {% endraw %}{% if backend_uses_graphql %}{% raw %}
-import strawberry{% endraw %}{% endif %}{% raw %}from fastapi import FastAPI
+import strawberry{% endraw %}{% endif %}{% raw %}
+from fastapi import FastAPI
 from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
