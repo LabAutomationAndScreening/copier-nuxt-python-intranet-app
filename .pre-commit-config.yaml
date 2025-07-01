@@ -45,6 +45,7 @@ repos:
     rev: 0f0ccba9ed1df83948f0c15026e4f5ccfce46109  # frozen: v1.32.0
     hooks:
       - id: typos
+        exclude: ".min.js"
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: cef0300fd0fc4d2a87a85fa2093c6b283ea36f4b # frozen: v5.0.0
     hooks:
