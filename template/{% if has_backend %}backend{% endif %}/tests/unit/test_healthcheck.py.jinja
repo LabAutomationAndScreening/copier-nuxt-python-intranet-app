@@ -36,7 +36,8 @@ def test_When_graphql_route_called__Then_rendered():
     response = client.get("/api/graphql")
 
     assert response.status_code == codes.OK
-    assert "graphiql" in response.text{% endraw %}{% endif %}{% raw %}
+    assert "graphiql" in response.text
+    assert "https://unpkg.com" not in response.text{% endraw %}{% endif %}{% raw %}
 
 
 def test_When_shutdown_route_called__Then_system_exit(mocker: MockerFixture):
