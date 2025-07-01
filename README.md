@@ -24,6 +24,11 @@ To create a new repository using this template:
 1. Confirm by viewing the source of a non-altered GraphiQL page that these are the files to download
 1. `curl https://unpkg.com/react@18.2.0/umd/react.production.min.js > react.production.min.js`
 1. `curl https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js > react-dom.production.min.js`
+1. `curl https://unpkg.com/js-cookie@3.0.5/dist/js.cookie.min.js > js.cookie.min.js`
+1. `curl https://unpkg.com/graphiql@3.0.9/graphiql.min.css > graphiql.min.css`
+1. `curl https://unpkg.com/@graphiql/plugin-explorer@1.0.2/dist/style.css > style.css`
+1. `curl https://unpkg.com/graphiql@3.0.9/graphiql.min.js > graphiql.min.js`
+1. `curl https://unpkg.com/@graphiql/plugin-explorer@1.0.2/dist/index.umd.js > index.umd.js`
 
 ## Updating from the template
 This repository uses a copier template. To pull in the latest updates from the template, use the command:
