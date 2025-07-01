@@ -140,7 +140,7 @@ repos:
     hooks:
       - id: check-added-large-files
         args: ["--maxkb=123"]
-        exclude: (uv.lock)|(pnpm-lock.yaml)
+        exclude: (uv.lock)|(pnpm-lock.yaml)|(static.*react-dom.production.min.js)
       - id: check-json
         # exclude JSON5 or JSONC files with comments
         exclude: |
