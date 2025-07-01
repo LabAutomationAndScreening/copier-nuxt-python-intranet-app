@@ -5,7 +5,8 @@ import time
 from importlib.metadata import version
 from pathlib import Path
 
-from fastapi import FastAPI
+{% endraw %}{% if backend_uses_graphql %}{% raw %}
+import strawberry{% endraw %}{% endif %}{% raw %}from fastapi import FastAPI
 from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
@@ -72,7 +73,31 @@ try:
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["*"],
     ){% endraw %}{% if backend_uses_graphql %}{% raw %}
-    graphql_app = GraphQLRouter(schema)
+    offline_graphiql_html = (Path(strawberry.__file__).with_name("static") / "graphiql.html").read_text()
+    cdn_urls = [
+        "https://unpkg.com/react@18.2.0/umd/react.production.min.js",
+        "https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js",
+        "https://unpkg.com/js-cookie@3.0.5/dist/js.cookie.min.js",
+        "https://unpkg.com/graphiql@3.0.9/graphiql.min.css",
+        "https://unpkg.com/@graphiql/plugin-explorer@1.0.2/dist/style.css",
+        "https://unpkg.com/graphiql@3.0.9/graphiql.min.js",
+        "https://unpkg.com/@graphiql/plugin-explorer@1.0.2/dist/index.umd.js",
+    ]
+    for cdn_url in cdn_urls:
+        filename = cdn_url.split("/")[-1]
+        local_path = f"/static/graphiql/{filename}"
+        offline_graphiql_html = offline_graphiql_html.replace(cdn_url, local_path)
+    offline_graphiql_html = "\n".join(
+        # checksums vary slightly after running pre-commit hooks on them locally, so remove the integrity check
+        [line for line in offline_graphiql_html.splitlines() if not line.startswith("      integrity=")]
+    )
+
+    class OfflineGraphQLRouter(GraphQLRouter):
+        @override
+        async def render_graphql_ide(self, request: Request) -> HTMLResponse:
+            return HTMLResponse(offline_graphiql_html)
+
+    graphql_app = OfflineGraphQLRouter(schema)
     app.include_router(graphql_app, prefix="/api/graphql"){% endraw %}{% endif %}{% raw %}
     app.mount(
         "/", StaticFiles(directory=STATIC_DIR, html=True), name="static"
