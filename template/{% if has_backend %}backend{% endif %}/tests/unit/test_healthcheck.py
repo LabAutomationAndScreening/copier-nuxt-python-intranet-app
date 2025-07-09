@@ -1,4 +1,4 @@
-{% raw %}import time
+import time
 
 from backend_api import app_def
 from backend_api.app_def import app
@@ -27,17 +27,7 @@ def test_When_swagger_route_called__Then_rendered():
     response = client.get("/api-docs")
 
     assert response.status_code == codes.OK
-    assert "Swagger UI" in response.text{% endraw %}{% if backend_uses_graphql %}{% raw %}
-
-
-def test_When_graphql_route_called__Then_rendered():
-    client = TestClient(app)
-
-    response = client.get("/api/graphql")
-
-    assert response.status_code == codes.OK
-    assert "graphiql" in response.text
-    assert "https://unpkg.com" not in response.text{% endraw %}{% endif %}{% raw %}
+    assert "Swagger UI" in response.text
 
 
 def test_When_shutdown_route_called__Then_system_exit(mocker: MockerFixture):
@@ -52,4 +42,4 @@ def test_When_shutdown_route_called__Then_system_exit(mocker: MockerFixture):
         if mocked_os_exit.call_count > 0:
             break
         time.sleep(0.001)
-    mocked_os_exit.assert_called_once_with(0){% endraw %}
+    mocked_os_exit.assert_called_once_with(0)

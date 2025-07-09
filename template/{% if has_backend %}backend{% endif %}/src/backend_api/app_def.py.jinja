@@ -63,18 +63,16 @@ def shutdown() -> ShutdownResponse:
         )  # sys.exit just causes an internal server error, it doesn't actually stop the server. So a hard exit is needed
 
     threading.Thread(target=do_shutdown, name="execute_shutdown").start()
-    return ShutdownResponse()
+    return ShutdownResponse(){% endraw %}{% if backend_uses_graphql %}{% raw %}
 
 
-try:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],  # Super permissive CORS setting since this is for intranet
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["*"],
-    ){% endraw %}{% if backend_uses_graphql %}{% raw %}
-    offline_graphiql_html = (Path(strawberry.__file__).with_name("static") / "graphiql.html").read_text()
+def _get_graphiql_html_base() -> str:
+    # separate for mocking
+    return (Path(strawberry.__file__).with_name("static") / "graphiql.html").read_text()
+
+
+def generate_offline_graphiql_html() -> str:
+    offline_graphiql_html = _get_graphiql_html_base()
     cdn_urls = [
         "https://unpkg.com/react@18.2.0/umd/react.production.min.js",
         "https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js",
@@ -85,13 +83,26 @@ try:
         "https://unpkg.com/@graphiql/plugin-explorer@1.0.2/dist/index.umd.js",
     ]
     for cdn_url in cdn_urls:
+        if cdn_url not in offline_graphiql_html:
+            raise CdnUrlNotFoundInHtmlError(cdn_url)
         filename = cdn_url.split("/")[-1]
         local_path = f"/static/graphiql/{filename}"
         offline_graphiql_html = offline_graphiql_html.replace(cdn_url, local_path)
-    offline_graphiql_html = "\n".join(
+    return "\n".join(
         # checksums vary slightly after running pre-commit hooks on them locally, so remove the integrity check
         [line for line in offline_graphiql_html.splitlines() if not line.startswith("      integrity=")]
-    )
+    ){% endraw %}{% endif %}{% raw %}
+
+
+try:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # Super permissive CORS setting since this is for intranet
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["*"],
+    ){% endraw %}{% if backend_uses_graphql %}{% raw %}
+    offline_graphiql_html = generate_offline_graphiql_html()
 
     class OfflineGraphQLRouter(GraphQLRouter):
         @override
