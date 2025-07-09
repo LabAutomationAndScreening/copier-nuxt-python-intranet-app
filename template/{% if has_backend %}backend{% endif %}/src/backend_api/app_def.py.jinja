@@ -66,6 +66,11 @@ def shutdown() -> ShutdownResponse:
     return ShutdownResponse(){% endraw %}{% if backend_uses_graphql %}{% raw %}
 
 
+class CdnUrlNotFoundInHtmlError(Exception):
+    def __init__(self, cdn_url: str):
+        super().__init__(f"CDN URL '{cdn_url}' not found in GraphiQL HTML.")
+
+
 def _get_graphiql_html_base() -> str:
     # separate for mocking
     return (Path(strawberry.__file__).with_name("static") / "graphiql.html").read_text()
