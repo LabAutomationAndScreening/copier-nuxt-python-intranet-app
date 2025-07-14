@@ -10,8 +10,14 @@
         try_files $uri $uri/ /index.html;
     }
 
-    # Proxy API calls to a dynamic host:port
+    # Pass API requests to the backend
     location /api/ {
+        client_max_body_size 1m;
+        try_files $uri @proxy;
+    }
+
+    # Named location with shared proxy configuration
+    location @proxy {
         proxy_pass http://${BACKEND_HOST}:${BACKEND_PORT};
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
