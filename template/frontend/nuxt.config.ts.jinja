@@ -27,7 +27,7 @@ export default defineNuxtConfig({
   experimental: { appManifest: false }, // https://github.com/nuxt/nuxt/issues/30461#issuecomment-2572616714{% endraw %}{% if has_backend and not deploy_as_executable %}{% raw %}
   nitro: {
     prerender: {
-      concurrency: 4, // lower the concurrency to not  be such a memory hog
+      concurrency: 4, // lower the concurrency to not be such a memory hog
     },
     devProxy: {
       // this is just a proxy used for `pnpm run dev`
