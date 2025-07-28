@@ -13,7 +13,6 @@ export default defineVitestConfig({
     },
     include: ["tests/**/*.spec.ts"],
     root: ".",
-    dir: "./tests",
     coverage: {
       provider: "istanbul",
       reporter: ["text", "json", "html"],
