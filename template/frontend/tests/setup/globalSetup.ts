@@ -4,7 +4,7 @@ import path from "path";
 import type { Browser } from "playwright";
 import { chromium } from "playwright";
 import type { TestProject } from "vitest/node";
-import { APP_NAME, DEPLOYED_BACKEND_PORT_NUMBER, DEPLOYED_FRONTEND_PORT_NUMBER } from "~/tests/setup/constants";
+import { APP_NAME, DEPLOYED_BACKEND_PORT_NUMBER, DEPLOYED_FRONTEND_PORT_NUMBER } from "~~/tests/setup/constants";
 
 const isE2E = process.env.USE_DOCKER_COMPOSE_FOR_VITEST_E2E || process.env.USE_BUILT_BACKEND_FOR_VITEST_E2E;
 const isDockerE2E = process.env.USE_DOCKER_COMPOSE_FOR_VITEST_E2E;

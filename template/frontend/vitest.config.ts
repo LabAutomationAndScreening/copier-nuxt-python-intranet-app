@@ -12,6 +12,7 @@ export default defineVitestConfig({
       shuffle: true,
     },
     include: ["tests/**/*.spec.ts"],
+    root: ".",
     coverage: {
       provider: "istanbul",
       reporter: ["text", "json", "html"],
