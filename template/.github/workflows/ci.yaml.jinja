@@ -42,7 +42,15 @@ jobs:
           node-version: {% endraw %}{{ node_version }}{% raw %}
 
       - name: Unit test
-        run: pnpm run --dir=frontend test-unit{% endraw %}{% if has_backend %}{% raw %}
+        run: pnpm run --dir=frontend test-unit
+
+      - name: Upload test coverage on failure
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
+        with:
+          name: frontend-test-coverage
+          path: frontend/.coverage
+          if-no-files-found: error{% endraw %}{% if has_backend %}{% raw %}
 
   unit-test-backend:
     name: Unit Test Backend
