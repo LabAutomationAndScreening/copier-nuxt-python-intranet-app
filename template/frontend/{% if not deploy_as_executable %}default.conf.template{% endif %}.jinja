@@ -14,6 +14,19 @@
     location /api/ {
         client_max_body_size 1m;
         try_files $uri @proxy;
+    }{% endraw %}{% if frontend_uses_graphql %}{% raw %}
+
+    # Pass requests for static assets to render the GraphiQL page to the backend
+    location /static/graphiql/ {
+        try_files $uri @proxy;
+    }{% endraw %}{% endif %}{% raw %}
+    # Pass requests for accessing the Swagger page to the backend
+    location /api-docs {
+        try_files $uri @proxy;
+    }
+    # Pass requests for static assets to render the Swagger page to the backend
+    location /static/swagger/ {
+        try_files $uri @proxy;
     }
 
     # Named location with shared proxy configuration
