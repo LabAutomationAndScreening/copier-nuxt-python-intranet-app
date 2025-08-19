@@ -1,4 +1,4 @@
-{% raw %}minimum_pre_commit_version: 4.0.1
+{% raw %}minimum_pre_commit_version: 4.2.0
 # run `pre-commit autoupdate --freeze` to update all hooks
 default_install_hook_types: [pre-commit, post-checkout]
 repos:
@@ -41,7 +41,7 @@ repos:
 
   # Reformatting (should generally come before any file format or other checks, because reformatting can change things)
   - repo: https://github.com/crate-ci/typos
-    rev: 392b78fe18a52790c53f42456e46124f77346842  # frozen: v1.34.0
+    rev: 7fb6e0951ad91e4772a2470012fc1ae621016b80  # frozen: v1
     hooks:
       - id: typos
         exclude:
@@ -52,13 +52,14 @@ repos:
               .*\.umd.js|
           )$
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: cef0300fd0fc4d2a87a85fa2093c6b283ea36f4b # frozen: v5.0.0
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # frozen: v6.0.0
     hooks:
       - id: trailing-whitespace
         exclude:
           |
           (?x)^(
               .*/vendor_files/.*|
+              .*tests/.*/__snapshots__/.*|
           )$
       - id: end-of-file-fixer
         # the XML formatter hook doesn't leave a blank line at the end, so excluding XML files from this hook to avoid conflicts
@@ -70,6 +71,8 @@ repos:
               template/.copier-answers.yml.jinja-base|
               template/template/.copier-answers.yml.jinja|
               template/.copier-answers.yml.jinja|
+              .*generated/graphql.ts|
+              .*tests/.*/__snapshots__/.*|
               .devcontainer/devcontainer-lock.json|
               .copier-answers.yml|
               .*\.xml|
@@ -84,6 +87,7 @@ repos:
               .*pyrightconfig.json|
               .*tsconfig.json|
               .*biome.jsonc|
+              .*tests/.*/__snapshots__/.*|
               .*/vendor_files/.*|
           )$
         args: [--autofix, --no-sort-keys]
@@ -97,7 +101,7 @@ repos:
           (?x)^(
               .*generated/graphql.ts|
               .*/schema.graphql|
-              pyrightconfig\.json|
+              .*pyrightconfig\.json|
           )$
 
   - repo: https://github.com/pre-commit/mirrors-prettier # TODO: switch to a different approach...this was archived in 2024
@@ -119,6 +123,7 @@ repos:
               .*.yaml|
               .*.yml|
               .*.md|
+              .*.jsonc|
               .*/vendor_files/.*|
               .*/schema.graphql|
               .*generated/graphql.ts|
@@ -148,11 +153,11 @@ repos:
 
   # Invalid File Checks
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: cef0300fd0fc4d2a87a85fa2093c6b283ea36f4b # frozen: v5.0.0
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # frozen: v6.0.0
     hooks:
       - id: check-added-large-files
         args: ["--maxkb=123"]
-        exclude: (uv.lock)|(pnpm-lock.yaml)|(frontend/public/favicon.ico)|(backend/src/static/favicon.ico)|(static.*graphiql.*react-dom.production.min.js)
+        exclude: (uv.lock)|(pnpm-lock.yaml)|(static.*react-dom.production.min.js)
       - id: check-json
         # exclude JSON5 or JSONC files with comments
         exclude: |
@@ -198,39 +203,11 @@ repos:
 
   # Safety/Security Issues
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: cef0300fd0fc4d2a87a85fa2093c6b283ea36f4b # frozen: v5.0.0
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # frozen: v6.0.0
     hooks:
       - id: detect-private-key
 
   # Linting
-
-  - repo: local
-    hooks:
-      - id: typescript-check
-        name: typescript-check
-        entry: bash -c "pnpm --dir frontend run type-check"
-        files: '.+\.ts$|.+\.vue$'
-        # don't pass filenames else the command line sees them twice
-        pass_filenames: false
-        language: system
-        # use require_serial so that script is only called once per commit
-        require_serial: true
-        # print the number of files as a sanity-check
-        verbose: true
-
-  - repo: local
-    hooks:
-      - id: eslint
-        name: eslint
-        entry: bash -c "pnpm --dir frontend run lint"
-        files: '.+\.ts$|.+\.vue$|.+\.js$'
-        # don't pass filenames else the command line sees them twice
-        pass_filenames: false
-        language: system
-        # use require_serial so that script is only called once per commit
-        require_serial: true
-        # print the number of files as a sanity-check
-        verbose: true
 
   - repo: https://github.com/Lucas-C/pre-commit-hooks-markup
     rev: 501f3d60cee13c712492103343bc23efdc7b3d1f #v1.0.1
@@ -248,7 +225,7 @@ repos:
         description: Runs hadolint to lint Dockerfiles
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 3d44372123ca5e8617fdb65d9f11facd159b9e95  # frozen: v0.12.3
+    rev: 54a455f7ce629598b7535ff828fd5fb796f4b83f  # frozen: v0.12.9
     hooks:
       - id: ruff
         name: ruff-src
@@ -261,7 +238,7 @@ repos:
       - id: ruff-format{% endraw %}{% if has_backend %}{% raw %}
 
   - repo: https://github.com/pylint-dev/pylint
-    rev: f798a4a3508bcbb8ad0773ae14bf32d28dcfdcbe  # frozen: v3.3.7
+    rev: 98942ba4126a6fe1657bad77027bcc11016d16da  # frozen: v3.3.8
     hooks:
       - id: pylint
         name: pylint
