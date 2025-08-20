@@ -69,6 +69,7 @@ jobs:
         uses: ./.github/actions/install_deps
         with:
           python-version: {% endraw %}{{ python_version }}{% raw %}
+          skip-installing-ssm-plugin-manager: true
 
       - name: Unit test
         run: uv --directory=backend run pytest tests/unit --durations=5
@@ -100,6 +101,7 @@ jobs:
         uses: ./.github/actions/install_deps
         with:
           node-version: {% endraw %}{{ node_version }}{% raw %}
+          skip-installing-ssm-plugin-manager: true
 
       - name: Build frontend
         run: pnpm run --dir=frontend generate
