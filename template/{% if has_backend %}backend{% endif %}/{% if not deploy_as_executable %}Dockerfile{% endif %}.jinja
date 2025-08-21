@@ -21,8 +21,11 @@ COPY . .
 
 RUN uv pip list --format=columns --verbose
 
+# set sensible defaults (overridable at `docker run`)
+ENV API_PORT={% endraw %}{{ backend_deployed_port_number }}{% raw %}
+
 # When deployed with network-mode=host on Rancher Desktop on Windows (for WSL-compatibility), there's no actual port mapping, so we need to have it running on the deployed port within the container itself
 EXPOSE {% endraw %}{{ backend_deployed_port_number }}{% raw %}
 
 # By default, run the entrypoint to serve the GraphQL app
-CMD ["python", "src/entrypoint.py", "--host", "0.0.0.0", "--port", "{% endraw %}{{ backend_deployed_port_number }}{% raw %}"]{% endraw %}
+CMD python src/entrypoint.py --host 0.0.0.0 --port $API_PORT{% endraw %}
