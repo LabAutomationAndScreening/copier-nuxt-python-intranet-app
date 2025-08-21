@@ -30,13 +30,13 @@ pnpm run --dir=frontend build
 Locally preview production build:
 ```bash
 pnpm run --dir=frontend preview
-```
+```{% endraw %}{% if has_backend %}{% raw %}
 
 ## Backend
-Start the GraphQL server:
+Start the API server on port 4000:
 ```bash
 uv --directory=backend run uvicorn src.entrypoint:app --reload --host '::' --port 4000
-```
+```{% endraw %}{% endif %}{% raw %}
 
 ## Updating from the template
 This repository uses a copier template. To pull in the latest updates from the template, use the command:
