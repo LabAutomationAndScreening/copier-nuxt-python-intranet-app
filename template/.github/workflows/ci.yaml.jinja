@@ -42,7 +42,7 @@ jobs:
           node-version: {% endraw %}{{ node_version }}{% raw %}
 
       - name: Unit test
-        run: pnpm run --dir=frontend test-unit
+        run: pnpm --dir=frontend test-unit
 
       - name: Upload test coverage on failure
         if: ${{ failure() }}
@@ -104,7 +104,7 @@ jobs:
           skip-installing-ssm-plugin-manager: true
 
       - name: Build frontend
-        run: pnpm run --dir=frontend generate
+        run: pnpm --dir=frontend generate
 
       - name: Upload build artifact
         uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
@@ -184,7 +184,7 @@ jobs:
           node-version: {% endraw %}{{ node_version }}{% raw %}
 
       - name: Test
-        run: pnpm run --dir=frontend test-compiled
+        run: pnpm --dir=frontend test-compiled
 
   e2e-test:
     name: End-to-end Testing
@@ -232,7 +232,7 @@ jobs:
         run: tar -xvf backend/dist/{% endraw %}{{ repo_name }}{% raw %}/app.tar -C .
 {% endraw %}{% endif %}{% raw %}
       - name: E2E test
-        run: pnpm run --dir=frontend test-e2e
+        run: pnpm --dir=frontend test-e2e
 
 {% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}  package-images:
     name: Package Images
