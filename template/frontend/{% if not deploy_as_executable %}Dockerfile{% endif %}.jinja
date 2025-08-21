@@ -30,10 +30,11 @@ COPY --from=builder /app/.output/public /usr/share/nginx/html
 
 # set sensible defaults (overridable at `docker run`)
 ENV BACKEND_HOST=host.docker.internal \
-    BACKEND_PORT={% endraw %}{{ backend_deployed_port_number }}{% raw %}
+    BACKEND_PORT={% endraw %}{{ backend_deployed_port_number }}{% raw %} \
+    FRONTEND_PORT={% endraw %}{{ frontend_deployed_port_number }}{% raw %}
 
 # Using port 80 caused problems running K8s on windows hosts, so using a higher port number
 EXPOSE {% endraw %}{{ frontend_deployed_port_number }}{% raw %}
 
 # Nginx in foreground
-CMD ["sh", "-c", "envsubst '$BACKEND_HOST $BACKEND_PORT' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"]{% endraw %}
+CMD ["sh", "-c", "envsubst '$BACKEND_HOST $BACKEND_PORT $FRONTEND_PORT' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"]{% endraw %}
