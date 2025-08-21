@@ -18,7 +18,7 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 
 # build the Nuxt app (generates .output folder in Nuxt 3)
-RUN pnpm list && pnpm run generate
+RUN pnpm list && pnpm generate
 
 # ------------ Stage 2: Production ------------
 FROM nginx:{% endraw %}{{ nginx_image_version }}{% raw %}-alpine{% endraw %}{{ alpine_image_version }}{% raw %} AS production
