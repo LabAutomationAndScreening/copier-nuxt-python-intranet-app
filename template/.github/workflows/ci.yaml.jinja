@@ -250,13 +250,13 @@ jobs:
     - name: Download Backend Artifact
       uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
       with:
-        name: {% endraw %}{{ repo_name }}{% raw %}-backend
+        name: ${{ needs.build-backend.outputs.artifact-name }}
         path: deployment-package-folder{% endraw %}{% endif %}{% raw %}
 
     - name: Download Frontend Artifact
       uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
       with:
-        name: {% endraw %}{{ repo_name }}{% raw %}-frontend
+        name: ${{ needs.build-frontend.outputs.artifact-name }}
         path: deployment-package-folder
 
     - name: Upload deployment package artifact
