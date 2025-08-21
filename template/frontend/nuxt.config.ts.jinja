@@ -38,7 +38,7 @@ export default defineNuxtConfig({
       interval: 200, // ms pause between batches – lets the Garbage Collector catch up
     },
     devProxy: {
-      // this is just a proxy used for `pnpm run dev`
+      // this is just a proxy used for `pnpm dev`
       "/api": {
         target: "http://localhost:4000", // backend dev port
         changeOrigin: true, // rewrite Host header
@@ -53,7 +53,7 @@ export default defineNuxtConfig({
         usePolling: true,
       },{% endraw %}{% if has_backend and not deploy_as_executable %}{% raw %}
       proxy: {
-        // this is just a proxy used for `pnpm run dev`
+        // this is just a proxy used for `pnpm dev`
         "/api": {
           target: "http://localhost:4000", // backend dev port
           changeOrigin: true,

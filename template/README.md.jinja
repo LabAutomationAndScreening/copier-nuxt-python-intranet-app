@@ -18,25 +18,25 @@ docker compose up
 ## Frontend
 Start the development server on `http://localhost:3000`:
 ```bash
-pnpm run --dir=frontend dev
+pnpm --dir=frontend dev
 ```
 
 Build the application for production:
 
 ```bash
-pnpm run --dir=frontend build
+pnpm --dir=frontend generate
 ```
 
 Locally preview production build:
 ```bash
-pnpm run --dir=frontend preview
-```
+pnpm --dir=frontend preview
+```{% endraw %}{% if has_backend %}{% raw %}
 
 ## Backend
-Start the GraphQL server:
+Start the API server on port 4000:
 ```bash
 uv --directory=backend run uvicorn src.entrypoint:app --reload --host '::' --port 4000
-```
+```{% endraw %}{% endif %}{% raw %}
 
 ## Updating from the template
 This repository uses a copier template. To pull in the latest updates from the template, use the command:
