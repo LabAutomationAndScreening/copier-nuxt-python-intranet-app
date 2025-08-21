@@ -21,6 +21,7 @@
     environment:
       BACKEND_HOST: host.docker.internal
       BACKEND_PORT: {% endraw %}{{ backend_deployed_port_number }}{% raw %}
+      FRONTEND_PORT: {% endraw %}{{ frontend_deployed_port_number }}{% raw %}
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"{% endraw %}
