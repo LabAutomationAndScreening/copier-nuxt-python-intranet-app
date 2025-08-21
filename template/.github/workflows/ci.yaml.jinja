@@ -115,7 +115,7 @@ jobs:
 
 {% endraw %}{% endif %}{% raw %}
 
-{% endraw %}{% if not deploy_as_executable %}{% raw %}
+{% endraw %}{% if has_backend %}{% raw %}{% endraw %}{% if not deploy_as_executable %}{% raw %}
   build-backend:
     needs: [ lint, unit-test-frontend, unit-test-backend ]
     uses: ./.github/workflows/build-docker-image.yaml
@@ -167,7 +167,7 @@ jobs:
         with:
           name: built-application-${{ matrix.os }}
           path: app.tar
-          if-no-files-found: error{% endraw %}{% endif %}{% raw %}
+          if-no-files-found: error{% endraw %}{% endif %}{% raw %}{% endraw %}{% endif %}{% raw %}
 
 
   test-compiled-frontend:
