@@ -44,7 +44,7 @@
     "@nuxtjs/apollo": "{% endraw %}{{ nuxt_apollo_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
     "@nuxtjs/eslint-config-typescript": "^12.1.0",
     "@playwright/test": "{% endraw %}{{ playwright_version }}{% raw %}",
-    "@vitest/coverage-istanbul": "^3.1.3",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
+    "@vitest/coverage-istanbul": "{% endraw %}{{ vitest_version }}{% raw %}",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
     "@vue/apollo-composable": "^4.2.2",{% endraw %}{% endif %}{% raw %}
     "@vue/devtools-api": "^7.7.2",
     "@vue/test-utils": "^2.4.6",
@@ -61,7 +61,7 @@
     "postcss": "^8.5.3",
     "tailwindcss": "^4.0.14",
     "typescript": "{% endraw %}{{ typescript_version }}{% raw %}",
-    "vitest": "^3.1.3",
+    "vitest": "{% endraw %}{{ vitest_version }}{% raw %}",
     "vue-eslint-parser": "^10.1.1",
     "vue-tsc": "^2.2.8"
   }
