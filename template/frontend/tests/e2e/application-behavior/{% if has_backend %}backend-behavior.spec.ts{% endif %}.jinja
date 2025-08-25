@@ -1,0 +1,20 @@
+{% raw %}import { describe, expect, test } from "vitest";
+import { url } from "~~/tests/e2e/helpers/playwright";
+import { getPage } from "~~/tests/setup/app";
+
+describe("API documentation", async () => {
+  test("When accessing Swagger from the frontend, Then loads correctly", async () => {
+    expect.assertions(0);
+    const page = getPage();
+    await page.goto(url("/api-docs"));
+
+    await page.getByText("/api/healthcheck"); // arbitrary text that only appears after the page has loaded correctly
+  });{% endraw %}{% if frontend_uses_graphql %}{% raw %}
+  test("When accessing GraphiQL from the frontend, Then loads correctly", async () => {
+    expect.assertions(0);
+    const page = getPage();
+    await page.goto(url("/api/graphql"));
+
+    await page.getByText("GraphiQL is an in-browser tool"); // arbitrary text that only appears after the page has loaded correctly
+  });{% endraw %}{% endif %}{% raw %}
+});{% endraw %}
