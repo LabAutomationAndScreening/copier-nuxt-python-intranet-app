@@ -38,7 +38,7 @@
     "@graphql-codegen/typescript-vue-apollo": "^4.1.1",
     "@graphql-tools/mock": "^9.0.22",
     "@graphql-tools/schema": "^10.0.23",{% endraw %}{% endif %}{% raw %}
-    "@nuxt/eslint": "^1.2.0",
+    "@nuxt/eslint": "{% endraw %}{{ nuxt_eslint_version }}{% raw %}",
     "@nuxt/schema": "{% endraw %}{{ nuxt_version }}{% raw %}",
     "@nuxt/test-utils": "^3.17.2",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
     "@nuxtjs/apollo": "{% endraw %}{{ nuxt_apollo_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
@@ -46,7 +46,7 @@
     "@playwright/test": "{% endraw %}{{ playwright_version }}{% raw %}",
     "@vitest/coverage-istanbul": "{% endraw %}{{ vitest_version }}{% raw %}",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
     "@vue/apollo-composable": "^4.2.2",{% endraw %}{% endif %}{% raw %}
-    "@vue/devtools-api": "^7.7.2",
+    "@vue/devtools-api": "{% endraw %}{{ vue_devtools_api_version }}{% raw %}",
     "@vue/test-utils": "^2.4.6",
     "autoprefixer": "^10.4.21",
     "dotenv-cli": "{% endraw %}{{ dot_env_cli_version }}{% raw %}",
@@ -63,6 +63,6 @@
     "typescript": "{% endraw %}{{ typescript_version }}{% raw %}",
     "vitest": "{% endraw %}{{ vitest_version }}{% raw %}",
     "vue-eslint-parser": "^10.1.1",
-    "vue-tsc": "^2.2.8"
+    "vue-tsc": "{% endraw %}{{ vue_tsc_version }}{% raw %}"
   }
 }{% endraw %}

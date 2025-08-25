@@ -28,6 +28,10 @@
     location /static/swagger/ {
         try_files $uri @proxy;
     }
+    # Pass requests for the OpenAPI spec document to the backend
+    location /openapi.json {
+        try_files $uri @proxy;
+    }
 
     # Named location with shared proxy configuration
     location @proxy {
