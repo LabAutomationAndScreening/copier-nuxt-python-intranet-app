@@ -31,7 +31,7 @@ export default defineNuxtConfig({
     },
   },
   css: ["~/assets/css/main.css"],
-  experimental: { appManifest: false }, // https://github.com/nuxt/nuxt/issues/30461#issuecomment-2572616714{% endraw %}{% if has_backend and not deploy_as_executable %}{% raw %}
+  experimental: { appManifest: false }, // https://github.com/nuxt/nuxt/issues/30461#issuecomment-2572616714{% endraw %}{% if has_backend %}{% raw %}
   nitro: {
     prerender: {
       concurrency: 1, // lower the concurrency to not be such a memory hog
@@ -47,11 +47,10 @@ export default defineNuxtConfig({
     },
   },{% endraw %}{% endif %}{% raw %}
   vite: {
-    // this seems to be explicitly needed when in a devcontainer in order for hot reloading to work
     server: {
       watch: {
-        usePolling: true,
-      },{% endraw %}{% if has_backend and not deploy_as_executable %}{% raw %}
+        usePolling: true, // this seems to be explicitly needed when in a devcontainer in order for hot reloading to work
+      },{% endraw %}{% if has_backend %}{% raw %}
       proxy: {
         // this is just a proxy used for `pnpm dev`
         "/api": {
