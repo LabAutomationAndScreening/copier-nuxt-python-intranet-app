@@ -12,8 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi_offline import FastAPIOffline
 from pydantic import BaseModel
-from pydantic import Field
-from starlette.responses import HTMLResponse{% endraw %}{% if backend_uses_graphql %}{% raw %}
+from pydantic import Field{% endraw %}{% if backend_uses_graphql %}{% raw %}
+from starlette.responses import HTMLResponse
 from strawberry.fastapi import GraphQLRouter{% endraw %}{% endif %}{% raw %}
 
 from .jinja_constants import HUMAN_FRIENDLY_APP_NAME{% endraw %}{% if backend_uses_graphql %}{% raw %}
