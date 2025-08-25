@@ -6,8 +6,8 @@ from importlib.metadata import version
 from pathlib import Path{% endraw %}{% if backend_uses_graphql %}{% raw %}
 from typing import override{% endraw %}{% endif %}{% raw %}
 {% endraw %}{% if backend_uses_graphql %}{% raw %}
-import strawberry{% endraw %}{% endif %}{% raw %}
-from fastapi import Request
+import strawberry
+from fastapi import Request{% endraw %}{% endif %}{% raw %}
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi_offline import FastAPIOffline
