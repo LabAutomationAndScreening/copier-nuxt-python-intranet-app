@@ -46,7 +46,7 @@
     "@playwright/test": "{% endraw %}{{ playwright_version }}{% raw %}",
     "@vitest/coverage-istanbul": "{% endraw %}{{ vitest_version }}{% raw %}",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
     "@vue/apollo-composable": "^4.2.2",{% endraw %}{% endif %}{% raw %}
-    "@vue/devtools-api": "^7.7.2",
+    "@vue/devtools-api": "{{ vue_devtools_api_version }}",
     "@vue/test-utils": "^2.4.6",
     "autoprefixer": "^10.4.21",
     "dotenv-cli": "{% endraw %}{{ dot_env_cli_version }}{% raw %}",
