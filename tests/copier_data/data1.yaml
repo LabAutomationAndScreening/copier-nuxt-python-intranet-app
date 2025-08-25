@@ -16,6 +16,7 @@ aws_production_account_id: 123456789012
 use_staging_environment: false
 aws_region_for_stack: us-east-2
 # Data added based on the specifics of this template
+human_friendly_app_name: Doing Great Thing
 has_backend: true
 backend_deployed_port_number: 8080
 backend_uses_graphql: true
