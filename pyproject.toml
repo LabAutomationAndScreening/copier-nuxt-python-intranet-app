@@ -9,9 +9,9 @@ dependencies = [
     "pytest>=8.4.1",
     "pytest-cov>=6.2.1",
     "pytest-randomly>=3.16.0",
-    "pyright[nodejs]>=1.1.404",
-    "copier>=9.9.1",
-    "copier-template-extensions>=0.3.2"
+    "pyright[nodejs]>=1.1.405",
+    "copier>=9.10.1",
+    "copier-template-extensions>=0.3.3"
 
     # Specific to this template
 
