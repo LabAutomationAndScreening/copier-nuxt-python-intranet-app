@@ -1,5 +1,5 @@
 {% raw %}# ------------ Stage 1: Build ------------
-FROM node:{% endraw %}{{ node_version }}{% raw %}-alpine{% endraw %}{{ alpine_image_version }}{% raw %}-slim AS builder
+FROM node:{% endraw %}{{ node_version }}{% raw %}-alpine{% endraw %}{{ alpine_image_version }}{% raw %} AS builder
 
 # docker build -t my-nuxt-app .
 # docker run -p {% endraw %}{{ frontend_deployed_port_number }}{% raw %}:3000 my-nuxt-app
@@ -21,7 +21,7 @@ COPY . .
 RUN pnpm list && pnpm generate
 
 # ------------ Stage 2: Production ------------
-FROM nginx:{% endraw %}{{ nginx_image_version }}{% raw %}-alpine{% endraw %}{{ alpine_image_version }}{% raw %} AS production
+FROM nginx:{% endraw %}{{ nginx_image_version }}{% raw %}-alpine{% endraw %}{{ alpine_image_version }}{% raw %}-slim AS production
 
 # bring in envsubst (part of gettext) (no particular reason for this version, just pinning for best practice)
 RUN apk add --no-cache gettext=0.24.1-r0
