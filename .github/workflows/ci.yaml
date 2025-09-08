@@ -64,7 +64,7 @@ jobs:
         uses: ./.github/actions/install_deps
         with:
           python-version: ${{ matrix.python-version }}
-          node-version: 22.14.0 # TODO: don't hardcode this
+          node-version: 24.7.0
           install-deps: false
 
       - name: Instantiate copier template
