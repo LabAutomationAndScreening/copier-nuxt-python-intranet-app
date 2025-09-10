@@ -25,14 +25,25 @@ dev = [
 
 
     # Managed by upstream template
-    "httpx>=0.28.1",
+    "httpx>=0.28.1",{% endraw %}{% if backend_uses_graphql %}{% raw %}
+    "ariadne-codegen[subscriptions]>={% endraw %}{{ ariadne_codegen_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
     "pyright>={% endraw %}{{ pyright_version }}{% raw %}",
     "pytest>={% endraw %}{{ pytest_version }}{% raw %}",
     "pytest-cov>={% endraw %}{{ pytest_cov_version }}{% raw %}",
     "pytest-randomly>={% endraw %}{{ pytest_randomly_version }}{% raw %}",
     "pytest-mock>=3.14.0",{% endraw %}{% if deploy_as_executable %}{% raw %}
     "pyinstaller>={% endraw %}{{ pyinstaller_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
-]
+]{% endraw %}{% if backend_uses_graphql %}{% raw %}
+
+[tool.ariadne-codegen]
+# uv run ariadne-codegen
+schema_path = "src/backend_api/schema.graphql"
+include_comments = "none"
+queries_path = "tests/e2e/queries/"
+async_client = false
+target_package_name = "graphql_codegen"
+target_package_path = "tests/e2e"
+enable_custom_operations = true{% endraw %}{% endif %}{% raw %}
 
 [tool.uv]
 package = true{% endraw %}
