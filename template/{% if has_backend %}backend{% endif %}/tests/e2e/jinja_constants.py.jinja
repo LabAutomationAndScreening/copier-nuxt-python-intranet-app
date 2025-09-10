@@ -6,5 +6,5 @@ class ApplicationBootupModes(str, Enum):
     DOCKER_COMPOSE = "docker-compose"
 
 
-BACKEND_PORT = {% endraw %}{{ backend_port }}{% raw %}
+BACKEND_PORT = {% endraw %}{{ backend_deployed_port_number }}{% raw %}
 APPLICATION_BOOTUP_MODE = ApplicationBootupModes.{% endraw %}{% if deploy_as_executable %}EXE{% else %}DOCKER_COMPOSE{% endif %}{% raw %}{% endraw %}
