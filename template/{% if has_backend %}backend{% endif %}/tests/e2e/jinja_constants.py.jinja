@@ -1,0 +1,10 @@
+{% raw %}from enum import Enum
+
+
+class ApplicationBootupModes(str, Enum):
+    EXE = "exe"
+    DOCKER_COMPOSE = "docker-compose"
+
+
+BACKEND_PORT = {% endraw %}{{ backend_port }}{% raw %}
+APPLICATION_BOOTUP_MODE = ApplicationBootupModes.{% endraw %}{% if deploy_as_executable %}EXE{% else %}DOCKER_COMPOSE{% endif %}{% raw %}{% endraw %}
