@@ -36,7 +36,6 @@ dev = [
 ]{% endraw %}{% if backend_uses_graphql %}{% raw %}
 
 [tool.ariadne-codegen]
-# uv run ariadne-codegen
 schema_path = "src/backend_api/schema.graphql"
 include_comments = "none"
 queries_path = "tests/e2e/queries/"
