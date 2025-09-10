@@ -57,7 +57,7 @@ def wait_for_service_to_be_healthy(*, max_retries: int = 15, retry_delay: int = 
 
 
 @pytest.fixture(scope="session", autouse=True)
-def application_containers():
+def running_application():
     if APPLICATION_BOOTUP_MODE == ApplicationBootupModes.DOCKER_COMPOSE:
         compose_file = Path(__file__).parent.parent.parent.parent / "docker-compose.yaml"
         assert compose_file.exists(), f"Compose file {compose_file} does not exist"
