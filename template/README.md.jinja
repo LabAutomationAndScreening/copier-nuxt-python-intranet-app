@@ -36,6 +36,11 @@ pnpm --dir=frontend preview
 Start the API server on port 4000:
 ```bash
 uv --directory=backend run uvicorn src.entrypoint:app --reload --host '::' --port 4000
+```{% endraw %}{% endif %}{% raw %}{% endraw %}{% if backend_uses_graphql %}{% raw %}
+
+To regenerate the GraphQL client code for the E2E test suite, run:
+```bash
+uv --directory=backend run ariadne-codegen
 ```{% endraw %}{% endif %}{% raw %}
 
 ## Updating from the template

@@ -1,0 +1,9 @@
+import pytest
+
+from .graphql_codegen.client import Client
+from .jinja_constants import BACKEND_PORT
+
+
+@pytest.fixture
+def client() -> Client:
+    return Client(url=f"http://localhost:{BACKEND_PORT}/api/graphql")

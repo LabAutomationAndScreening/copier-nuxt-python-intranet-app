@@ -10,6 +10,12 @@
         try_files $uri $uri/ /index.html;
     }
 
+    # allow viewing the nginx config from client PCs for easier troubleshooting
+    location /_reverse_proxy_conf.txt {
+        alias /etc/nginx/conf.d/default.conf.txt;
+        limit_except GET HEAD { deny all; }
+    }
+
     # Pass API requests to the backend
     location /api/ {
         client_max_body_size 1m;

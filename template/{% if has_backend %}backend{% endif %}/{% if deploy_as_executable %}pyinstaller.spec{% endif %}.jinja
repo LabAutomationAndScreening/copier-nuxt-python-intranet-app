@@ -4,6 +4,8 @@
 
 from pathlib import Path
 import sys
+from fastapi_offline.core import _STATIC_PATH
+
 
 # https://stackoverflow.com/questions/37319911/python-how-to-specify-output-folders-in-pyinstaller-spec-file?rq=1
 
@@ -19,6 +21,7 @@ a = Analysis(
     binaries=[],
     datas=[  # spellchecker:disable-line
         (Path("src") / "static", Path("static")),
+        (_STATIC_PATH, "fastapi_offline/static"),
     ],
     hiddenimports=[
         "eventlet.hubs.epolls",
