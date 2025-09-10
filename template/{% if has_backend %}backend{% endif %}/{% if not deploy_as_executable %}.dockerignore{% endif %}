@@ -36,6 +36,9 @@ htmlcov/
 # Exclude test files
 tests
 
+# Exclude local logs
+logs
+
 # Exclude Docker-related files if needed
 Dockerfile*
 .dockerignore
