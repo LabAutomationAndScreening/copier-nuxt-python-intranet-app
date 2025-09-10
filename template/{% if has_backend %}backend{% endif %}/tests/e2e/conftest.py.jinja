@@ -1,0 +1,19 @@
+{% raw %}import pytest
+from pydantic import JsonValue
+
+from .app_bootup import running_application{% endraw %}{% if backend_uses_graphql %}{% raw %}
+from .graphql_fixtures import client{% endraw %}{% endif %}{% raw %}
+
+_imported_fixtures = (running_application,){% endraw %}{% if backend_uses_graphql %}{% raw %}
+_imported_graphql_fixtures = (client,){% endraw %}{% endif %}{% raw %}
+
+
+@pytest.fixture(autouse=True)
+def vcr_config() -> dict[str, JsonValue]:
+    # disable any network blocking set up for unit tests
+    return {"allowed_hosts": ["127.0.0.1", "localhost", "::1"]}
+
+
+def pytest_configure(config: pytest.Config):
+    """Disable coverage reporting for E2E tests."""
+    config.pluginmanager.set_blocked("_cov"){% endraw %}
