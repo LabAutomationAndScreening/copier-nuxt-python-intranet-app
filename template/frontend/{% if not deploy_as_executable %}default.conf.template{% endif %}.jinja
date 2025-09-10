@@ -10,6 +10,12 @@
         try_files $uri $uri/ /index.html;
     }
 
+    # allow viewing the nginx config from client PCs for easier troubleshooting
+    location /_conf/ {
+        alias /etc/nginx/conf.d/;
+        autoindex on;       # directory listing
+    }
+
     # Pass API requests to the backend
     location /api/ {
         client_max_body_size 1m;
