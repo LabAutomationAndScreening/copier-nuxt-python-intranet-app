@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 def wait_for_service_to_be_healthy(*, max_retries: int = 15, retry_delay: int = 2, compose_file: str):
     for attempt in range(max_retries):
         try:
-            # Get container health status using docker inspect
+            # Get container health status using docker ps
             result = subprocess.run(  # noqa: S603 # we trust this input
                 [  # noqa: S607 # docker should definitely be in PATH
                     "docker",
