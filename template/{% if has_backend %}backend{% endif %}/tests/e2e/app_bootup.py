@@ -70,6 +70,7 @@ def running_application():
                 "build",
             ],
             check=True,
+            timeout=300,
         )
         _ = subprocess.run(  # noqa: S603 # we trust this input
             [  # noqa: S607 # docker should definitely be in PATH
@@ -83,6 +84,7 @@ def running_application():
                 "--renew-anon-volumes",
             ],
             check=True,
+            timeout=20,
         )
         wait_for_service_to_be_healthy(compose_file=str(compose_file))
     else:
@@ -98,6 +100,7 @@ def running_application():
                 "down",
             ],
             check=True,
+            timeout=45,
         )
     else:
         raise NotImplementedError(f"Unsupported application bootup mode: {APPLICATION_BOOTUP_MODE}")
