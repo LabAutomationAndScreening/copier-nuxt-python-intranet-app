@@ -29,7 +29,7 @@ ENV API_PORT={% endraw %}{{ backend_deployed_port_number }}{% raw %}
 # When deployed with network-mode=host on Rancher Desktop on Windows (for WSL-compatibility), there's no actual port mapping, so we need to have it running on the deployed port within the container itself
 EXPOSE {% endraw %}{{ backend_deployed_port_number }}{% raw %}
 
-HEALTHCHECK --interval=2s --timeout=1s --retries=10 --start-period=5s \
+HEALTHCHECK --interval=5s --timeout=1s --retries=20 --start-period=10s \
   CMD python -c "import urllib.request, os; port = os.environ['API_PORT']; urllib.request.urlopen(f'http://localhost:{int(port)}/api/healthcheck')" || exit 1
 
 # By default, run the entrypoint to serve the GraphQL app
