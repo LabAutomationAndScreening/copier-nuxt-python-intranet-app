@@ -40,7 +40,7 @@
     "@graphql-tools/schema": "^10.0.23",{% endraw %}{% endif %}{% raw %}
     "@nuxt/eslint": "{% endraw %}{{ nuxt_eslint_version }}{% raw %}",
     "@nuxt/schema": "{% endraw %}{{ nuxt_version }}{% raw %}",
-    "@nuxt/test-utils": "^3.17.2",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
+    "@nuxt/test-utils": "{% endraw %}{{ nuxt_test_utils_version }}{% raw %}",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
     "@nuxtjs/apollo": "{% endraw %}{{ nuxt_apollo_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
     "@nuxtjs/eslint-config-typescript": "^12.1.0",
     "@playwright/test": "{% endraw %}{{ playwright_version }}{% raw %}",
