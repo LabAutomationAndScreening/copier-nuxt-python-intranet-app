@@ -11,7 +11,7 @@ class ContextUpdater(ContextHook):
     @override
     def hook(self, context: dict[Any, Any]) -> dict[Any, Any]:
         context["uv_version"] = "0.8.17"
-        context["pnpm_version"] = "10.16.1"
+        context["pnpm_version"] = "10.17.0"
         context["pre_commit_version"] = "4.3.0"
         context["pyright_version"] = "1.1.405"
         context["pytest_version"] = "8.4.2"
@@ -38,6 +38,7 @@ class ContextUpdater(ContextHook):
         context["lab_auto_pulumi_version"] = "0.1.16"
         context["ariadne_codegen_version"] = "0.15.2"
         context["pytest_mock_version"] = "3.15.0"
+        context["uuid_utils_version"] = "0.11.0"
 
         context["node_version"] = "24.7.0"
         context["nuxt_ui_version"] = "^3.3.3"
@@ -56,12 +57,18 @@ class ContextUpdater(ContextHook):
         context["nuxt_eslint_version"] = "^1.9.0"
         context["zod_version"] = "^4.1.5"
         context["zod_from_json_schema_version"] = "^0.5.0"
-        context["types_node_version"] = "^24.3.1"
+        context["types_node_version"] = "^24.5.1"
         context["nuxt_apollo_version"] = "5.0.0-alpha.15"
         context["graphql_codegen_cli_version"] = "^6.0.0"
         context["graphql_codegen_typescript_version"] = "^5.0.0"
         context["graphql_codegen_typescript_operations_version"] = "^5.0.0"
         context["tailwindcss_version"] = "^4.1.11"
+        context["iconify_vue_version"] = "^5.0.0"
+        context["iconify_json_lucide_version"] = "^1.2.68"
+        context["nuxt_fonts_version"] = "^0.11.4"
+        context["nuxtjs_color_mode_version"] = "^3.5.2"
+        context["vue_test_utils_version"] = "^2.4.6"
+        context["nuxt_test_utils_version"] = "^3.17.2"
 
         context["gha_checkout"] = "v5.0.0"
         context["gha_setup_python"] = "v6.0.0"

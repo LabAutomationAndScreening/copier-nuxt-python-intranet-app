@@ -20,12 +20,12 @@
     "codegen": "graphql-codegen --config codegen.ts"{% endraw %}{% endif %}{% raw %}
   },
   "dependencies": {
-    "@iconify-json/lucide": "^1.2.41",
-    "@iconify/vue": "^5.0.0",
-    "@nuxt/fonts": "^0.11.4",
+    "@iconify-json/lucide": "{% endraw %}{{ iconify_json_lucide_version }}{% raw %}",
+    "@iconify/vue": "{% endraw %}{{ iconify_vue_version }}{% raw %}",
+    "@nuxt/fonts": "{% endraw %}{{ nuxt_fonts_version }}{% raw %}",
     "@nuxt/icon": "{% endraw %}{{ nuxt_icon_version }}{% raw %}",
     "@nuxt/ui": "{% endraw %}{{ nuxt_ui_version }}{% raw %}",
-    "@nuxtjs/color-mode": "^3.5.2",
+    "@nuxtjs/color-mode": "{% endraw %}{{ nuxtjs_color_mode_version }}{% raw %}",
     "nuxt": "{% endraw %}{{ nuxt_version }}{% raw %}",
     "vue": "{% endraw %}{{ vue_version }}{% raw %}",
     "vue-router": "{% endraw %}{{ vue_router_version }}{% raw %}"
@@ -40,7 +40,7 @@
     "@graphql-tools/schema": "^10.0.23",{% endraw %}{% endif %}{% raw %}
     "@nuxt/eslint": "{% endraw %}{{ nuxt_eslint_version }}{% raw %}",
     "@nuxt/schema": "{% endraw %}{{ nuxt_version }}{% raw %}",
-    "@nuxt/test-utils": "^3.17.2",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
+    "@nuxt/test-utils": "{% endraw %}{{ nuxt_test_utils_version }}{% raw %}",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
     "@nuxtjs/apollo": "{% endraw %}{{ nuxt_apollo_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
     "@nuxtjs/eslint-config-typescript": "^12.1.0",
     "@playwright/test": "{% endraw %}{{ playwright_version }}{% raw %}",
@@ -48,7 +48,7 @@
     "@vitest/coverage-istanbul": "{% endraw %}{{ vitest_version }}{% raw %}",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
     "@vue/apollo-composable": "^4.2.2",{% endraw %}{% endif %}{% raw %}
     "@vue/devtools-api": "{% endraw %}{{ vue_devtools_api_version }}{% raw %}",
-    "@vue/test-utils": "^2.4.6",
+    "@vue/test-utils": "{% endraw %}{{ vue_test_utils_version }}{% raw %}",
     "autoprefixer": "^10.4.21",
     "dotenv-cli": "{% endraw %}{{ dotenv_cli_version }}{% raw %}",
     "eslint": "{% endraw %}{{ eslint_version }}{% raw %}",
