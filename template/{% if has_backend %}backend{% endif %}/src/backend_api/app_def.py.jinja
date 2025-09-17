@@ -6,7 +6,8 @@ from importlib.metadata import version
 from pathlib import Path{% endraw %}{% if backend_uses_graphql %}{% raw %}
 from typing import override{% endraw %}{% endif %}{% raw %}
 {% endraw %}{% if backend_uses_graphql %}{% raw %}
-import strawberry
+import strawberry{% endraw %}{% endif %}{% raw %}
+from fastapi import Query{% endraw %}{% if backend_uses_graphql %}{% raw %}
 from fastapi import Request{% endraw %}{% endif %}{% raw %}
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -16,6 +17,7 @@ from pydantic import Field{% endraw %}{% if backend_uses_graphql %}{% raw %}
 from starlette.responses import HTMLResponse
 from strawberry.fastapi import GraphQLRouter{% endraw %}{% endif %}{% raw %}
 
+from .fast_api_exception_handlers import register_exception_handlers
 from .jinja_constants import HUMAN_FRIENDLY_APP_NAME{% endraw %}{% if backend_uses_graphql %}{% raw %}
 from .schema_def import schema{% endraw %}{% endif %}{% raw %}
 
@@ -31,6 +33,7 @@ try:
         docs_url="/api-docs",
         static_url="/static/swagger",
     )
+    register_exception_handlers(app)
 except (  # pragma: no cover # This is just logging unexpected errors, and it's very challenging to explicitly unit test
     Exception
 ):
@@ -50,8 +53,16 @@ class ShutdownResponse(BaseModel):
 
 
 @app.get("/api/healthcheck", summary="Check API health", tags=["system"])
-def healthcheck() -> HealthcheckResponse:
-    return HealthcheckResponse(version=VERSION)
+def healthcheck(
+    *,
+    prepend_v: bool = Query(  # pyright: ignore[reportCallInDefaultInitializer] # This seems to be an accepted FastAPI pattern
+        default=False, description="Include a 'v' before the version number"
+    ),
+) -> HealthcheckResponse:
+    version_str = VERSION
+    if prepend_v:
+        version_str = f"v{VERSION}"
+    return HealthcheckResponse(version=version_str)
 
 
 @app.get("/api/shutdown", summary="Shut down the server", tags=["system"])
