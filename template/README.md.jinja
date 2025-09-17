@@ -10,10 +10,13 @@
 
 # Development
 
-To spin up the docker stack (frontend accessible on port {% endraw %}{{ frontend_deployed_port_number }}{% raw %}{% endraw %}{% if has_backend %}{% raw %}, backend accessible on port {% endraw %}{{ backend_deployed_port_number }}{% endif %}{% raw %}), run:
+{% endraw %}{% if not deploy_as_executable %}{% raw %}To spin up the docker stack (frontend accessible on port {% endraw %}{{ frontend_deployed_port_number }}{% raw %}{% endraw %}{% if has_backend %}{% raw %}, backend accessible on port {% endraw %}{{ backend_deployed_port_number }}{% endif %}{% raw %}), run:
 ```bash
 docker compose up
-```
+```{% endraw %}{% else %}{% raw %}To build and spin up the full stack (accessible on port {% endraw %}{{ backend_deployed_port_number }}{% raw %}), run:
+```bash
+pnpm --dir=frontend generate && cp ./frontend/.output/public/** ./backend/src/static -r && uv --directory=backend run pyinstaller pyinstaller.spec --noconfirm && ./backend/dist/{% endraw %}{{ repo_name }}{% raw %}/{% endraw %}{{ repo_name }}{% raw %}
+```{% endraw %}{% endif %}{% raw %}
 
 ## Frontend
 Start the development server on `http://localhost:3000`:
@@ -33,10 +36,15 @@ pnpm --dir=frontend preview
 ```{% endraw %}{% if has_backend %}{% raw %}
 
 ## Backend
-Start the API server on port 4000:
+Start the API server on port 4000{% endraw %}{% if deploy_as_executable %}{% raw %} (will not generate log files){% endraw %}{% endif %}{% raw %}:
 ```bash
 uv --directory=backend run uvicorn src.entrypoint:app --reload --host '::' --port 4000
-```{% endraw %}{% endif %}{% raw %}{% endraw %}{% if backend_uses_graphql %}{% raw %}
+```{% endraw %}{% endif %}{% raw %}{% endraw %}{% endraw %}{% if deploy_as_executable %}{% raw %}
+
+Start the app using the entrypoint to be able to supply CLI options and log to file (running by defaault on port {% endraw %}{{ backend_deployed_port_number }}{% raw %}):
+```bash
+uv --directory=backend run python src/entrypoint.py
+```{% endraw %}{% endif %}{% if backend_uses_graphql %}{% raw %}
 
 To regenerate the GraphQL client code for the E2E test suite, run:
 ```bash
