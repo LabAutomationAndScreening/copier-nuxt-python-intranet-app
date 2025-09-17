@@ -17,6 +17,7 @@ def test_Given_healthy__When_healthcheck__Then_version_in_response():
     assert "version" in response_json
     actual_version = response_json["version"]
 
+    assert actual_version.startswith("v") is False
     assert len(actual_version) > 2  # noqa: PLR2004 # just asserting there's some content that isn't just the period
     assert "." in actual_version
 
