@@ -15,7 +15,7 @@
 docker compose up
 ```{% endraw %}{% else %}{% raw %}To build and spin up the full stack (accessible on port {% endraw %}{{ backend_deployed_port_number }}{% raw %}), run:
 ```bash
-pnpm --dir=frontend generate && cp ./frontend/.output/public/** ./backend/src/static -r && uv --directory=backend run pyinstaller pyinstaller.spec --noconfirm && ./backend/dist/{% endraw %}{{ repo_name }}{% raw %}/{% endraw %}{{ repo_name }}{% raw %}
+pnpm --dir=frontend generate && cp -a ./frontend/.output/public/. ./backend/src/static/ && uv --directory=backend run pyinstaller pyinstaller.spec --noconfirm && ./backend/dist/{% endraw %}{{ repo_name }}{% raw %}/{% endraw %}{{ repo_name }}{% raw %}
 ```{% endraw %}{% endif %}{% raw %}
 
 ## Frontend
