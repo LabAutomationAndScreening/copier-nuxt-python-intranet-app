@@ -68,6 +68,7 @@ class ContextUpdater(ContextHook):
         context["nuxt_fonts_version"] = "^0.11.4"
         context["nuxtjs_color_mode_version"] = "^3.5.2"
         context["vue_test_utils_version"] = "^2.4.6"
+        context["nuxt_test_utils_version"] = "^3.17.2"
 
         context["gha_checkout"] = "v5.0.0"
         context["gha_setup_python"] = "v6.0.0"
