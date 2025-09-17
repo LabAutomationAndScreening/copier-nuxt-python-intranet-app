@@ -39,7 +39,7 @@ pnpm --dir=frontend preview
 Start the API server on port 4000{% endraw %}{% if deploy_as_executable %}{% raw %} (will not generate log files){% endraw %}{% endif %}{% raw %}:
 ```bash
 uv --directory=backend run uvicorn src.entrypoint:app --reload --host '::' --port 4000
-```{% endraw %}{% endif %}{% raw %}{% endraw %}{% endraw %}{% if deploy_as_executable %}{% raw %}
+```{% endraw %}{% endif %}{% raw %}{% endraw %}{% if deploy_as_executable %}{% raw %}
 
 Start the app using the entrypoint to be able to supply CLI options and log to file (running by defaault on port {% endraw %}{{ backend_deployed_port_number }}{% raw %}):
 ```bash
