@@ -1,0 +1,242 @@
+import random
+from uuid import uuid4
+
+import pytest
+import strawberry
+from backend_api import fast_api_exception_handlers
+from backend_api import strawberry_router
+from backend_api.strawberry_router import AddErrorTrace
+from pytest_mock import MockerFixture
+from uuid_utils import uuid7
+
+RETURNED_UUIDS = [uuid7() for _ in range(5)]
+
+
+def _run_logic(value: str) -> str:
+    return value
+
+
+def _run_other_logic(value: int) -> int:
+    return value
+
+
+@strawberry.type
+class Query:
+    @strawberry.field
+    def do_something(self, value: str) -> str:
+        return _run_logic(value)
+
+    @strawberry.field
+    def do_other_thing(self, value: int) -> int:
+        return _run_other_logic(value)
+
+
+schema = strawberry.Schema(query=Query, extensions=[AddErrorTrace()])
+
+GQL = """query ($value: String!) {
+                doSomething(value: $value)
+            }
+            """
+
+GQL_BOTH = """query ($value1: String!, $value2: Int!) {
+                doSomething(value: $value1)
+                doOtherThing(value: $value2)
+            }
+            """
+
+
+class Helper:
+    mocker: MockerFixture
+
+    def _mock_should_show_error_details(self, *, should_show: bool):
+        _ = self.mocker.patch.object(
+            fast_api_exception_handlers,
+            fast_api_exception_handlers.should_show_error_details.__name__,
+            autospec=True,
+            return_value=should_show,
+        )
+
+
+class TestSingleError(Helper):
+    @pytest.fixture(autouse=True)
+    def _setup(self, mocker: MockerFixture):
+        self.mocker = mocker
+        self.spied_logger_error = mocker.spy(strawberry_router.logger, "error")
+        self.spied_uuid_generator = mocker.spy(strawberry_router, "uuid7")
+        self.spied_logger_warning = mocker.spy(strawberry_router.logger, "warning")
+
+    def test_Given_resolver_internal_mocked_to_error_and_error_details_should_be_displayed__Then_uuid_in_log_and_response__and_details_in_response_and_log(
+        self,
+    ):
+        self._mock_should_show_error_details(should_show=True)
+        expected_error_message = str(uuid4())
+        error_cls = random.choice(
+            (ValueError, RuntimeError, KeyError, TypeError)
+        )  # arbitrary list of a variety of error types
+        expected_error = error_cls(expected_error_message)
+
+        _ = self.mocker.patch(f"{__name__}.{_run_logic.__name__}", autospec=True, side_effect=expected_error)
+
+        result = schema.execute_sync(
+            GQL_BOTH,
+            variable_values={"value1": str(uuid4()), "value2": random.randint(1, 100)},
+        )
+
+        self.spied_uuid_generator.assert_called_once()
+        expected_uuid = str(self.spied_uuid_generator.spy_return)
+
+        assert result.errors is not None
+        assert len(result.errors) == 1
+        error = result.errors[0]
+        assert expected_uuid in error.message
+        assert isinstance(error.extensions, dict)
+        assert "traceId" in error.extensions
+        assert error.extensions["traceId"] == expected_uuid
+        self.spied_logger_error.assert_called_once()
+        log_call_args = self.spied_logger_error.call_args[0]
+        log_call_kwargs = self.spied_logger_error.call_args[1]
+        log_message = log_call_args[0]
+        logged_error = log_call_kwargs["exc_info"]
+        assert expected_uuid in log_message
+        assert "doSomething" in log_message
+        assert log_message.startswith("Unhandled") is True
+        assert logged_error == expected_error
+
+    def test_Given_resolver_returns_wrong_type_for_second_query_and_error_details_should_not_be_displayed__Then_uuid_in_log_and_response__and_details_in_response_and_log_because_this_isnt_sensitive(
+        self,
+    ):
+        self._mock_should_show_error_details(should_show=False)
+        wrong_value_1 = str(uuid4())
+        _ = self.mocker.patch(f"{__name__}.{_run_other_logic.__name__}", autospec=True, return_value=wrong_value_1)
+
+        result = schema.execute_sync(
+            GQL_BOTH,
+            variable_values={"value1": str(uuid4()), "value2": random.randint(1, 100)},
+        )
+
+        assert result.errors is not None
+        assert len(result.errors) == 1
+        self.spied_uuid_generator.assert_called_once()
+        assert self.spied_logger_error.call_count == 1
+        expected_uuid = str(self.spied_uuid_generator.spy_return)
+
+        error = result.errors[0]
+        assert expected_uuid in error.message
+        assert wrong_value_1 in error.message
+        assert isinstance(error.extensions, dict)
+        assert "traceId" in error.extensions
+        assert error.extensions["traceId"] == expected_uuid
+        log_call_args = self.spied_logger_error.call_args[0]
+        log_message = log_call_args[0]
+        assert expected_uuid in log_message
+        assert "doOtherThing" in log_message
+        assert log_message.startswith("Execution contract") is True
+
+    def test_Given_resolver_returns_null_value_for_second_query_not_matching_schema_and_error_details_should_not_be_displayed__Then_uuid_in_log_and_response__and_details_in_response_and_log_because_this_isnt_sensitive(
+        self,
+    ):
+        self._mock_should_show_error_details(should_show=False)
+        wrong_value_1 = None
+        _ = self.mocker.patch(f"{__name__}.{_run_other_logic.__name__}", autospec=True, return_value=wrong_value_1)
+
+        result = schema.execute_sync(
+            GQL_BOTH,
+            variable_values={"value1": str(uuid4()), "value2": random.randint(1, 100)},
+        )
+
+        assert result.errors is not None
+        assert len(result.errors) == 1
+        self.spied_uuid_generator.assert_called_once()
+        assert self.spied_logger_error.call_count == 1
+        expected_uuid = str(self.spied_uuid_generator.spy_return)
+
+        error = result.errors[0]
+        assert expected_uuid in error.message
+        assert "doOtherThing" in error.message
+        assert isinstance(error.extensions, dict)
+        assert "traceId" in error.extensions
+        assert error.extensions["traceId"] == expected_uuid
+        log_call_args = self.spied_logger_error.call_args[0]
+        log_message = log_call_args[0]
+        assert expected_uuid in log_message
+        assert "doOtherThing" in log_message
+        assert log_message.startswith("Execution contract") is True
+
+    def test_Given_invalid_input_for_second_query_and_error_details_should_not_be_displayed__Then_uuid_in_log_and_response__and_details_in_response_and_log_because_this_isnt_sensitive(
+        self,
+    ):
+        self._mock_should_show_error_details(should_show=False)
+        wrong_value_2 = random.choice([True, False])
+
+        result = schema.execute_sync(
+            GQL_BOTH,
+            variable_values={"value1": str(uuid4()), "value2": wrong_value_2},
+        )
+
+        assert result.errors is not None
+        assert len(result.errors) == 1
+        self.spied_uuid_generator.assert_called_once()
+        assert self.spied_logger_warning.call_count == 1
+        expected_uuid = str(self.spied_uuid_generator.spy_return)
+
+        error = result.errors[0]
+        assert expected_uuid in error.message
+        assert "$value2" in error.message
+        assert isinstance(error.extensions, dict)
+        assert "traceId" in error.extensions
+        assert error.extensions["traceId"] == expected_uuid
+        log_call_args = self.spied_logger_warning.call_args[0]
+        log_message = log_call_args[0]
+        assert expected_uuid in log_message
+        assert "$value2" in log_message
+
+
+class TestExceptionHandlersForMultipleErrors(Helper):
+    @pytest.fixture(autouse=True)
+    def _setup(self, mocker: MockerFixture):
+        self.mocker = mocker
+        self.spied_logger_error = mocker.spy(strawberry_router.logger, "error")
+        self.mocked_uuid_generator = mocker.patch.object(
+            strawberry_router, "uuid7", autospec=True, side_effect=RETURNED_UUIDS
+        )
+        self.spied_logger_warning = mocker.spy(strawberry_router.logger, "warning")
+
+    def test_Given_invalid_input_for_both_queries_and_error_details_should_not_be_displayed__Then_uuid_in_log_and_response__and_details_in_response_and_log_because_this_isnt_sensitive(
+        self,
+    ):
+        self._mock_should_show_error_details(should_show=False)
+        wrong_value_1 = random.randint(1, 100)
+        wrong_value_2 = random.choice([True, False])
+        expected_num_errors = 2
+
+        result = schema.execute_sync(
+            GQL_BOTH,
+            variable_values={"value1": wrong_value_1, "value2": wrong_value_2},
+        )
+
+        assert result.errors is not None
+        assert len(result.errors) == expected_num_errors
+        assert self.mocked_uuid_generator.call_count == expected_num_errors
+        assert self.spied_logger_warning.call_count == expected_num_errors
+
+        error = result.errors[0]
+        assert str(RETURNED_UUIDS[0]) in error.message
+        assert "$value1" in error.message
+        assert isinstance(error.extensions, dict)
+        assert "traceId" in error.extensions
+        assert error.extensions["traceId"] == str(RETURNED_UUIDS[0])
+        log_call_args = self.spied_logger_warning.call_args_list[0][0]
+        log_message = log_call_args[0]
+        assert str(RETURNED_UUIDS[0]) in log_message
+        assert "$value1" in log_message
+
+        error = result.errors[1]
+        assert str(RETURNED_UUIDS[1]) in error.message
+        assert "$value2" in error.message
+        assert isinstance(error.extensions, dict)
+        assert "traceId" in error.extensions
+        assert error.extensions["traceId"] == str(RETURNED_UUIDS[1])
+        log_call_args = self.spied_logger_warning.call_args_list[1][0]
+        log_message = log_call_args[0]
+        assert str(RETURNED_UUIDS[1]) in log_message
+        assert "$value2" in log_message
