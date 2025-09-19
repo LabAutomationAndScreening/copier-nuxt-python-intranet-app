@@ -1,7 +1,7 @@
 import pytest
-from backend_api import app_def
-from backend_api.app_def import CdnUrlNotFoundInHtmlError
+from backend_api import strawberry_router
 from backend_api.app_def import app
+from backend_api.strawberry_router import CdnUrlNotFoundInHtmlError
 from fastapi.testclient import TestClient
 from httpx import codes
 from pytest_mock import MockerFixture
@@ -9,13 +9,13 @@ from pytest_mock import MockerFixture
 
 def test_When_expected_cdn_not_found_in_graphiql_html__Then_error(mocker: MockerFixture):
     _ = mocker.patch.object(
-        app_def,
-        app_def._get_graphiql_html_base.__name__,  # noqa: SLF001 # yes, this is private, but we need to mock the internals in order to test the main functionality
+        strawberry_router,
+        strawberry_router._get_graphiql_html_base.__name__,  # noqa: SLF001 # yes, this is private, but we need to mock the internals in order to test the main functionality
         autospec=True,
         return_value="blah",
     )
     with pytest.raises(CdnUrlNotFoundInHtmlError, match="react.production.min.js"):
-        _ = app_def.generate_offline_graphiql_html()
+        _ = strawberry_router.generate_offline_graphiql_html()
 
 
 def test_When_graphql_route_called__Then_rendered():
