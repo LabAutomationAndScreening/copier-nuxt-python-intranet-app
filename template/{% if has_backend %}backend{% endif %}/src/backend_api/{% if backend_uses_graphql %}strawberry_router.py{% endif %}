@@ -1,0 +1,105 @@
+import logging
+from collections.abc import Iterator
+from pathlib import Path
+from typing import override
+
+import strawberry
+from fastapi import Request
+from graphql import GraphQLError
+from graphql.execution.execute import ExecutionResult
+from starlette.responses import HTMLResponse
+from strawberry.extensions.base_extension import SchemaExtension
+from strawberry.fastapi import GraphQLRouter
+from uuid_utils import uuid7
+
+logger = logging.getLogger(__name__)
+
+
+class AddErrorTrace(SchemaExtension):
+    # TODO: add envvar/config to determine whether to mask errors or not
+    # TODO: consider disabling the `strawberry.execution` logger since it seems to duplicate this functionality
+    def _process_result(self, result: ExecutionResult) -> None:
+        assert isinstance(result, ExecutionResult), f"Expected ExecutionResult, got {type(result)}"
+
+        if not result.errors:
+            return
+        for error in result.errors:
+            trace_id = str(uuid7())
+            error.message += f" (Error trace id: {trace_id})"
+            if error.extensions is None:
+                error.extensions = {}  # pragma: no cover # not sure how to create a test that triggers this, but it seems good practice to handle the case where the existing extensions should be None
+            error.extensions["traceId"] = trace_id
+            is_client_error = error.path is None
+            if is_client_error:
+                logger.warning(f"GraphQL input error [urn:uuid:{trace_id}]: {error.message}")
+            else:
+                starting_phrase = "Execution contract"
+                if error.original_error is not None and not isinstance(error.original_error, GraphQLError):
+                    if not (  # most schema contract errors show up as GraphQL errors with no original error, but some do have original errors
+                        isinstance(error.original_error, TypeError)
+                        and str(error.original_error).startswith("Cannot return null for non-nullable field")
+                    ):
+                        starting_phrase = "Unhandled"
+                logger.error(
+                    f"{starting_phrase} error within GraphQL resolver at path {error.path} [urn:uuid:{trace_id}]",
+                    exc_info=error.original_error,
+                )
+
+    @override
+    def on_operation(self) -> Iterator[None]:
+        yield
+        result = self.execution_context.result  # pyright: ignore[reportUnknownMemberType,reportUnknownVariableType] # yes, it's unknown, that's why we're asserting to confirm
+        assert isinstance(result, (ExecutionResult, type(None))), (
+            f"Expected ExecutionResult or None, got {type(result)}"  # pyright: ignore[reportUnknownArgumentType] # yes, it's unknown, that's why we're asserting to confirm
+        )
+        if result is None:
+            return  # pragma: no cover # not sure how to create a test that triggers this, but it seems good practice to gracefully handle the case where this is None
+
+        self._process_result(result)
+
+
+class CdnUrlNotFoundInHtmlError(Exception):
+    def __init__(self, cdn_url: str):
+        super().__init__(f"CDN URL '{cdn_url}' not found in GraphiQL HTML.")
+
+
+def _get_graphiql_html_base() -> str:
+    # separate for mocking
+    return (Path(strawberry.__file__).with_name("static") / "graphiql.html").read_text()
+
+
+def generate_offline_graphiql_html() -> str:
+    offline_graphiql_html = _get_graphiql_html_base()
+    cdn_urls = [
+        "https://unpkg.com/react@18.2.0/umd/react.production.min.js",
+        "https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js",
+        "https://unpkg.com/js-cookie@3.0.5/dist/js.cookie.min.js",
+        "https://unpkg.com/graphiql@3.8.3/graphiql.min.css",
+        "https://unpkg.com/@graphiql/plugin-explorer@1.0.2/dist/style.css",
+        "https://unpkg.com/graphiql@3.8.3/graphiql.min.js",
+        "https://unpkg.com/@graphiql/plugin-explorer@1.0.2/dist/index.umd.js",
+    ]
+    for cdn_url in cdn_urls:
+        if cdn_url not in offline_graphiql_html:
+            raise CdnUrlNotFoundInHtmlError(cdn_url)
+        filename = cdn_url.split("/")[-1]
+        local_path = f"/static/graphiql/{filename}"
+        offline_graphiql_html = offline_graphiql_html.replace(cdn_url, local_path)
+    return "\n".join(
+        # checksums vary slightly after running pre-commit hooks on them locally, so remove the integrity check
+        [line for line in offline_graphiql_html.splitlines() if not line.startswith("      integrity=")]
+    )
+
+
+try:
+    offline_graphiql_html = generate_offline_graphiql_html()
+
+    class OfflineGraphQLRouter(GraphQLRouter):
+        @override
+        async def render_graphql_ide(self, request: Request) -> HTMLResponse:
+            return HTMLResponse(offline_graphiql_html)
+except (  # pragma: no cover # This is just logging unexpected errors, and it's very challenging to explicitly unit test
+    Exception
+):
+    logger.exception("Unhandled error")
+    raise
