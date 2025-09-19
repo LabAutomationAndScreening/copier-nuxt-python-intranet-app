@@ -3,19 +3,14 @@ import os
 import threading
 import time
 from importlib.metadata import version
-from pathlib import Path{% endraw %}{% if backend_uses_graphql %}{% raw %}
-from typing import override{% endraw %}{% endif %}{% raw %}
-{% endraw %}{% if backend_uses_graphql %}{% raw %}
-import strawberry{% endraw %}{% endif %}{% raw %}
-from fastapi import Query{% endraw %}{% if backend_uses_graphql %}{% raw %}
-from fastapi import Request{% endraw %}{% endif %}{% raw %}
+from pathlib import Path
+
+from fastapi import Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi_offline import FastAPIOffline
 from pydantic import BaseModel
-from pydantic import Field{% endraw %}{% if backend_uses_graphql %}{% raw %}
-from starlette.responses import HTMLResponse
-from strawberry.fastapi import GraphQLRouter{% endraw %}{% endif %}{% raw %}
+from pydantic import Field
 
 from .fast_api_exception_handlers import register_exception_handlers
 from .jinja_constants import HUMAN_FRIENDLY_APP_NAME{% endraw %}{% if backend_uses_graphql %}{% raw %}
