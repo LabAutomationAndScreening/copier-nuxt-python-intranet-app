@@ -10,8 +10,8 @@ class ContextUpdater(ContextHook):
 
     @override
     def hook(self, context: dict[Any, Any]) -> dict[Any, Any]:
-        context["uv_version"] = "0.8.17"
-        context["pnpm_version"] = "10.17.0"
+        context["uv_version"] = "0.8.19"
+        context["pnpm_version"] = "10.17.1"
         context["pre_commit_version"] = "4.3.0"
         context["pyright_version"] = "1.1.405"
         context["pytest_version"] = "8.4.2"
@@ -20,7 +20,7 @@ class ContextUpdater(ContextHook):
         context["copier_version"] = "9.10.2"
         context["copier_template_extensions_version"] = "0.3.3"
         context["sphinx_version"] = "8.1.3"
-        context["pulumi_version"] = "3.196.0"
+        context["pulumi_version"] = "3.197.0"
         context["pulumi_aws_version"] = "7.7.0"
         context["pulumi_aws_native_version"] = "1.33.0"
         context["pulumi_command_version"] = "1.1.0"
@@ -32,9 +32,9 @@ class ContextUpdater(ContextHook):
         context["pyinstaller_version"] = "6.16.0"
         context["setuptools_version"] = "80.7.1"
         context["strawberry_graphql_version"] = "0.282.0"
-        context["fastapi_version"] = "0.116.1"
+        context["fastapi_version"] = "0.117.1"
         context["fastapi_offline_version"] = "1.7.4"
-        context["uvicorn_version"] = "0.35.0"
+        context["uvicorn_version"] = "0.36.0"
         context["lab_auto_pulumi_version"] = "0.1.16"
         context["ariadne_codegen_version"] = "0.15.2"
         context["pytest_mock_version"] = "3.15.0"

@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from backend_api import strawberry_router
 from backend_api.app_def import app
@@ -14,7 +16,7 @@ def test_When_expected_cdn_not_found_in_graphiql_html__Then_error(mocker: Mocker
         autospec=True,
         return_value="blah",
     )
-    with pytest.raises(CdnUrlNotFoundInHtmlError, match="react.production.min.js"):
+    with pytest.raises(CdnUrlNotFoundInHtmlError, match=re.escape("react.production.min.js")):
         _ = strawberry_router.generate_offline_graphiql_html()
 
 
