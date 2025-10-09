@@ -3,6 +3,7 @@ repo_name: baz
 repo_org_name: foo
 is_open_source: true
 description: Testing deploy as executable
+install_claude_cli: true
 ssh_port_number: 54322
 use_windows_in_ci: true
 install_aws_ssm_port_forwarding_plugin: false
