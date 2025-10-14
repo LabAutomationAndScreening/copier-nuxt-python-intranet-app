@@ -55,7 +55,7 @@
     "eslint-plugin-vitest": "^0.5.4",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
     "graphql": "^16.10.0",
     "graphql-tag": "^2.12.6",{% endraw %}{% endif %}{% raw %}
-    "happy-dom": "^17.4.4",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
+    "happy-dom": "{% endraw %}{{ happy_dom_version }}{% raw %}",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
     "mock-apollo-client": "^1.3.1",{% endraw %}{% endif %}{% raw %}
     "playwright": "{% endraw %}{{ playwright_version }}{% raw %}",
     "playwright-core": "{% endraw %}{{ playwright_version }}{% raw %}",
