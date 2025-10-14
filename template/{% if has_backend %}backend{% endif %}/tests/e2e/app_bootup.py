@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_COMPOSE_FILE = Path(__file__).parent.parent.parent.parent / "docker-compose.yaml"
 
 
-def wait_for_service_to_be_healthy(*, max_retries: int = 15, retry_delay: int = 2, compose_file: str):
+def wait_for_service_to_be_healthy(*, max_retries: int = 15, retry_delay: int = 2, compose_file: Path):
     for attempt in range(max_retries):
         try:
             # Get container health status using docker ps
@@ -23,7 +23,7 @@ def wait_for_service_to_be_healthy(*, max_retries: int = 15, retry_delay: int = 
                     "docker",
                     "compose",
                     "--file",
-                    compose_file,
+                    str(compose_file),
                     "ps",
                     "--format",
                     "json",
@@ -87,7 +87,7 @@ def start_compose(*, compose_file: Path = DEFAULT_COMPOSE_FILE):
         check=True,
         timeout=20,
     )
-    wait_for_service_to_be_healthy(compose_file=str(compose_file))
+    wait_for_service_to_be_healthy(compose_file=compose_file)
 
 
 def stop_compose(*, compose_file: Path = DEFAULT_COMPOSE_FILE):
