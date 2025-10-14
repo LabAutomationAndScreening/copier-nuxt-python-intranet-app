@@ -87,7 +87,12 @@ def start_compose(*, compose_file: Path = DEFAULT_COMPOSE_FILE):
         check=True,
         timeout=20,
     )
-    wait_for_service_to_be_healthy(compose_file=compose_file)
+    try:
+        wait_for_service_to_be_healthy(compose_file=compose_file)
+    except Exception:
+        logger.exception("Failed to verify service health, cleaning up...")
+        stop_compose(compose_file=compose_file)
+        raise
 
 
 def stop_compose(*, compose_file: Path = DEFAULT_COMPOSE_FILE):
