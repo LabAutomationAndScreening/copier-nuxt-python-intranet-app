@@ -70,6 +70,7 @@ class ContextUpdater(ContextHook):
         context["vue_test_utils_version"] = "^2.4.6"
         context["nuxt_test_utils_version"] = "3.19.1"
         context["vue_eslint_parser_version"] = "^10.1.3"
+        context["happy_dom_version"] = "^20.0.0"
 
         context["gha_checkout"] = "v5.0.0"
         context["gha_setup_python"] = "v6.0.0"
