@@ -28,7 +28,7 @@ class ContextUpdater(ContextHook):
         context["pulumi_okta_version"] = "6.0.0"
         context["boto3_version"] = "1.40.51"
         context["ephemeral_pulumi_deploy_version"] = "0.0.5"
-        context["pydantic_version"] = "2.12.0"
+        context["pydantic_version"] = "2.12.2"
         context["pyinstaller_version"] = "6.16.0"
         context["setuptools_version"] = "80.7.1"
         context["strawberry_graphql_version"] = "0.283.3"
@@ -37,7 +37,7 @@ class ContextUpdater(ContextHook):
         context["uvicorn_version"] = "0.37.0"
         context["lab_auto_pulumi_version"] = "0.1.17"
         context["ariadne_codegen_version"] = "0.15.2"
-        context["pytest_mock_version"] = "3.15.0"
+        context["pytest_mock_version"] = "3.15.1"
         context["uuid_utils_version"] = "0.11.0"
         context["syrupy_version"] = "5.0.0"
 
