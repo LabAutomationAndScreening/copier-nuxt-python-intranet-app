@@ -5,6 +5,7 @@ from backend_api.app_def import app
 from fastapi.testclient import TestClient
 from httpx import codes
 from pytest_mock import MockerFixture
+from syrupy.assertion import SnapshotAssertion
 
 
 def test_Given_healthy__When_healthcheck__Then_version_in_response():
@@ -59,3 +60,12 @@ def test_When_shutdown_route_called__Then_system_exit(mocker: MockerFixture):
             break
         time.sleep(0.001)
     mocked_os_exit.assert_called_once_with(0)
+
+
+def test_openapi_schema(snapshot_json: SnapshotAssertion):
+    client = TestClient(app)
+
+    response = client.get("/openapi.json")
+
+    assert response.status_code == codes.OK
+    assert response.json() == snapshot_json
