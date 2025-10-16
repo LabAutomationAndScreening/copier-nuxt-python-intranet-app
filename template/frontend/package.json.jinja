@@ -8,7 +8,8 @@
     "lint": "eslint . --fix --ext .vue,.ts,.js",
     "build": "nuxt build",
     "comment-about-dev-no-fork": "sometimes it seems needed, other times it seems to work with it...more info https://github.com/nuxt/cli/issues/181",
-    "dev": "nuxt dev --no-fork",
+    "dev": "nuxt dev --no-fork",{% endraw %}{% if has_backend %}{% raw %}
+    "openapi-codegen": "kiota generate -l typescript -d ../backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json -c BackendClient -o ./app/openapi_codegen --exclude-backward-compatible",{% endraw %}{% endif %}{% raw %}
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare && pnpm exec playwright-core install --only-shell chromium-headless-shell",
@@ -38,6 +39,7 @@
     "@graphql-codegen/typescript-vue-apollo": "^4.1.2",
     "@graphql-tools/mock": "^9.0.22",
     "@graphql-tools/schema": "^10.0.23",{% endraw %}{% endif %}{% raw %}
+    "@microsoft/kiota-bundle": "{% endraw %}{{ node_kiota_bundle_version }}{% raw %}",
     "@nuxt/eslint": "{% endraw %}{{ nuxt_eslint_version }}{% raw %}",
     "@nuxt/schema": "{% endraw %}{{ nuxt_version }}{% raw %}",
     "@nuxt/test-utils": "{% endraw %}{{ nuxt_test_utils_version }}{% raw %}",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
