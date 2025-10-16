@@ -30,7 +30,7 @@ class SingleFileJsonSnapshot(SingleTextFileSnapshot):
         matcher: PropertyMatcher | None = None,
     ) -> SerializedData:
         filtered_data = super().serialize(
-            pretty_data,
+            data,
             exclude=exclude,
             include=include,
             matcher=matcher,
