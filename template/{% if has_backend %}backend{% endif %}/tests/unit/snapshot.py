@@ -29,13 +29,13 @@ class SingleFileJsonSnapshot(SingleTextFileSnapshot):
         include: PropertyFilter | None = None,
         matcher: PropertyMatcher | None = None,
     ) -> SerializedData:
-        pretty_data = json.dumps(data, indent=2) + "\n"
-        return super().serialize(
+        filtered_data = super().serialize(
             pretty_data,
             exclude=exclude,
             include=include,
             matcher=matcher,
         )
+        return json.dumps(filtered_data, indent=2) + "\n"
 
 
 @pytest.fixture
