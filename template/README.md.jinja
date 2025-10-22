@@ -50,6 +50,11 @@ uv --directory=backend run uvicorn src.entrypoint:app --reload --host '::' --por
 Start the app using the entrypoint to be able to supply CLI options and log to file (running by default on port {% endraw %}{{ backend_deployed_port_number }}{% raw %}):
 ```bash
 uv --directory=backend run python src/entrypoint.py
+```
+
+Update the codegen for the OpenAPI calls:
+```bash
+kiota generate -l python -c BackendClient -n client -d ./tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json -o ./tests/e2e/openapi_codegen --exclude-backward-compatible
 ```{% endraw %}{% endif %}{% if backend_uses_graphql %}{% raw %}
 
 To regenerate the GraphQL client code for the E2E test suite, run:
