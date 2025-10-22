@@ -45,25 +45,25 @@ class TestExceptionHandlers:
     def test_Given_calling_route_that_triggers_http_error__Then_uuid_in_log_and_response_and_response_contains_details(
         self,
     ):
-        expected_route = "/api/this-is-not-a-real-route"
-        response = self.client.get(expected_route)
+        expected_route = "/api/healthcheck"
+        response = self.client.delete(expected_route)
 
         self.spied_uuid_generator.assert_called_once()
         expected_uuid = str(self.spied_uuid_generator.spy_return)
-        assert response.status_code == codes.NOT_FOUND
+        assert response.status_code == codes.METHOD_NOT_ALLOWED
         assert response.headers["Content-Type"] == "application/problem+json"
         response_json = response.json()
         assert response_json["type"] == "about:blank"
         assert response_json["title"] == "HTTP Error"
-        assert response_json["status"] == codes.NOT_FOUND
-        assert response_json["detail"] == "Not Found"
+        assert response_json["status"] == codes.METHOD_NOT_ALLOWED
+        assert response_json["detail"] == "Method Not Allowed"
         assert response_json["errorType"] == "HTTPException"
         assert response_json["instance"] == f"urn:uuid:{expected_uuid}"
         self.spied_logger_warning.assert_called_once()
         log_call_args = self.spied_logger_warning.call_args[0]
         log_message = log_call_args[0]
         assert expected_uuid in log_message
-        assert "GET" in log_message
+        assert "DELETE" in log_message
         assert expected_route in log_message
 
     def test_Given_route_mocked_to_error_and_error_details_should_be_displayed__Then_uuid_in_log_and_response__and_details_in_response_and_log(

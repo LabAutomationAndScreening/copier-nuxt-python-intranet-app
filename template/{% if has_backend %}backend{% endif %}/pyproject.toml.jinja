@@ -26,7 +26,8 @@ dev = [
 
 
     # Managed by upstream template
-    "httpx>=0.28.1",{% endraw %}{% if backend_uses_graphql %}{% raw %}
+    "httpx>=0.28.1",
+    "microsoft-kiota-bundle>=1.9.7",{% endraw %}{% if backend_uses_graphql %}{% raw %}
     "ariadne-codegen[subscriptions]>={% endraw %}{{ ariadne_codegen_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
     "pyright>={% endraw %}{{ pyright_version }}{% raw %}",
     "syrupy>={% endraw %}{{ syrupy_version }}{% raw %}",
