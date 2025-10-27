@@ -141,16 +141,22 @@ def custom_openapi(app: FastAPI) -> dict[str, Any]:
 
             # Do NOT touch 422 if FastAPI added it, only add additional responses:
             # 500 should never be present in any defined route, so always add it
-            responses["500"] = {
-                "description": "Internal Server Error",
-                "content": problem_content(),
-            }
+            responses.setdefault(
+                "500",
+                {
+                    "description": "Internal Server Error",
+                    "content": problem_content(),
+                },
+            )
 
             # Optional but recommended for Kiota: add default catch-all.  'default' should never be present in a route, so no need to check for it before adding it
-            responses["default"] = {
-                "description": "Error",
-                "content": problem_content(),
-            }
+            responses.setdefault(
+                "default",
+                {
+                    "description": "Error",
+                    "content": problem_content(),
+                },
+            )
 
     app.openapi_schema = oas
     return oas
