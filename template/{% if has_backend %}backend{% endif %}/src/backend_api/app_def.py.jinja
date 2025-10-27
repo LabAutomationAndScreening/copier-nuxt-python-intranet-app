@@ -29,7 +29,6 @@ try:
         docs_url="/api-docs",
         static_url="/static/swagger",
     )
-    register_exception_handlers(app)
 except (  # pragma: no cover # This is just logging unexpected errors, and it's very challenging to explicitly unit test
     Exception
 ):
@@ -90,6 +89,7 @@ try:
     app.mount(
         "/", StaticFiles(directory=STATIC_DIR, html=True), name="static"
     )  # this needs to go after any defined routes so that the routes take precedence
+    register_exception_handlers(app)
 except (  # pragma: no cover # This is just logging unexpected errors, and it's very challenging to explicitly unit test
     Exception
 ):
