@@ -110,6 +110,8 @@ def custom_openapi(app: FastAPI) -> dict[str, Any]:
 
     This helps with codegen tools such as Kiota.
     """
+    if app.openapi_schema:  # don't regenerate the schema on subsequent API calls if it's already been done
+        return app.openapi_schema
     oas = get_openapi(title=app.title, version=app.version, routes=app.routes)
 
     # Ensure ProblemDetails schema exists
