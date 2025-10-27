@@ -24,7 +24,7 @@ class ProblemDetails(BaseModel):
     # The vendor extension lets Kiota use this as the exception message.
     detail: str = Field(..., json_schema_extra={"x-ms-primary-error-message": True})
     instance: str
-    error_type: str | None = Field(default=None, serialization_alias="errorType")
+    error_type: str | None = Field(default=None, alias="errorType")
 
 
 def should_show_error_details() -> bool:
