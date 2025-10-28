@@ -43,15 +43,14 @@ def _problem_dict(
     trace_id: str,
     exc_type: str,
 ) -> dict[str, Any]:
-    body: dict[str, Any] = {
-        "type": "about:blank",
-        "title": title,
-        "status": status,
-        "detail": detail,
-        "instance": f"urn:uuid:{trace_id}",
-        "errorType": exc_type,
-    }
-    return body
+    return ProblemDetails(
+        type="about:blank",
+        title=title,
+        status=status,
+        detail=detail,
+        instance=f"urn:uuid:{trace_id}",
+        errorType=exc_type,
+    ).model_dump(by_alias=True, mode="json")
 
 
 def handle_http_exception(request: Request, exc: Exception) -> JSONResponse:
