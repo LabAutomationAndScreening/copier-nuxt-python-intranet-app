@@ -1,6 +1,7 @@
 import time
 
 from backend_api import app_def
+from backend_api import fast_api_exception_handlers
 from backend_api.app_def import app
 from fastapi.testclient import TestClient
 from httpx import codes
@@ -62,10 +63,17 @@ def test_When_shutdown_route_called__Then_system_exit(mocker: MockerFixture):
     mocked_os_exit.assert_called_once_with(0)
 
 
-def test_openapi_schema(snapshot_json: SnapshotAssertion):
+def test_openapi_schema(snapshot_json: SnapshotAssertion, mocker: MockerFixture):
     client = TestClient(app)
+    spied_get_openapi = mocker.spy(fast_api_exception_handlers, "get_openapi")
 
     response = client.get("/openapi.json")
 
     assert response.status_code == codes.OK
     assert response.json() == snapshot_json
+    assert spied_get_openapi.call_count == 1
+
+    re_response = client.get("/openapi.json")
+    assert re_response.status_code == codes.OK
+    assert re_response.text == response.text
+    assert spied_get_openapi.call_count == 1  # still 1, not reinvoked

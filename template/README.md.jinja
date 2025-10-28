@@ -54,7 +54,7 @@ uv --directory=backend run python src/entrypoint.py
 
 Update the codegen for the OpenAPI calls:
 ```bash
-kiota generate -l python -c BackendClient -n client -d ./tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json -o ./tests/e2e/openapi_codegen --exclude-backward-compatible
+kiota generate -l python -c BackendClient -n client -d ./tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json -o ./tests/e2e/generated/open_api --exclude-backward-compatible --clean-output --additional-data false
 ```{% endraw %}{% endif %}{% if backend_uses_graphql %}{% raw %}
 
 To regenerate the GraphQL client code for the E2E test suite, run:
