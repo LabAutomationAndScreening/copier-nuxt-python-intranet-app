@@ -7,8 +7,8 @@ import sys
 import tempfile
 from pathlib import Path
 
-UV_VERSION = "0.9.5"
-PNPM_VERSION = "10.19.0"
+UV_VERSION = "0.9.6"
+PNPM_VERSION = "10.20.0"
 COPIER_VERSION = "9.10.3"
 COPIER_TEMPLATE_EXTENSIONS_VERSION = "0.3.3"
 PRE_COMMIT_VERSION = "4.3.0"
