@@ -49,8 +49,9 @@ jobs:
         uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
         with:
           name: frontend-test-coverage
-          path: frontend/.coverage/**
-          if-no-files-found: error{% endraw %}{% if has_backend %}{% raw %}
+          path: frontend/.coverage
+          if-no-files-found: error
+          include-hidden-files: true{% endraw %}{% if has_backend %}{% raw %}
 
   unit-test-backend:
     name: Unit Test Backend
