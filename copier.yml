@@ -181,6 +181,8 @@ frontend_deployed_port_number:
 
 _skip_if_exists:
     - backend/src/static/favicon.ico # TODO: figure out if there's another way to stop the template from overriding a changed icon
+    - backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json # snapshot file of the OpenAPI schema that will be overwritten by the repo as the schema evolves
+    - backend/tests/e2e/generated/open_api/** # when the repo regenerates the client code, we don't want Copier to overwrite it. the template is just dropping in a basic spec to support a healthcheck E2E test
 
 # Additional Settings
 _min_copier_version: "9.4"
