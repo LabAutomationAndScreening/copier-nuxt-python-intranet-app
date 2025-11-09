@@ -25,9 +25,9 @@ dev = [
     # Specific to this repository
 
 
-    # Managed by upstream template
+    # Managed by upstream template{% endraw %}{% if not backend_source_uses_kiota %}{% raw %}
     "httpx>=0.28.1",
-    "microsoft-kiota-bundle>=1.9.7",{% endraw %}{% if backend_uses_graphql %}{% raw %}
+    "microsoft-kiota-bundle>=1.9.7",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if backend_uses_graphql %}{% raw %}
     "ariadne-codegen[subscriptions]>={% endraw %}{{ ariadne_codegen_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
     "pyright>={% endraw %}{{ pyright_version }}{% raw %}",
     "syrupy>={% endraw %}{{ syrupy_version }}{% raw %}",
