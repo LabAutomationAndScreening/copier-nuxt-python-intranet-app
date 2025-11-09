@@ -100,6 +100,7 @@ backend_source_uses_kiota:
     type: bool
     help: Will the backend make calls to an external API using Kiota-generated client code?
     default: no
+    when: "{{ has_backend }}"
 
 backend_deployed_port_number:
     type: int
