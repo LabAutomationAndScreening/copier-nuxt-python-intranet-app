@@ -16,7 +16,7 @@ dependencies = [
     "strawberry-graphql>={% endraw %}{{ strawberry_graphql_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
     "pydantic>={% endraw %}{{ pydantic_version }}{% raw %}",
     "uvicorn>={% endraw %}{{ uvicorn_version }}{% raw %}",
-    "structlog>={% endraw %}{{ structlog_version }}{% raw %}",{% endraw %}{% if not backend_source_uses_kiota %}{% raw %}
+    "structlog>={% endraw %}{{ structlog_version }}{% raw %}",{% endraw %}{% if backend_source_uses_kiota %}{% raw %}
     "httpx>={% endraw %}{{ httpx_version }}{% raw %}",
     "microsoft-kiota-bundle>={% endraw %}{{ python_kiota_bundle_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
 ]
