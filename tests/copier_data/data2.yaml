@@ -24,6 +24,7 @@ aws_region_for_stack: us-west-1
 # Data added based on the specifics of this template
 human_friendly_app_name: Amazing App
 has_backend: false
+backend_source_uses_kiota: false
 backend_deployed_port_number: 4001
 backend_uses_graphql: false
 deploy_as_executable: false

@@ -96,6 +96,11 @@ has_backend:
     help: Does this project have a backend?
     default: yes
 
+backend_source_uses_kiota:
+    type: bool
+    help: Will the backend make calls to an external API using Kiota-generated client code?
+    default: no
+
 backend_deployed_port_number:
     type: int
     help: What port should the backend be deployed to?

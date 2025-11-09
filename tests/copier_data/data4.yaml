@@ -19,6 +19,7 @@ aws_region_for_stack: us-east-2
 # Data added based on the specifics of this template
 human_friendly_app_name: Destroyer of Worlds
 has_backend: true
+backend_source_uses_kiota: false
 backend_deployed_port_number: 4020
 backend_uses_graphql: false
 deploy_as_executable: true
