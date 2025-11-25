@@ -2,7 +2,7 @@
 [![Copier](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/copier-org/copier/master/img/badge/badge-black.json)](https://github.com/copier-org/copier)
 [![Actions status](https://www.github.com/LabAutomationAndScreening/copier-nuxt-python-intranet-app/actions/workflows/ci.yaml/badge.svg?branch=main)](https://www.github.com/LabAutomationAndScreening/copier-nuxt-python-intranet-app/actions)
 [![Open in Dev Containers](https://img.shields.io/static/v1?label=Dev%20Containers&message=Open&color=blue)](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://www.github.com/LabAutomationAndScreening/copier-nuxt-python-intranet-app)
-
+[![OpenIssues](http://isitmaintained.com/badge/open/LabAutomationAndScreening/copier-nuxt-python-intranet-app.svg)](http://isitmaintained.com/project/LabAutomationAndScreening/copier-nuxt-python-intranet-app)
 
 # Usage
 To create a new repository using this template:
