@@ -31,7 +31,7 @@ class ContextUpdater(ContextHook):
         context["pydantic_version"] = "2.12.4"
         context["pyinstaller_version"] = "6.16.0"
         context["setuptools_version"] = "80.7.1"
-        context["strawberry_graphql_version"] = "0.284.1"
+        context["strawberry_graphql_version"] = "0.287.0"
         context["fastapi_version"] = "0.121.0"
         context["fastapi_offline_version"] = "1.7.4"
         context["uvicorn_version"] = "0.38.0"
@@ -45,7 +45,7 @@ class ContextUpdater(ContextHook):
         context["python_kiota_bundle_version"] = "1.9.7"
 
         context["node_version"] = "24.7.0"
-        context["nuxt_ui_version"] = "^4.1.0"
+        context["nuxt_ui_version"] = "^4.2.1"
         context["nuxt_version"] = "^4.2.0"
         context["nuxt_icon_version"] = "^2.1.0"
         context["typescript_version"] = "^5.9.3"
@@ -61,7 +61,7 @@ class ContextUpdater(ContextHook):
         context["nuxt_eslint_version"] = "^1.10.0"
         context["zod_version"] = "^4.1.12"
         context["zod_from_json_schema_version"] = "^0.5.1"
-        context["types_node_version"] = "^24.10.0"
+        context["types_node_version"] = "^24.10.1"
         context["nuxt_apollo_version"] = "5.0.0-alpha.15"
         context["graphql_codegen_cli_version"] = "^6.0.0"
         context["graphql_codegen_typescript_version"] = "^5.0.0"
@@ -103,6 +103,8 @@ class ContextUpdater(ContextHook):
         context["py312_version"] = "3.12.7"
         context["py313_version"] = "3.13.2"
         context["py314_version"] = "3.14.0"
+
+        context["kiota_cli_version"] = "1.29"
 
         context["debian_release_name"] = "bookworm"
         context["alpine_image_version"] = "3.22"
