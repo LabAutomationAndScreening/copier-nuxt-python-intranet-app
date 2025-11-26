@@ -9,7 +9,7 @@
     "build": "nuxt build",
     "comment-about-dev-no-fork": "sometimes it seems needed, other times it seems to work with it...more info https://github.com/nuxt/cli/issues/181",
     "dev": "nuxt dev --no-fork",{% endraw %}{% if has_backend %}{% raw %}
-    "openapi-codegen": ""docker run --network host -v ./app/generated/open-api/backend:/app/output -v $PWD/../backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json:/app/openapi.json mcr.microsoft.com/openapi/kiota:1.29.0 generate -l python -c BackendClient -n client -d openapi.json --exclude-backward-compatible --clean-output --additional-data false && python3 ./kiota_nullable_fixer.py",{% endraw %}{% endif %}{% raw %}
+    "openapi-codegen": "docker run --network host -v ./app/generated/open-api/backend:/app/output -v $PWD/../backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json:/app/openapi.json mcr.microsoft.com/openapi/kiota:1.29.0 generate -l python -c BackendClient -n client -d openapi.json --exclude-backward-compatible --clean-output --additional-data false && python3 ./kiota_nullable_fixer.py",{% endraw %}{% endif %}{% raw %}
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare && pnpm exec playwright-core install --only-shell chromium-headless-shell",
