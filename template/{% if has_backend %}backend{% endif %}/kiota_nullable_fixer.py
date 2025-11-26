@@ -207,10 +207,10 @@ def main() -> None:
     # Validate models directory
     models_dir = Path(args.kiota_dir) / "models"
     if not models_dir.exists():
-        print(f"Error: Models directory not found: {models_dir}")
+        print(f"Error: Models directory not found: {models_dir.absolute()}")
         sys.exit(1)
     if not models_dir.is_dir():
-        print(f"Error: Models path is not a directory: {models_dir}")
+        print(f"Error: Models path is not a directory: {models_dir.absolute()}")
         sys.exit(1)
 
     # Load OpenAPI schema
