@@ -24,12 +24,6 @@ Start the development server on `http://localhost:3000`:
 pnpm --dir=frontend dev
 ```
 
-To run codegen for a backend with an OpenAPI specification, you'll first need to install the Kiota CLI tool (TODO: consider moving this into the devcontainer setup):
-
-```bash
-dotnet tool install --global Microsoft.OpenApi.Kiota
-```
-
 Build the application for production:
 
 ```bash
@@ -52,9 +46,9 @@ Start the app using the entrypoint to be able to supply CLI options and log to f
 uv --directory=backend run python src/entrypoint.py
 ```
 
-Update the codegen for the OpenAPI calls:
+To (re)generate the client code this app for use in E2E tests of the backend:
 ```bash
-kiota generate -l python -c BackendClient -n client -d ./tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json -o ./tests/e2e/generated/open_api --exclude-backward-compatible --clean-output --additional-data false
+mkdir -p ./backend/tests/e2e/generated/open_api/backend && docker run --network host -v ./backend/tests/e2e/generated/open_api/backend:/app/output -v ./backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json:/app/openapi.json mcr.microsoft.com/openapi/kiota:{% endraw %}{{ kiota_cli_version }}{% raw %} generate -l python -c BackendClient -n client -d openapi.json --exclude-backward-compatible --clean-output --additional-data false && uv --directory=backend run python kiota_nullable_fixer.py ./tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json ./tests/e2e/generated/open_api/backend
 ```{% endraw %}{% endif %}{% if backend_uses_graphql %}{% raw %}
 
 To regenerate the GraphQL client code for the E2E test suite, run:

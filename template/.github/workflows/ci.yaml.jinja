@@ -30,6 +30,7 @@ jobs:
 
   unit-test-frontend:
     name: Unit Test Frontend
+    timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     needs: [ lint ]
     steps:
@@ -55,6 +56,7 @@ jobs:
 
   unit-test-backend:
     name: Unit Test Backend
+    timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     needs: [ lint ]
     strategy:
       matrix:
@@ -93,6 +95,7 @@ jobs:
       repository: {% endraw %}{{ frontend_ecr_base_url }}{% raw %}
       image_name: {% endraw %}{{ frontend_image_name }}{% raw %}
 {% endraw %}{% if push_to_ecr %}{% raw %}      push-role-name: {% endraw %}{{ frontend_ecr_push_role_name }}{% endif %}{% else %}{% raw %}
+    timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     steps:
       - name: Checkout code
@@ -134,6 +137,7 @@ jobs:
         os:
           - "{% endraw %}{{ gha_linux_runner }}{% raw %}"{% endraw %}{% if use_windows_in_ci %}
           - {{ gha_windows_runner }}{% endif %}{% raw %}
+    timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -173,6 +177,7 @@ jobs:
 
   test-compiled-frontend:
     name: Test the compiled Frontend
+    timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     needs: [ build-frontend{% endraw %}{% if has_backend %}{% raw %}, build-backend{% endraw %}{% endif %}{% raw %} ]
     steps:
@@ -189,6 +194,7 @@ jobs:
 
   e2e-test:
     name: End-to-end Testing
+    timeout-minutes: {% endraw %}{{ gha_long_timeout_minutes }}{% raw %}
     strategy:
       matrix:
         os:
@@ -237,6 +243,7 @@ jobs:
 
 {% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}  package-images:
     name: Package Images
+    timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     needs: [ build-frontend{% endraw %}{% if has_backend %}{% raw %}, build-backend{% endraw %}{% endif %}{% raw %} ]
     steps:
@@ -268,6 +275,7 @@ jobs:
         if-no-files-found: error{% endraw %}{% endif %}{% raw %}
 
   required-check:
+    timeout-minutes: {% endraw %}{{ gha_short_timeout_minutes }}{% raw %}
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     needs:
       - get-values{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}

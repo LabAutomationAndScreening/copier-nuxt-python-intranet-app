@@ -18,7 +18,7 @@ OPENAPI_SCHEMA = (
     / "test_openapi_schema.json"
 )
 assert OPENAPI_SCHEMA.exists() is True
-MODELS_DIR = Path(__file__).parent / "app" / "generated" / "open-api" / "models"
+MODELS_DIR = Path(__file__).parent / "app" / "generated" / "open-api" / "backend" / "models"
 assert MODELS_DIR.exists() is True
 
 

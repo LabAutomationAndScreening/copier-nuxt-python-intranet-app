@@ -1,4 +1,6 @@
-{% raw %}services:{% endraw %}{% if has_backend %}{% raw %}
+{% raw %}# aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin {% endraw %}{{ frontend_ecr_base_url }}{% raw %}
+# for when running unit tests to create VCRpy cassettes and you don't want the app itself running (TODO: consider using docker compose profiles instead): docker-compose up --scale backend=0 --scale frontend=0
+services:{% endraw %}{% if has_backend %}{% raw %}
   backend:
     build:
       context: ./backend
@@ -8,6 +10,8 @@
       - "{% endraw %}{{ backend_deployed_port_number }}{% raw %}:{% endraw %}{{ backend_deployed_port_number }}{% raw %}"
     environment:
       API_PORT: {% endraw %}{{ backend_deployed_port_number }}{% raw %}
+    volumes:
+      - ./docker-compose-logs:/app/logs
     restart: unless-stopped
     network_mode: host
 {% endraw %}{% endif %}{% raw %}
