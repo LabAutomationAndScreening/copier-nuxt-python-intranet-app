@@ -100,15 +100,15 @@ class ContextUpdater(ContextHook):
         context["gha_long_timeout_minutes"] = "15"
         context["gha_xlong_timeout_minutes"] = "45"
 
-        context["py312_version"] = "3.12.7"
-        context["py313_version"] = "3.13.2"
-        context["py314_version"] = "3.14.0"
-
-        context["kiota_cli_version"] = "1.29.0"
-
         context["debian_release_name"] = "bookworm"
         context["alpine_image_version"] = "3.22"
         context["nginx_image_version"] = "1.29.1"
+
+        context["kiota_cli_version"] = "1.29.0"
+
+        context["py312_version"] = "3.12.7"
+        context["py313_version"] = "3.13.2"
+        context["py314_version"] = "3.14.0"
 
         # Kludge to be able to help symlinked jinja files in the child and grandchild templates
         context["template_uses_vuejs"] = True
