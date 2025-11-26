@@ -104,7 +104,7 @@ class ContextUpdater(ContextHook):
         context["py313_version"] = "3.13.2"
         context["py314_version"] = "3.14.0"
 
-        context["kiota_cli_version"] = "1.29"
+        context["kiota_cli_version"] = "1.29.0"
 
         context["debian_release_name"] = "bookworm"
         context["alpine_image_version"] = "3.22"
