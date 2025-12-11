@@ -13,7 +13,7 @@ def vcr_config() -> dict[str, list[str]]:
     if (
         os.name == "nt"
     ):  # on Windows (in CI), the network calls happen at a lower level socket connection even to our FastAPI test client, and can get automatically blocked. This disables that automatic network guard, which isn't great...but since it's still in place on Linux, any actual problems would hopefully get caught before pushing to CI.
-        allowed_hosts = ["127.0.0.1", "localhost", "::1"]
+        allowed_hosts.extend(["127.0.0.1", "localhost", "::1"])
     return {"allowed_hosts": allowed_hosts}
 
 
@@ -54,6 +54,10 @@ def pytest_recording_configure(
         for header in headers_to_filter:
             if header in headers:
                 del headers[header]
+            if (
+                header.lower() in headers
+            ):  # some headers are lowercased by the server in the response (e.g. Date, Server)
+                del headers[header.lower()]
         return response
 
     vcr.before_record_response = before_record_response
