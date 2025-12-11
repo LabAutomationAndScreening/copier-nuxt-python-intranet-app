@@ -34,7 +34,9 @@ ENV BACKEND_HOST=host.docker.internal \
     FRONTEND_PORT={% endraw %}{{ frontend_deployed_port_number }}{% raw %}
 
 # Using port 80 caused problems running K8s on windows hosts, so using a higher port number
-EXPOSE {% endraw %}{{ frontend_deployed_port_number }}{% raw %}
+EXPOSE 3000
 
-# Dynamically adjust the NGINX config based on the environmental variables, create a txt version that's easily viewable in client browsers, then start Nginx in foreground
-CMD ["sh", "-c", "envsubst '$BACKEND_HOST $BACKEND_PORT $FRONTEND_PORT' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && ln -sf /etc/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf.txt && exec nginx -g 'daemon off;'"]{% endraw %}
+HEALTHCHECK --interval=5s --timeout=1s --retries=20 --start-period=10s \
+  CMD sh -c 'wget -q -O /dev/null http://127.0.0.1:${FRONTEND_PORT}/ || exit 1'
+
+# Dynamically adjust the NGINX config based on the environmental variables, create a txt version that's easily viewable in client browsers, then start Nginx in foregroundCMD ["sh", "-c", "envsubst '$BACKEND_HOST $BACKEND_PORT $FRONTEND_PORT' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && ln -sf /etc/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf.txt && exec nginx -g 'daemon off;'"]{% endraw %}
