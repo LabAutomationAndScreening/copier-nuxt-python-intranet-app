@@ -12,13 +12,13 @@ dependencies = [
     # Managed by upstream template
     "fastapi>={% endraw %}{{ fastapi_version }}{% raw %}",
     "fastapi-offline>={% endraw %}{{ fastapi_offline_version }}{% raw %}",
-    "uuid-utils>={% endraw %}{{ uuid_utils_version }}{% raw %}",{% endraw %}{% if backend_uses_graphql %}{% raw %}
+    "uuid-utils{% endraw %}{{ uuid_utils_version }}{% raw %}",{% endraw %}{% if backend_uses_graphql %}{% raw %}
     "strawberry-graphql>={% endraw %}{{ strawberry_graphql_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
     "pydantic>={% endraw %}{{ pydantic_version }}{% raw %}",
     "uvicorn>={% endraw %}{{ uvicorn_version }}{% raw %}",
     "structlog>={% endraw %}{{ structlog_version }}{% raw %}",{% endraw %}{% if backend_source_uses_kiota %}{% raw %}
     "httpx>={% endraw %}{{ httpx_version }}{% raw %}",
-    "microsoft-kiota-bundle>={% endraw %}{{ python_kiota_bundle_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
+    "microsoft-kiota-bundle{% endraw %}{{ python_kiota_bundle_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
 ]
 
 
@@ -29,17 +29,17 @@ dev = [
 
     # Managed by upstream template{% endraw %}{% if not backend_source_uses_kiota %}{% raw %}
     "httpx>={% endraw %}{{ httpx_version }}{% raw %}",
-    "microsoft-kiota-bundle>={% endraw %}{{ python_kiota_bundle_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if backend_uses_graphql %}{% raw %}
-    "ariadne-codegen[subscriptions]>={% endraw %}{{ ariadne_codegen_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
+    "microsoft-kiota-bundle{% endraw %}{{ python_kiota_bundle_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if backend_uses_graphql %}{% raw %}
+    "ariadne-codegen[subscriptions]{% endraw %}{{ ariadne_codegen_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
     "pyright>={% endraw %}{{ pyright_version }}{% raw %}",
     "syrupy>={% endraw %}{{ syrupy_version }}{% raw %}",
     "pytest>={% endraw %}{{ pytest_version }}{% raw %}",
     "pytest-cov>={% endraw %}{{ pytest_cov_version }}{% raw %}",
     "pytest-randomly>={% endraw %}{{ pytest_randomly_version }}{% raw %}",
     "pytest-mock>={% endraw %}{{ pytest_mock_version }}{% raw %}",
-    "pytest-asyncio>={% endraw %}{{ pytest_asyncio_version }}{% raw %}",{% endraw %}{% if backend_makes_api_calls %}{% raw %}
-    "pytest-recording>={% endraw %}{{ pytest_recording_version }}{% raw %}",
-    "vcrpy>={% endraw %}{{ vcrpy_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if deploy_as_executable %}{% raw %}
+    "pytest-asyncio{% endraw %}{{ pytest_asyncio_version }}{% raw %}",{% endraw %}{% if backend_makes_api_calls %}{% raw %}
+    "pytest-recording{% endraw %}{{ pytest_recording_version }}{% raw %}",
+    "vcrpy{% endraw %}{{ vcrpy_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if deploy_as_executable %}{% raw %}
     "pyinstaller>={% endraw %}{{ pyinstaller_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
 ]{% endraw %}{% if backend_uses_graphql %}{% raw %}
 
