@@ -284,7 +284,7 @@ repos:
         files: src/.+\.py$
         exclude: |
           (?x)^(
-              .*/graphql_codegen/.*|
+              .*/generated/graphql/.*|
               .*/generated/open[-_]api/.*|
           )$
       - id: ruff
@@ -293,13 +293,13 @@ repos:
         files: tests?/.+\.py$
         exclude: |
           (?x)^(
-              .*/graphql_codegen/.*|
+              .*/generated/graphql/.*|
               .*/generated/open[-_]api/.*|
           )$
       - id: ruff-format
         exclude: |
           (?x)^(
-              .*/graphql_codegen/.*|
+              .*/generated/graphql/.*|
               .*/generated/open[-_]api/.*|
           )${% endraw %}{% if has_backend %}{% raw %}
 
@@ -310,7 +310,7 @@ repos:
         name: pylint
         exclude: |
           (?x)^(
-              .*/graphql_codegen/.*|
+              .*/generated/graphql/.*|
               .*/generated/open[-_]api/.*|
           )$
         args:
@@ -325,7 +325,7 @@ repos:
         files: '.+\.py$'
         exclude: |
           (?x)^(
-              .*/graphql_codegen/.*|
+              .*/generated/graphql/.*|
               .*/generated/open[-_]api/.*|
           )$
         # don't pass filenames else the command line sees them twice
