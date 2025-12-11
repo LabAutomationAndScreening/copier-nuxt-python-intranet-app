@@ -96,11 +96,17 @@ has_backend:
     help: Does this project have a backend?
     default: yes
 
+backend_makes_api_calls:
+    type: bool
+    help: Will the backend make calls to an external API?
+    default: no
+    when: "{{ has_backend }}"
+
 backend_source_uses_kiota:
     type: bool
     help: Will the backend make calls to an external API using Kiota-generated client code?
     default: no
-    when: "{{ has_backend }}"
+    when: "{{ has_backend and backend_makes_api_calls }}"
 
 backend_deployed_port_number:
     type: int
