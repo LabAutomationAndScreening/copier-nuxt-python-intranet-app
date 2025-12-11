@@ -7,6 +7,7 @@ install_claude_cli: true
 ssh_port_number: 54321
 use_windows_in_ci: true
 install_aws_ssm_port_forwarding_plugin: false
+configure_vcrpy: false
 
 node_version: 22.14.0
 
@@ -24,6 +25,7 @@ aws_region_for_stack: us-west-1
 # Data added based on the specifics of this template
 human_friendly_app_name: Amazing App
 has_backend: false
+backend_makes_api_calls: true
 backend_source_uses_kiota: false
 backend_deployed_port_number: 4001
 backend_uses_graphql: false

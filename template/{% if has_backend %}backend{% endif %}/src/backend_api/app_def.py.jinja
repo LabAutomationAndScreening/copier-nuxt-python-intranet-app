@@ -4,6 +4,8 @@ import threading
 import time
 from importlib.metadata import version
 from pathlib import Path
+from typing import Any
+from typing import override
 
 from fastapi import Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -47,6 +49,20 @@ class ShutdownResponse(BaseModel):
     )
 
 
+class NoCacheStaticFiles(StaticFiles):
+    """Set cache control headers to prevent caching."""
+
+    @override
+    def file_response(  # pragma: no cover # This generally just gets hit by E2E tests
+        self, *args: Any, **kwargs: Any
+    ) -> Any:
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
+
+
 @app.get("/api/healthcheck", summary="Check API health", tags=["system"])
 def healthcheck(
     *,
@@ -87,7 +103,7 @@ try:
     graphql_app = OfflineGraphQLRouter(schema)
     app.include_router(graphql_app, prefix="/api/graphql"){% endraw %}{% endif %}{% raw %}
     app.mount(
-        "/", StaticFiles(directory=STATIC_DIR, html=True), name="static"
+        "/", NoCacheStaticFiles(directory=STATIC_DIR, html=True), name="static"
     )  # this needs to go after any defined routes so that the routes take precedence
     register_exception_handlers(app)
 except (  # pragma: no cover # This is just logging unexpected errors, and it's very challenging to explicitly unit test

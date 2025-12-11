@@ -21,13 +21,18 @@ class TestExceptionHandlers:
         self.spied_uuid_generator = mocker.spy(fast_api_exception_handlers, "uuid7")
         self.spied_logger_warning = mocker.spy(fast_api_exception_handlers.logger, "warning")
 
-    def test_Given_malformed_input_to_api_route__Then_uuid_in_log_and_response_and_response_contains_details(self):
+    def test_Given_malformed_input_to_api_route__Then_uuid_in_log_and_response_and_response_contains_details_and_cors_headers(
+        self,
+    ):
         response = self.client.get("/api/healthcheck?prepend_v=not_a_bool")
 
         self.spied_uuid_generator.assert_called_once()
         expected_uuid = str(self.spied_uuid_generator.spy_return)
         assert response.status_code == codes.UNPROCESSABLE_ENTITY
         assert response.headers["Content-Type"] == "application/problem+json"
+        assert "Access-Control-Allow-Origin" in response.headers
+        assert "Access-Control-Allow-Credentials" in response.headers
+
         response_json = response.json()
         assert response_json["type"] == "about:blank"
         assert response_json["title"] == "Validation Error"
@@ -42,7 +47,7 @@ class TestExceptionHandlers:
         assert "GET" in log_message
         assert "/api/healthcheck" in log_message
 
-    def test_Given_calling_route_that_triggers_http_error__Then_uuid_in_log_and_response_and_response_contains_details(
+    def test_Given_calling_route_that_triggers_http_error__Then_uuid_in_log_and_response_and_response_contains_details_and_cors_headers(
         self,
     ):
         expected_route = "/api/healthcheck"
@@ -52,6 +57,8 @@ class TestExceptionHandlers:
         expected_uuid = str(self.spied_uuid_generator.spy_return)
         assert response.status_code == codes.METHOD_NOT_ALLOWED
         assert response.headers["Content-Type"] == "application/problem+json"
+        assert "Access-Control-Allow-Origin" in response.headers
+        assert "Access-Control-Allow-Credentials" in response.headers
         response_json = response.json()
         assert response_json["type"] == "about:blank"
         assert response_json["title"] == "HTTP Error"
@@ -66,7 +73,7 @@ class TestExceptionHandlers:
         assert "DELETE" in log_message
         assert expected_route in log_message
 
-    def test_Given_route_mocked_to_error_and_error_details_should_be_displayed__Then_uuid_in_log_and_response__and_details_in_response_and_log(
+    def test_Given_route_mocked_to_error_and_error_details_should_be_displayed__Then_uuid_in_log_and_response__and_details_in_response_and_log__and_cors_headers_in_response(
         self,
     ):
         expected_route = "/api/healthcheck"
@@ -90,6 +97,8 @@ class TestExceptionHandlers:
         expected_uuid = str(self.spied_uuid_generator.spy_return)
         assert response.status_code == codes.INTERNAL_SERVER_ERROR
         assert response.headers["Content-Type"] == "application/problem+json"
+        assert "Access-Control-Allow-Origin" in response.headers
+        assert "Access-Control-Allow-Credentials" in response.headers
         response_json = response.json()
         assert response_json["type"] == "about:blank"
         assert response_json["title"] == "Internal Server Error"

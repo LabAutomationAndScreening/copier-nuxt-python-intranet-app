@@ -55,7 +55,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5.0.0
+        uses: actions/checkout@v6.0.1
         with:
           persist-credentials: false
 
@@ -67,7 +67,7 @@ jobs:
         uses: ./.github/actions/install_deps
         with:
           python-version: ${{ matrix.python-version }}
-          node-version: 24.7.0
+          node-version: 24.11.1
           install-deps: false
 
       - name: Instantiate copier template
@@ -113,7 +113,7 @@ jobs:
         timeout-minutes: 8  # this is the amount of time this action will wait to attempt to acquire the mutex lock before failing, e.g. if other jobs are queued up in front of it
 
       - name: Cache Pre-commit hooks
-        uses: actions/cache@v4.2.4
+        uses: actions/cache@v4.3.0
         env:
           cache-name: cache-pre-commit-hooks
         with:

@@ -1,13 +1,15 @@
-import logging
+{% raw %}import logging
 
 import pytest
 from backend_api import configure_logging
 from backend_api.app_def import app
 from fastapi import FastAPI
 
-from .snapshot import snapshot_json
+from .snapshot import snapshot_json{% endraw %}{% if configure_vcrpy %}{% raw %}
+from .vcrpy_fixtures import pytest_recording_configure
+from .vcrpy_fixtures import vcr_config{% endraw %}{% endif %}{% raw %}
 
-_imported_fixtures = (snapshot_json,)
+_imported_fixtures = (snapshot_json,{% endraw %}{% if configure_vcrpy %}{% raw %} pytest_recording_configure, vcr_config{% endraw %}{% endif %}{% raw %})
 logger = logging.getLogger(__name__)
 
 
@@ -32,4 +34,4 @@ def reset_app_state():
     current_attrs = _get_all_state_attributes(app)
     added_attrs = current_attrs - original_attrs
     for attr in added_attrs:
-        delattr(app.state, attr)
+        delattr(app.state, attr){% endraw %}

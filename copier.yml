@@ -43,6 +43,11 @@ install_aws_ssm_port_forwarding_plugin:
     help: Should the AWS SSM Port Forwarding Plugin be installed?
     default: no
 
+configure_vcrpy:
+    type: bool
+    help: Should VCRpy be configured for use during unit testing in Python?
+    default: no
+
 python_version:
     type: str
     help: What version of Python is used for development?
@@ -96,11 +101,17 @@ has_backend:
     help: Does this project have a backend?
     default: yes
 
+backend_makes_api_calls:
+    type: bool
+    help: Will the backend make calls to an external API?
+    default: no
+    when: "{{ has_backend }}"
+
 backend_source_uses_kiota:
     type: bool
     help: Will the backend make calls to an external API using Kiota-generated client code?
     default: no
-    when: "{{ has_backend }}"
+    when: "{{ has_backend and backend_makes_api_calls }}"
 
 backend_deployed_port_number:
     type: int
