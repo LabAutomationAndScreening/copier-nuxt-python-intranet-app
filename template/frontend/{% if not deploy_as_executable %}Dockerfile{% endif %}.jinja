@@ -34,7 +34,7 @@ ENV BACKEND_HOST=host.docker.internal \
     FRONTEND_PORT={% endraw %}{{ frontend_deployed_port_number }}{% raw %}
 
 # Using port 80 caused problems running K8s on windows hosts, so using a higher port number
-EXPOSE 3000
+EXPOSE {% endraw %}{{ frontend_deployed_port_number }}{% raw %}
 
 HEALTHCHECK --interval=5s --timeout=1s --retries=20 --start-period=10s \
   CMD sh -c 'wget -q -O /dev/null http://127.0.0.1:${FRONTEND_PORT}/ || exit 1'
