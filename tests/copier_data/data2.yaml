@@ -7,6 +7,7 @@ install_claude_cli: true
 ssh_port_number: 54321
 use_windows_in_ci: true
 install_aws_ssm_port_forwarding_plugin: false
+configure_vcrpy: false
 
 node_version: 22.14.0
 
