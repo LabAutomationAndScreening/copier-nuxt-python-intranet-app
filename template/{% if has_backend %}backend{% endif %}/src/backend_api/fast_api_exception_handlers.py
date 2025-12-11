@@ -6,6 +6,7 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi import Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -53,55 +54,86 @@ def _problem_dict(
     ).model_dump(by_alias=True, mode="json")
 
 
-def handle_http_exception(request: Request, exc: Exception) -> JSONResponse:
-    assert isinstance(exc, HTTPException), f"Expected HTTPException, got {type(exc)}"
-    error_trace_id = uuid7()
-    logger.warning(
-        f"{exc.__class__.__name__} on {request.method} {request.url.path} [urn:uuid:{error_trace_id}]",
-        exc_info=exc,
-    )
-    body = _problem_dict(
-        title="HTTP Error",
-        status=exc.status_code,
-        detail=str(exc.detail),
-        trace_id=str(error_trace_id),
-        exc_type=exc.__class__.__name__,
-    )
-    return JSONResponse(status_code=exc.status_code, content=body, media_type="application/problem+json")
+class ExceptionHandler:
+    def __init__(self, app: FastAPI):
+        super().__init__()
+        self._app = app
+        generator: CORSMiddleware | None = None
+        for m in app.user_middleware:
+            assert isinstance(m.cls, type), f"Expected middleware class to be a type, got {type(m.cls)}"
+            if issubclass(m.cls, CORSMiddleware):
+                generator = CORSMiddleware(app, **m.kwargs)
+            else:
+                continue  # pragma: no cover # not worth testing a longer list right now
 
+        if generator is None:
+            raise NotImplementedError("CORS Middleware not found, cannot set CORS headers on exception responses")
+        assert isinstance(
+            generator.simple_headers,  # pyright: ignore[reportUnknownMemberType] # that's why we're asserting
+            dict,
+        ), f"Expected simple_headers to be a dict, got {type(generator.simple_headers)}"
+        # TODO: consider if more dynamic headers would need to be used for some complex CORS setups
+        self._cors_headers: dict[str, str] = generator.simple_headers  # pyright: ignore[reportUnknownMemberType] # the simple_headers is not fully typed
 
-def handle_validation_exception(request: Request, exc: Exception) -> JSONResponse:
-    error_trace_id = uuid7()
-    logger.warning(
-        f"{exc.__class__.__name__} on {request.method} {request.url.path} [urn:uuid:{error_trace_id}]", exc_info=exc
-    )
-    body = _problem_dict(
-        title="Validation Error",
-        status=422,
-        detail=_short(str(exc)),
-        trace_id=str(error_trace_id),
-        exc_type=exc.__class__.__name__,
-    )
-    return JSONResponse(status_code=422, content=body, media_type="application/problem+json")
+    def handle_http_exception(self, request: Request, exc: Exception) -> JSONResponse:
+        assert isinstance(exc, HTTPException), f"Expected HTTPException, got {type(exc)}"
+        error_trace_id = uuid7()
+        logger.warning(
+            f"{exc.__class__.__name__} on {request.method} {request.url.path} [urn:uuid:{error_trace_id}]",
+            exc_info=exc,
+        )
+        body = _problem_dict(
+            title="HTTP Error",
+            status=exc.status_code,
+            detail=str(exc.detail),
+            trace_id=str(error_trace_id),
+            exc_type=exc.__class__.__name__,
+        )
+        return self._json_response(status_code=exc.status_code, body=body)
 
+    def register(self):
+        self._app.add_exception_handler(HTTPException, self.handle_http_exception)
+        self._app.add_exception_handler(RequestValidationError, self.handle_validation_exception)
+        self._app.add_exception_handler(Exception, self.handle_unhandled_exception)
 
-def handle_unhandled_exception(request: Request, exc: Exception) -> JSONResponse:
-    error_trace_id = uuid7()
-    logger.error(
-        f"Unhandled {exc.__class__.__name__} on {request.method} {request.url.path} [urn:uuid:{error_trace_id}]",
-        exc_info=exc,
-    )
+    def _json_response(self, *, status_code: int, body: dict[str, Any]) -> JSONResponse:
+        return JSONResponse(
+            status_code=status_code,
+            content=body,
+            media_type="application/problem+json",
+            headers=self._cors_headers,
+        )
 
-    msg = _short(str(exc)) if should_show_error_details() else "An unexpected error occurred."
-    body = _problem_dict(
-        title="Internal Server Error",
-        status=500,
-        detail=msg,
-        trace_id=str(error_trace_id),
-        exc_type=exc.__class__.__name__,
-    )
+    def handle_validation_exception(self, request: Request, exc: Exception) -> JSONResponse:
+        error_trace_id = uuid7()
+        logger.warning(
+            f"{exc.__class__.__name__} on {request.method} {request.url.path} [urn:uuid:{error_trace_id}]", exc_info=exc
+        )
+        body = _problem_dict(
+            title="Validation Error",
+            status=422,
+            detail=_short(str(exc)),
+            trace_id=str(error_trace_id),
+            exc_type=exc.__class__.__name__,
+        )
+        return self._json_response(status_code=422, body=body)
 
-    return JSONResponse(status_code=500, content=body, media_type="application/problem+json")
+    def handle_unhandled_exception(self, request: Request, exc: Exception) -> JSONResponse:
+        error_trace_id = uuid7()
+        logger.error(
+            f"Unhandled {exc.__class__.__name__} on {request.method} {request.url.path} [urn:uuid:{error_trace_id}]",
+            exc_info=exc,
+        )
+
+        msg = _short(str(exc)) if should_show_error_details() else "An unexpected error occurred."
+        body = _problem_dict(
+            title="Internal Server Error",
+            status=500,
+            detail=msg,
+            trace_id=str(error_trace_id),
+            exc_type=exc.__class__.__name__,
+        )
+        return self._json_response(status_code=500, body=body)
 
 
 def custom_openapi(app: FastAPI) -> dict[str, Any]:
@@ -162,7 +194,6 @@ def custom_openapi(app: FastAPI) -> dict[str, Any]:
 
 
 def register_exception_handlers(app: FastAPI) -> None:
-    app.add_exception_handler(HTTPException, handle_http_exception)
-    app.add_exception_handler(RequestValidationError, handle_validation_exception)
-    app.add_exception_handler(Exception, handle_unhandled_exception)
+    handler = ExceptionHandler(app)
+    handler.register()
     app.openapi = partial(custom_openapi, app)
