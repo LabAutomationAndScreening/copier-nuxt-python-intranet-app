@@ -6,9 +6,10 @@ from backend_api.app_def import app
 from fastapi import FastAPI
 
 from .snapshot import snapshot_json{% endraw %}{% if configure_vcrpy %}{% raw %}
-from .vcrpy_fixtures import pytest_recording_configure{% endraw %}{% endif %}{% raw %}
+from .vcrpy_fixtures import pytest_recording_configure
+from .vcrpy_fixtures import vcr_config{% endraw %}{% endif %}{% raw %}
 
-_imported_fixtures = (snapshot_json,{% endraw %}{% if configure_vcrpy %}{% raw %} pytest_recording_configure{% endraw %}{% endif %}{% raw %})
+_imported_fixtures = (snapshot_json,{% endraw %}{% if configure_vcrpy %}{% raw %} pytest_recording_configure, vcr_config{% endraw %}{% endif %}{% raw %})
 logger = logging.getLogger(__name__)
 
 
