@@ -15,12 +15,12 @@
 docker compose up
 ```{% endraw %}{% else %}{% raw %}To build and spin up the full stack (accessible on port {% endraw %}{{ backend_deployed_port_number }}{% raw %}), run:
 ```bash
-pnpm --dir=frontend generate && cp -a ./frontend/.output/public/. ./backend/src/static/ && uv --directory=backend run pyinstaller pyinstaller.spec --noconfirm && ./backend/dist/git-sherpa/git-sherpa
+pnpm --dir=frontend generate && cp -a ./frontend/.output/public/. ./backend/src/static/ && uv --directory=backend run pyinstaller pyinstaller.spec --noconfirm && ./backend/dist/{% endraw %}{{ repo_name }}{% raw %}/{% endraw %}{{ repo_name }}{% raw %}
 ```
 
 To just reload the frontend into the full stack, run:
 ```bash
-pnpm --dir=frontend generate && rm -rf ./backend/dist/git-sherpa/_internal/static && cp -a ./frontend/.output/public/. ./backend/src/static/ && cp -a ./backend/src/static ./backend/dist/git-sherpa/_internal/static && ./backend/dist/git-sherpa/git-sherpa
+pnpm --dir=frontend generate && rm -rf ./backend/dist/{% endraw %}{{ repo_name }}{% raw %}/_internal/static && cp -a ./frontend/.output/public/. ./backend/src/static/ && cp -a ./backend/src/static ./backend/dist/{% endraw %}{{ repo_name }}{% raw %}/_internal/static && ./backend/dist/{% endraw %}{{ repo_name }}{% raw %}/{% endraw %}{{ repo_name }}{% raw %}
 ```{% endraw %}{% endif %}{% raw %}
 
 ## Frontend
