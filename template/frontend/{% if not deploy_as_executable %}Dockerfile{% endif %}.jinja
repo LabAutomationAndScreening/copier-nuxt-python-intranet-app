@@ -1,5 +1,5 @@
 {% raw %}# ------------ Stage 1: Build ------------
-FROM node:{% endraw %}{{ node_version }}{% raw %}-alpine{% endraw %}{{ alpine_image_version }}{% raw %} AS builder
+FROM node:{% endraw %}{{ node_version }}{% raw %}-{% endraw %}{{ debian_release_name }}{% raw %} AS builder
 
 # docker build -t my-nuxt-app .
 # docker run -p {% endraw %}{{ frontend_deployed_port_number }}{% raw %}:3000 my-nuxt-app
