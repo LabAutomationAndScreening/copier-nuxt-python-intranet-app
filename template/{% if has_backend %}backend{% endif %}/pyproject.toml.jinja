@@ -36,7 +36,8 @@ dev = [
     "pytest>={% endraw %}{{ pytest_version }}{% raw %}",
     "pytest-cov>={% endraw %}{{ pytest_cov_version }}{% raw %}",
     "pytest-randomly>={% endraw %}{{ pytest_randomly_version }}{% raw %}",
-    "pytest-mock>={% endraw %}{{ pytest_mock_version }}{% raw %}",{% endraw %}{% if deploy_as_executable %}{% raw %}
+    "pytest-mock>={% endraw %}{{ pytest_mock_version }}{% raw %}",
+    "pytest-asyncio>={% endraw %}{{ pytest_asyncio_version }}{% raw %}",{% endraw %}{% if deploy_as_executable %}{% raw %}
     "pyinstaller>={% endraw %}{{ pyinstaller_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
 ]{% endraw %}{% if backend_uses_graphql %}{% raw %}
 
