@@ -49,7 +49,9 @@ uv --directory=backend run uvicorn src.entrypoint:app --reload --host '::' --por
 Start the app using the entrypoint to be able to supply CLI options and log to file (running by default on port {% endraw %}{{ backend_deployed_port_number }}{% raw %}):
 ```bash
 uv --directory=backend run python src/entrypoint.py
-```
+```{% endraw %}{% if backend_makes_api_calls %}{% raw %}
+
+When running the unit test suite, `pytest-recording` library is used. If it gives you errors about a cassette missing, the parameter to invoke a live HTTP request is `--record-mode=once` (add on to the end of the `pytest` command){% endraw %}{% endif %}{% raw %}
 
 To (re)generate the client code this app for use in E2E tests of the backend:
 ```bash
