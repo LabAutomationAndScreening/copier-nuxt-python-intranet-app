@@ -30,7 +30,7 @@ function getRandomOpenPort(): Promise<number> {
     });
   });
 }
-const availablePort = await getRandomOpenPort();
+const availablePort = await getRandomOpenPort(); // TODO: consider moving this into the setup and then updating the BASE_URL and heathcheckURL afterwards. unlikely but possible situation where the port gets taken before setup is invoked
 const isE2E = process.env.USE_DOCKER_COMPOSE_FOR_VITEST_E2E || process.env.USE_BUILT_BACKEND_FOR_VITEST_E2E;
 const isDockerE2E = process.env.USE_DOCKER_COMPOSE_FOR_VITEST_E2E;
 const isBuiltBackendE2E = process.env.USE_BUILT_BACKEND_FOR_VITEST_E2E;
