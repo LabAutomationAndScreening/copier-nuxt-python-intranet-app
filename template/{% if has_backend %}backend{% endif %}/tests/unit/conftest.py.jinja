@@ -6,8 +6,8 @@ from backend_api.app_def import app
 from fastapi import FastAPI
 
 {% endraw %}{% if configure_vcrpy %}{% raw %}
-from .asyncio_fixtures import fail_on_background_task_errors
-{% endraw %}{% endif %}{% raw %}from .snapshot import snapshot_json{% endraw %}{% if configure_vcrpy %}{% raw %}
+from .asyncio_fixtures import fail_on_background_task_errors{% endraw %}{% endif %}{% raw %}
+from .snapshot import snapshot_json{% endraw %}{% if configure_vcrpy %}{% raw %}
 from .vcrpy_fixtures import pytest_recording_configure
 from .vcrpy_fixtures import vcr_config{% endraw %}{% endif %}{% raw %}
 
