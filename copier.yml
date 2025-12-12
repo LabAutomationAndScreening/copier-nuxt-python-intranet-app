@@ -47,6 +47,10 @@ configure_vcrpy:
     type: bool
     help: Should VCRpy be configured for use during unit testing in Python?
     default: no
+configure_python_asyncio:
+    type: bool
+    help: Will python code be using asyncio?
+    default: no
 
 python_version:
     type: str
