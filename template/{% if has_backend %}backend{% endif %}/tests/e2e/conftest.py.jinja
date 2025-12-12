@@ -43,7 +43,7 @@ def pytest_configure(config: pytest.Config):
 
 
 @pytest.fixture(scope="session")
-def backend_client_session() -> Generator[BackendClient, None]:
+def backend_client_session() -> Generator[BackendClient, None, None]:
     http_client = AsyncClient(base_url=f"http://localhost:{BACKEND_E2E_PORT}")
     try:
         request_adapter = HttpxRequestAdapter(AnonymousAuthenticationProvider(), http_client=http_client)
