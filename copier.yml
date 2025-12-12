@@ -49,7 +49,7 @@ configure_vcrpy:
     default: no
 configure_python_asyncio:
     type: bool
-    help: Will python code be using asyncio?
+    help: Will Python code be using asyncio?
     default: no
 
 python_version:
