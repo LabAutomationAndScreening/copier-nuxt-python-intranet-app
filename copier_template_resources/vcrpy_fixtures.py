@@ -5,7 +5,11 @@ import pytest
 from pydantic import JsonValue
 from vcr import VCR
 
-IGNORED_HOSTS = ["testserver"]  # Skip recording any requests to our own server - let them run live
+UNREACHABLE_IP_ADDRESS = "192.0.2.1"  # RFC 5737 TEST-NET-1
+IGNORED_HOSTS = [
+    "testserver",  # Skip recording any requests to our own server - let them run live
+    UNREACHABLE_IP_ADDRESS,  # allow this through VCR in order to be able to test network failure handling
+]
 ALLOWED_HOSTS = []
 
 CUSTOM_IGNORED_HOSTS: tuple[str, ...] = ()
@@ -27,8 +31,8 @@ def vcr_config() -> dict[str, list[str]]:
 
 
 def pytest_recording_configure(
-    vcr: VCR,
     config: pytest.Config,  # noqa: ARG001 # the config argument MUST be present (even when unused) or pytest-recording throws an error
+    vcr: VCR,
 ):
     vcr.match_on = cast(tuple[str, ...], vcr.match_on)  # pyright: ignore[reportUnknownMemberType] # I know vcr.match_on is unknown, that's why I'm casting and isinstance-ing it...not sure if there's a different approach pyright prefers
     assert isinstance(vcr.match_on, tuple), (
