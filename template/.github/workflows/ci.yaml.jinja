@@ -32,7 +32,8 @@ jobs:
     name: Unit Test Frontend
     timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
-    needs: [ lint ]
+    needs:
+      - lint
     steps:
       - name: Checkout code
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
@@ -57,7 +58,8 @@ jobs:
   unit-test-backend:
     name: Unit Test Backend
     timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
-    needs: [ lint ]
+    needs:
+      - lint
     strategy:
       matrix:
         os:
@@ -86,7 +88,10 @@ jobs:
           if-no-files-found: error{% endraw %}{% endif %}{% raw %}
 
   build-frontend:
-    needs: [ lint, unit-test-frontend{% endraw %}{% if has_backend %}{% raw %}, unit-test-backend{% endraw %}{% endif %}{% raw %} ]
+    needs:
+      - lint
+      - unit-test-frontend{% endraw %}{% if has_backend %}{% raw %}
+      - unit-test-backend{% endraw %}{% endif %}{% raw %}
 {% endraw %}{% if not deploy_as_executable %}{% raw %}    uses: ./.github/workflows/build-docker-image.yaml
     with:
       context: ./frontend
@@ -121,7 +126,10 @@ jobs:
 
 {% endraw %}{% if has_backend %}{% raw %}{% endraw %}{% if not deploy_as_executable %}{% raw %}
   build-backend:
-    needs: [ lint, unit-test-frontend, unit-test-backend ]
+    needs:
+      - lint
+      - unit-test-frontend
+      - unit-test-backend
     uses: ./.github/workflows/build-docker-image.yaml
     with:
       context: ./backend
@@ -131,7 +139,11 @@ jobs:
       image_name: {% endraw %}{{ backend_image_name }}{% raw %}
 {% endraw %}{% if push_to_ecr %}{% raw %}      push-role-name: {% endraw %}{{ backend_ecr_push_role_name }}{% endif %}{% else %}{% raw %}
   build-backend:
-    needs: [ lint, unit-test-frontend, unit-test-backend, build-frontend ]
+    needs:
+      - lint
+      - unit-test-frontend
+      - unit-test-backend
+      - build-frontend
     strategy:
       matrix:
         os:
@@ -179,7 +191,9 @@ jobs:
     name: Test the compiled Frontend
     timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
-    needs: [ build-frontend{% endraw %}{% if has_backend %}{% raw %}, build-backend{% endraw %}{% endif %}{% raw %} ]
+    needs:
+      - build-frontend{% endraw %}{% if has_backend %}{% raw %}
+      - build-backend{% endraw %}{% endif %}{% raw %}
     steps:
       - name: Checkout code
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
@@ -201,7 +215,9 @@ jobs:
           - "{% endraw %}{{ gha_linux_runner }}{% raw %}"{% endraw %}{% if use_windows_in_ci %}
           - {{ gha_windows_runner }}{% endif %}{% raw %}
     runs-on: ${{ matrix.os }}
-    needs: [ build-frontend{% endraw %}{% if has_backend %}{% raw %}, build-backend{% endraw %}{% endif %}{% raw %} ]
+    needs:
+      - build-frontend{% endraw %}{% if has_backend %}{% raw %}
+      - build-backend{% endraw %}{% endif %}{% raw %}
     steps:
       - name: Checkout code
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
@@ -245,7 +261,9 @@ jobs:
     name: Package Images
     timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
-    needs: [ build-frontend{% endraw %}{% if has_backend %}{% raw %}, build-backend{% endraw %}{% endif %}{% raw %} ]
+    needs:
+      - build-frontend{% endraw %}{% if has_backend %}{% raw %}
+      - build-backend{% endraw %}{% endif %}{% raw %}
     steps:
     - name: Checkout repository
       uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
@@ -285,7 +303,11 @@ jobs:
     if: always()
     steps:
       - name: fail if prior job failure
-        if: needs.get-values.result != 'success'{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %} || needs.package-images.result != 'success'{% endraw %}{% endif %}{% raw %} || needs.test-compiled-frontend.result != 'success' || needs.e2e-test.result != 'success'
+        if: >-
+          needs.get-values.result != 'success' ||{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
+          needs.package-images.result != 'success' ||{% endraw %}{% endif %}{% raw %}
+          needs.test-compiled-frontend.result != 'success' ||
+          needs.e2e-test.result != 'success'
         run: |
           exit 1
       - name: Mark updated Dependabot commit of devcontainer hash as succeeded

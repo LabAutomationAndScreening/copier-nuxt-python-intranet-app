@@ -67,17 +67,38 @@ export async function setup(project: TestProject) {
     }
   }
 }
+
+function hasErrorCode(cause: unknown): cause is { code: string } {
+  return typeof cause === "object" && cause !== null && "code" in cause && typeof cause.code === "string";
+}
+
 export async function teardown() {
   if (isE2E) {
     await browser.close();
     if (isBuiltBackendE2E) {
       console.log("Stopping application...");
       try {
-        const res = await fetch(`${BASE_URL}/api/shutdown`);
+        const res = await fetch(`${BASE_URL}/api/shutdown`, {
+          signal: AbortSignal.timeout(10000), // 10 second timeout
+        });
         if (!res.ok) {
           throw new Error(`Failed to stop the application: ${res.statusText}`);
         }
+        // Wait a bit for graceful shutdown
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       } catch (error) {
+        // ECONNRESET is expected when the server shuts down during the request. This happens in Windows CI frequently
+        if (error instanceof Error && "cause" in error && hasErrorCode(error.cause)) {
+          if (
+            error.cause.code === "ECONNRESET" ||
+            error.cause.code === "ENOTFOUND" ||
+            error.cause.code === "UND_ERR_SOCKET"
+          ) {
+            console.log("Application shutdown successfully (connection closed)");
+            return;
+          }
+        }
+
         const logFilePath = path.resolve(repoRoot, `./frontend/logs/${APP_NAME}-backend.log`);
         // sometimes it takes a second for the log file to be fully written to disk
         await new Promise((resolve) => setTimeout(resolve, 1000));

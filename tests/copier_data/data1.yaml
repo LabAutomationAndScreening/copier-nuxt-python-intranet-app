@@ -8,6 +8,7 @@ ssh_port_number: 12345
 use_windows_in_ci: false
 install_aws_ssm_port_forwarding_plugin: true
 configure_vcrpy: true
+configure_python_asyncio: true
 
 node_version: 22.13.0
 
