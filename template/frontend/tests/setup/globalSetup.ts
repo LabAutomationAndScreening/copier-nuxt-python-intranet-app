@@ -59,7 +59,7 @@ export async function setup(project: TestProject) {
         [
           "--host",
           "0.0.0.0", // TODO: could this just be 127.0.0.1 ?
-          // in CI, sometimes the planned port to deploy on is already in use, so we use a random open port
+          // in CI, sometimes the default port to deploy on is already in use, so we use a random open port
           "--port",
           availablePort.toString(),
         ],
