@@ -1,11 +1,34 @@
-{% raw %}import pytest
+{% raw %}from collections.abc import AsyncGenerator
+from typing import TYPE_CHECKING
+
+import pytest
+import pytest_asyncio
+from backend_api import configure_logging
+from httpx import AsyncClient
+from kiota_abstractions.authentication.anonymous_authentication_provider import AnonymousAuthenticationProvider
+from kiota_http.httpx_request_adapter import HttpxRequestAdapter
 from pydantic import JsonValue
 
-from .app_bootup import running_application{% endraw %}{% if backend_uses_graphql %}{% raw %}
+from .app_bootup import BACKEND_E2E_PORT
+from .app_bootup import start_compose
+from .app_bootup import start_exe
+from .app_bootup import stop_compose
+from .app_bootup import stop_exe
+from .generated.open_api.backend.backend_client import BackendClient{% endraw %}{% if backend_uses_graphql %}{% raw %}
 from .graphql_fixtures import client{% endraw %}{% endif %}{% raw %}
+from .jinja_constants import APPLICATION_BOOTUP_MODE
+from .jinja_constants import ApplicationBootupModes
 
-_imported_fixtures = (running_application,){% endraw %}{% if backend_uses_graphql %}{% raw %}
+if TYPE_CHECKING:
+    import subprocess
+
+{% endraw %}{% if backend_uses_graphql %}{% raw %}
 _imported_graphql_fixtures = (client,){% endraw %}{% endif %}{% raw %}
+
+
+@pytest.fixture(autouse=True, scope="session")
+def configure_log():
+    configure_logging(log_filename_prefix="logs/pytest-")
 
 
 @pytest.fixture(autouse=True)
@@ -16,4 +39,45 @@ def vcr_config() -> dict[str, JsonValue]:
 
 def pytest_configure(config: pytest.Config):
     """Disable coverage reporting for E2E tests."""
-    config.pluginmanager.set_blocked("_cov"){% endraw %}
+    config.pluginmanager.set_blocked("_cov")
+
+
+@pytest.fixture(scope="session")
+def backend_client_session() -> BackendClient:
+    http_client = AsyncClient(base_url=f"http://localhost:{BACKEND_E2E_PORT}")
+    request_adapter = HttpxRequestAdapter(AnonymousAuthenticationProvider(), http_client=http_client)
+    return BackendClient(request_adapter)
+
+
+@pytest_asyncio.fixture(scope="module")
+async def backend_client_module() -> AsyncGenerator[BackendClient, None]:
+    async with AsyncClient(base_url=f"http://localhost:{BACKEND_E2E_PORT}") as http_client:
+        request_adapter = HttpxRequestAdapter(AnonymousAuthenticationProvider(), http_client=http_client)
+        yield BackendClient(request_adapter)
+
+
+@pytest_asyncio.fixture
+async def backend_client() -> AsyncGenerator[BackendClient, None]:
+    async with AsyncClient(base_url=f"http://localhost:{BACKEND_E2E_PORT}") as http_client:
+        request_adapter = HttpxRequestAdapter(AnonymousAuthenticationProvider(), http_client=http_client)
+        yield BackendClient(request_adapter)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def running_application(backend_client_session: BackendClient):
+    backend_url = (
+        backend_client_session.api.request_adapter.base_url  # pyright: ignore[reportUnknownMemberType] # the kiota stuff isn't fully typed
+    )
+    assert isinstance(backend_url, str), f"Expected backend_url to be str, got {type(backend_url)} for {backend_url}"
+    backend_port = int(backend_url.split(":")[-1])
+    exe_process: subprocess.Popen[bytes] | None = None
+    if APPLICATION_BOOTUP_MODE == ApplicationBootupModes.DOCKER_COMPOSE:
+        start_compose()
+    else:
+        exe_process = start_exe(port=backend_port)
+    yield
+    if APPLICATION_BOOTUP_MODE == ApplicationBootupModes.DOCKER_COMPOSE:
+        stop_compose()
+    else:
+        assert exe_process is not None
+        stop_exe(process=exe_process, port=backend_port){% endraw %}
