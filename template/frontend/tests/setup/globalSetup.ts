@@ -1,11 +1,36 @@
 import { execSync, spawn } from "child_process";
 import fs from "fs";
+import { createServer } from "net";
 import path from "path";
 import type { Browser } from "playwright";
 import { chromium } from "playwright";
 import type { TestProject } from "vitest/node";
-import { APP_NAME, DEPLOYED_BACKEND_PORT_NUMBER, DEPLOYED_FRONTEND_PORT_NUMBER } from "~~/tests/setup/constants";
+import { APP_NAME, DEPLOYED_FRONTEND_PORT_NUMBER } from "~~/tests/setup/constants";
 
+function getRandomOpenPort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = createServer();
+
+    server.listen(0, () => {
+      const address = server.address();
+      if (!address || typeof address === "string") {
+        server.close();
+        reject(new Error("Failed to get port number"));
+        return;
+      }
+      const port = address.port;
+
+      server.close(() => {
+        resolve(port);
+      });
+    });
+
+    server.on("error", (err) => {
+      reject(err);
+    });
+  });
+}
+const availablePort = await getRandomOpenPort(); // TODO: consider moving this into the setup and then updating the BASE_URL and heathcheckURL afterwards. unlikely but possible situation where the port gets taken before setup is invoked
 const isE2E = process.env.USE_DOCKER_COMPOSE_FOR_VITEST_E2E || process.env.USE_BUILT_BACKEND_FOR_VITEST_E2E;
 const isDockerE2E = process.env.USE_DOCKER_COMPOSE_FOR_VITEST_E2E;
 const isBuiltBackendE2E = process.env.USE_BUILT_BACKEND_FOR_VITEST_E2E;
@@ -19,11 +44,9 @@ if (isBuiltBackendE2E) {
     throw new Error(`File not found: ${executablePath}`);
   }
 }
-export const BASE_URL = `http://127.0.0.1:${
-  isBuiltBackendE2E ? DEPLOYED_BACKEND_PORT_NUMBER : DEPLOYED_FRONTEND_PORT_NUMBER
-}`;
+export const BASE_URL = `http://127.0.0.1:${isBuiltBackendE2E ? availablePort : DEPLOYED_FRONTEND_PORT_NUMBER}`;
 const healthCheckUrl = `http://127.0.0.1:${
-  isBuiltBackendE2E ? DEPLOYED_BACKEND_PORT_NUMBER.toString() + "/api/healthcheck" : DEPLOYED_FRONTEND_PORT_NUMBER
+  isBuiltBackendE2E ? availablePort.toString() + "/api/healthcheck" : DEPLOYED_FRONTEND_PORT_NUMBER
 }`; // TODO: if there is a backend, check that too, even if it's a docker-compose situation
 
 export async function setup(project: TestProject) {
@@ -31,10 +54,20 @@ export async function setup(project: TestProject) {
   if (isE2E) {
     if (isBuiltBackendE2E) {
       console.log(`Starting app at ${executablePath} ...`);
-      const child = spawn(executablePath, ["--host", "0.0.0.0"], {
-        // TODO: figure out why Github CI pipelines fail without setting all allowed hosts
-        stdio: "inherit",
-      });
+      const child = spawn(
+        executablePath,
+        [
+          "--host",
+          "0.0.0.0", // TODO: could this just be 127.0.0.1 ?
+          // in CI, sometimes the default port to deploy on is already in use, so we use a random open port
+          "--port",
+          availablePort.toString(),
+        ],
+        {
+          // TODO: figure out why Github CI pipelines fail without setting all allowed hosts
+          stdio: "inherit",
+        },
+      );
       child.on("close", (code) => {
         console.log(`Process exited with code ${code}`);
       });
