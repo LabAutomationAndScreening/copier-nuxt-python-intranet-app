@@ -5,7 +5,7 @@
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# tell uv to treat /usr/local as the project env
+# tell uv to treat /usr/local as the project env instead of creating a venv
 ENV UV_PROJECT_ENVIRONMENT=/usr/local
 
 COPY --from=ghcr.io/astral-sh/uv:{% endraw %}{{ uv_version }}{% raw %}-python{% endraw %}{{ python_version.split('.')[:2]|join('.') }}{% raw %}-{% endraw %}{{ debian_release_name }}{% raw %} /usr/local/bin/uv /usr/local/bin/uvx /bin/
