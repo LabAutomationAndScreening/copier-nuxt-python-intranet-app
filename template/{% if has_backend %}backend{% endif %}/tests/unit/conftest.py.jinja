@@ -6,8 +6,8 @@ from backend_api.app_def import app
 from fastapi import FastAPI
 
 {% endraw %}{% if configure_python_asyncio %}{% raw %}from .asyncio_fixtures import fail_on_background_task_errors  # noqa: F401 # this is an autouse fixture
-{% endraw %}{% endif %}{% raw %}from .snapshot import snapshot_json  # noqa: F401 # this is an autouse fixture{% endraw %}{% if configure_vcrpy %}{% raw %}
-from .vcrpy_fixtures import pytest_recording_configure  # noqa: F401 # this is an autouse fixture
+{% endraw %}{% endif %}{% raw %}from .snapshot import snapshot_json  # noqa: F401 # this is a fixture we need in conftest scope{% endraw %}{% if configure_vcrpy %}{% raw %}
+from .vcrpy_fixtures import pytest_recording_configure  # noqa: F401 # this is configuration we need in conftest scope
 from .vcrpy_fixtures import vcr_config  # noqa: F401 # this is an autouse fixture{% endraw %}{% endif %}{% raw %}
 
 logger = logging.getLogger(__name__)
