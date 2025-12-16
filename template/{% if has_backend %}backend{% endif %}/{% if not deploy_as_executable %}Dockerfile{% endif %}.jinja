@@ -1,4 +1,4 @@
-{% raw %}FROM python:{% endraw %}{{ python_version }}{% raw %}-slim-{% endraw %}{{ debian_release_name }}{% raw %}
+{% raw %}FROM python:{% endraw %}{{ python_version }}{% raw %}-{% endraw %}{{ debian_release_name }}{% raw %} AS builder
 
 # docker build -t my-graphql-backend .
 # docker run -p {% endraw %}{{ backend_deployed_port_number }}{% raw %}:{% endraw %}{{ backend_deployed_port_number }}{% raw %} my-graphql-backend
@@ -8,9 +8,15 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # tell uv to treat /usr/local as the project env
 ENV UV_PROJECT_ENVIRONMENT=/usr/local
 
-COPY --from=ghcr.io/astral-sh/uv:{% endraw %}{{ uv_version }}{% raw %}-python{% endraw %}{{ python_version.split('.')[:2]|join('.') }}{% raw %}-{% endraw %}{{ debian_release_name }}{% raw %}-slim /usr/local/bin/uv /usr/local/bin/uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:{% endraw %}{{ uv_version }}{% raw %}-python{% endraw %}{{ python_version.split('.')[:2]|join('.') }}{% raw %}-{% endraw %}{{ debian_release_name }}{% raw %} /usr/local/bin/uv /usr/local/bin/uvx /bin/
 
 RUN uv --version
+
+RUN apt-get update && apt-get install -y \
+    --no-install-recommends \{% endraw %}{% if install_gcc_in_backend_container_build_phase %}{% raw %}
+    "gcc=$(apt-cache madison gcc | awk '{print $3}' | grep '4:12.2' | head -n 1)" \{% endraw %}{% endif %}{% raw %}
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -22,6 +28,16 @@ RUN uv sync --frozen --no-dev --no-cache-dir
 COPY . .
 
 RUN uv pip list --format=columns --verbose
+
+FROM python:{% endraw %}{{ python_version }}{% raw %}-slim-{% endraw %}{{ debian_release_name }}{% raw %}
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+COPY --from=builder /usr/local/lib/python{% endraw %}{{ python_version.split('.')[:2]|join('.') }}{% raw %}/site-packages /usr/local/lib/python{% endraw %}{{ python_version.split('.')[:2]|join('.') }}{% raw %}/site-packages
+
+WORKDIR /app
+
+COPY . .
 
 # set sensible defaults (overridable at `docker run`)
 ENV API_PORT={% endraw %}{{ backend_deployed_port_number }}{% raw %}
