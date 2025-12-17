@@ -13,7 +13,7 @@ COPY --from=ghcr.io/astral-sh/uv:{% endraw %}{{ uv_version }}{% raw %}-python{% 
 RUN uv --version
 
 RUN apt-get update && apt-get install -y \
-    --no-install-recommends{% endraw %}{% if install_gcc_in_backend_container_build_phase %}{% raw %} \
+    --no-install-recommends \{% endraw %}{% if install_gcc_in_backend_container_build_phase %}{% raw %}
     "gcc=$(apt-cache madison gcc | awk '{print $3}' | grep '4:12.2' | head -n 1)" \{% endraw %}{% endif %}{% raw %}
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
