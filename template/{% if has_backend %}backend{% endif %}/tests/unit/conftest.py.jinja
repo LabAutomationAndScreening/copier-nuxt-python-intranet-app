@@ -5,14 +5,11 @@ from backend_api import configure_logging
 from backend_api.app_def import app
 from fastapi import FastAPI
 
-{% endraw %}{% if configure_python_asyncio %}{% raw %}from .asyncio_fixtures import fail_on_background_task_errors
-{% endraw %}{% endif %}{% raw %}from .snapshot import snapshot_json{% endraw %}{% if configure_vcrpy %}{% raw %}
-from .vcrpy_fixtures import pytest_recording_configure
-from .vcrpy_fixtures import vcr_config{% endraw %}{% endif %}{% raw %}
+{% endraw %}{% if configure_python_asyncio %}{% raw %}from .asyncio_fixtures import fail_on_background_task_errors  # noqa: F401 # this is an autouse fixture
+{% endraw %}{% endif %}{% raw %}from .snapshot import snapshot_json  # noqa: F401 # this is a fixture we need in conftest scope{% endraw %}{% if configure_vcrpy %}{% raw %}
+from .vcrpy_fixtures import pytest_recording_configure  # noqa: F401 # this is configuration we need in conftest scope
+from .vcrpy_fixtures import vcr_config  # noqa: F401 # this is an autouse fixture{% endraw %}{% endif %}{% raw %}
 
-# fmt: off # this line has a variety of things put into it by Jinja syntax, so disabling autoformatting to avoid conflicts
-_imported_fixtures = [snapshot_json{% endraw %}{% if configure_vcrpy %}{% raw %}, pytest_recording_configure, vcr_config{% endraw %}{% endif %}{% raw %}{% endraw %}{% if configure_python_asyncio %}{% raw %}, fail_on_background_task_errors{% endraw %}{% endif %}{% raw %}]
-# fmt: on
 logger = logging.getLogger(__name__)
 
 

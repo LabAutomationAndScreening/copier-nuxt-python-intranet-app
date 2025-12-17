@@ -135,6 +135,12 @@ deploy_as_executable:
     default: no
     when: "{{ has_backend }}"
 
+install_gcc_in_backend_container_build_phase:
+    type: bool
+    help: Is GCC required to build any Python dependencies in the backend container?
+    default: no
+    when: "{{ not deploy_as_executable }}"
+
 create_docker_image_tar_artifact:
     type: bool
     help: During CI, should the docker images be bundled up into a tar file for manual deployment?
