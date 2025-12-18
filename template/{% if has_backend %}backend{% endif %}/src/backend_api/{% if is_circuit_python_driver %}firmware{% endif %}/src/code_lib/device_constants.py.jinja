@@ -1,0 +1,8 @@
+{% raw %}VERSION = "0.0.1"
+DEVICE_MODEL_ID = "ABCD0000-0000-0000-0000-000000000000"
+USB_PID = DEVICE_MODEL_ID[  # for simplicity and easy lookup, just use the first four hex characters of the full UUID as the PID
+    :4
+].upper()
+USB_VID = "2E8A"  # Raspberry Pi Foundation (as placeholder until we get our own VID)
+MANUFACTURER_NAME = "{% endraw %}{{ repo_org_name_for_copyright }}{% raw %}"
+DEVICE_NAME = "Nifty Driver"{% endraw %}

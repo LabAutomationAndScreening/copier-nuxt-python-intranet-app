@@ -135,6 +135,12 @@ deploy_as_executable:
     default: no
     when: "{{ has_backend }}"
 
+is_circuit_python_driver:
+    type: bool
+    help: Is this backend a CircuitPython device driver?
+    default: no
+    when: "{{ has_backend }}"
+
 install_gcc_in_backend_container_build_phase:
     type: bool
     help: Is GCC required to build any Python dependencies in the backend container?
@@ -210,6 +216,19 @@ _skip_if_exists:
     - backend/src/static/favicon.ico # TODO: figure out if there's another way to stop the template from overriding a changed icon
     - backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json # snapshot file of the OpenAPI schema that will be overwritten by the repo as the schema evolves
     - backend/tests/e2e/generated/open_api/** # when the repo regenerates the client code, we don't want Copier to overwrite it. the template is just dropping in a basic spec to support a healthcheck E2E test
+
+_tasks:
+  - command: |
+      echo "Checking pyrightconfig.json..."
+      if [ -f pyrightconfig.json ]; then
+        if ! grep -q '"extraPaths"' pyrightconfig.json; then
+          sed -i '/"executionEnvironments":/,/^  \]$/ { /^  \]$/ { s/$/,/; a\  "extraPaths": ["backend/src/backend_api/firmware/src"] // circuit python cannot do relative imports, so we need to use absolute imports and tell pyright about them
+        }; }' pyrightconfig.json
+        fi
+      else
+        echo "pyrightconfig.json not found"
+      fi
+    when: "{{ is_circuit_python_driver }}"
 
 # Additional Settings
 _min_copier_version: "9.4"
