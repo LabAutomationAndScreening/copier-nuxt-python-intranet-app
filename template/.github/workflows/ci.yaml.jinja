@@ -290,6 +290,45 @@ jobs:
       with:
         name: {% endraw %}{{ repo_name }}{% raw %}-deployment-package
         path: deployment-package-folder/**/*
+        if-no-files-found: error{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+
+  package-firmware:
+    name: Package Firmware
+    timeout-minutes: 8
+    runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
+    needs:
+      - build-frontend
+      - build-backend
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
+
+    - name: Install latest versions of python packages
+      uses: ./.github/actions/install_deps
+      with:
+        python-version: {% endraw %}{{ python_version }}{% raw %}
+        skip-installing-ssm-plugin-manager: true
+
+    - name: Extract firmware version
+      id: get-version
+      run: |
+        VERSION=$(uv --directory=backend run python -c "from backend_api.firmware.src.code_lib import VERSION; print(VERSION)")
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+    - name: Install CircuitPython libraries
+      run: uv --directory=backend run circup --path=./src/backend_api/firmware/src/ install -r ./src/backend_api/firmware/requirements.txt
+
+    - name: Verify CircuitPython libraries installed
+      run: uv --directory=backend run circup --path=./src/backend_api/firmware/src/ freeze
+
+    - name: Clean __pycache__ directories
+      run: find ./backend/src/backend_api/firmware/src -type d -name '__pycache__' -exec rm -rf {} +
+
+    - name: Upload firmware artifact
+      uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
+      with:
+        name: weight-sensor-firmware-v${{ steps.get-version.outputs.version }}
+        path: ./backend/src/backend_api/firmware/src/**/*
         if-no-files-found: error{% endraw %}{% endif %}{% raw %}
 
   required-check:
@@ -298,7 +337,8 @@ jobs:
     needs:
       - get-values{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
       - package-images{% endraw %}{% endif %}{% raw %}
-      - test-compiled-frontend
+      - test-compiled-frontend{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+      - package-firmware{% endraw %}{% endif %}{% raw %}
       - e2e-test
     if: always()
     steps:
