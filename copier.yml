@@ -232,7 +232,7 @@ _tasks:
       else
         echo "pyrightconfig.json not found"
       fi
-    when: "{{ _stage == 'after' and is_circuit_python_driver }}"
+    when: "{{ is_circuit_python_driver }}"
 
 # Additional Settings
 _min_copier_version: "9.4"
