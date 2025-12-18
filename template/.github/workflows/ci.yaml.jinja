@@ -42,6 +42,7 @@ jobs:
         uses: ./.github/actions/install_deps
         with:
           node-version: {% endraw %}{{ node_version }}{% raw %}
+          skip-installing-ssm-plugin-manager: true
 
       - name: Unit test
         run: pnpm --dir=frontend test-unit
@@ -165,6 +166,7 @@ jobs:
         uses: ./.github/actions/install_deps
         with:
           python-version: {% endraw %}{{ python_version }}{% raw %}
+          skip-installing-ssm-plugin-manager: true
 
       - name: Build application
         working-directory: backend
@@ -202,6 +204,7 @@ jobs:
         uses: ./.github/actions/install_deps
         with:
           node-version: {% endraw %}{{ node_version }}{% raw %}
+          skip-installing-ssm-plugin-manager: true
 
       - name: Test
         run: pnpm --dir=frontend test-compiled
