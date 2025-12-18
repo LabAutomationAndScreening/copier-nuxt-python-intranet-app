@@ -118,4 +118,8 @@ class ContextUpdater(ContextHook):
         # Kludge to be able to help symlinked jinja files in the child and grandchild templates
         context["template_uses_vuejs"] = True
         context["template_uses_javascript"] = True
+
+        # context specific to this template
+        context["adafruit_circuitpython_busdevice_version"] = "==5.2.14"
+        context["adafruit_circuitpython_register_version"] = "==1.11.1"
         return context

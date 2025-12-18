@@ -48,8 +48,8 @@ dev = [
     "pyinstaller>={% endraw %}{{ pyinstaller_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
     "pytest-reserial>={% endraw %}0.6.0{% raw %}",
     "circup>=2.3.0",
-    "adafruit-circuitpython-busdevice==5.2.14",
-    "adafruit-circuitpython-register==1.11.1",{% endraw %}{% endif %}{% raw %}
+    "adafruit-circuitpython-busdevice{% endraw %}{{ adafruit_circuitpython_busdevice_version }}{% raw %}",
+    "adafruit-circuitpython-register{% endraw %}{{ adafruit_circuitpython_register_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
 ]{% endraw %}{% if backend_uses_graphql %}{% raw %}
 
 [tool.ariadne-codegen]

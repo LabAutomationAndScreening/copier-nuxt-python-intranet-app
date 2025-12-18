@@ -1,3 +1,0 @@
-# system
-adafruit_bus_device==5.2.14
-adafruit_register==1.11.1
