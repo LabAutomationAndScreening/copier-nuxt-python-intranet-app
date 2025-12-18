@@ -169,7 +169,7 @@ class FirmwareInstanceBase(FirmwareInstanceSkeleton):
                 if command_args[0] == "":
                     return create_error_response(
                         code=ErrorCodeBase.INVALID_ARGUMENT,
-                        msg="SYSTem:BOOT:MODE:ONCE command requires an argument (e.g. {BOOT_MODES_STR}).",
+                        msg=f"SYSTem:BOOT:MODE:ONCE command requires an argument (e.g. {BOOT_MODES_STR}).",
                     )
                 parsed_boot_mode: str | None = None
                 for possible_boot_mode in (BootMode.NORMAL, BootMode.DEVELOPMENT, BootMode.UPDATE):
