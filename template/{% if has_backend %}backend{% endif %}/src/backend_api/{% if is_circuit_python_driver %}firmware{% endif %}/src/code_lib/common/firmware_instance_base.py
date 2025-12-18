@@ -205,7 +205,7 @@ class FirmwareInstanceBase(FirmwareInstanceSkeleton):
             if command == "AUTORELOAD":
                 # TODO: figure out what to do if in simulation mode
                 if command_args[0] == "":
-                    return create_error_response(
+                    raise ResponseError(  # noqa: TRY301 # we can move this to a separate function later
                         code=ErrorCodeBase.INVALID_ARGUMENT,
                         msg="AUTORELOAD command requires an argument (e.g., 'ON' or 'OFF').",
                     )
