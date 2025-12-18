@@ -219,7 +219,6 @@ _skip_if_exists:
 
 _tasks:
   - command: |
-      echo "Stage: {{ _stage }}"
       echo "Checking pyrightconfig.json..."
       if [ -f pyrightconfig.json ]; then
         if ! grep -q '"extraPaths"' pyrightconfig.json; then
