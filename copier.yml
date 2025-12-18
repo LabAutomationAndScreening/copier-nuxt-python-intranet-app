@@ -135,6 +135,12 @@ deploy_as_executable:
     default: no
     when: "{{ has_backend }}"
 
+is_circuit_python_driver:
+    type: bool
+    help: Is this backend a CircuitPython device driver?
+    default: no
+    when: "{{ has_backend }}"
+
 install_gcc_in_backend_container_build_phase:
     type: bool
     help: Is GCC required to build any Python dependencies in the backend container?
