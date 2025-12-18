@@ -294,7 +294,7 @@ jobs:
 
   package-firmware:
     name: Package Firmware
-    timeout-minutes: 8
+    timeout-minutes: {% endraw %}{{ gha_short_timeout_minutes }}{% raw %}
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     needs:
       - build-frontend
