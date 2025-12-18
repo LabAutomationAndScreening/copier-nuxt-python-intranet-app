@@ -31,16 +31,17 @@ dev = [
     "httpx>={% endraw %}{{ httpx_version }}{% raw %}",
     "microsoft-kiota-bundle{% endraw %}{{ python_kiota_bundle_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if backend_uses_graphql %}{% raw %}
     "ariadne-codegen[subscriptions]{% endraw %}{{ ariadne_codegen_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
-    "pyright>={% endraw %}{{ pyright_version }}{% raw %}",
+    "pyright{% endraw %}{{ pyright_version }}{% raw %}",
     "syrupy{% endraw %}{{ syrupy_version }}{% raw %}",
-    "pytest>={% endraw %}{{ pytest_version }}{% raw %}",
-    "pytest-cov>={% endraw %}{{ pytest_cov_version }}{% raw %}",
-    "pytest-randomly>={% endraw %}{{ pytest_randomly_version }}{% raw %}",
+    "pytest{% endraw %}{{ pytest_version }}{% raw %}",
+    "pytest-cov{% endraw %}{{ pytest_cov_version }}{% raw %}",
+    "pytest-randomly{% endraw %}{{ pytest_randomly_version }}{% raw %}",
     "pytest-mock>={% endraw %}{{ pytest_mock_version }}{% raw %}",
     "pytest-asyncio{% endraw %}{{ pytest_asyncio_version }}{% raw %}",{% endraw %}{% if backend_makes_api_calls %}{% raw %}
     "pytest-recording{% endraw %}{{ pytest_recording_version }}{% raw %}",
     "vcrpy{% endraw %}{{ vcrpy_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if deploy_as_executable %}{% raw %}
-    "pyinstaller>={% endraw %}{{ pyinstaller_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
+    "pyinstaller>={% endraw %}{{ pyinstaller_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+    "pytest-reserial>={% endraw %}0.6.0{% raw %}",{% endraw %}{% endif %}{% raw %}
 ]{% endraw %}{% if backend_uses_graphql %}{% raw %}
 
 [tool.ariadne-codegen]
