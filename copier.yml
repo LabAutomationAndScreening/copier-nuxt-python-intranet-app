@@ -222,7 +222,7 @@ _tasks:
       echo "Checking pyrightconfig.json..."
       if [ -f pyrightconfig.json ]; then
         if ! grep -q '"extraPaths"' pyrightconfig.json; then
-          sed -i '/"executionEnvironments":/,/^  \]$/ { /^  \]$/ { s/$/,/; a\  "extraPaths": ["backend/src/backend_api/firmware/src"] // circuit python can'\''t do relative imports, so we need to use absolute imports and tell pyright about them
+          sed -i '/"executionEnvironments":/,/^  \]$/ { /^  \]$/ { s/$/,/; a\  "extraPaths": ["backend/src/backend_api/firmware/src"] // circuit python cannot do relative imports, so we need to use absolute imports and tell pyright about them
         }; }' pyrightconfig.json
         fi
       else
