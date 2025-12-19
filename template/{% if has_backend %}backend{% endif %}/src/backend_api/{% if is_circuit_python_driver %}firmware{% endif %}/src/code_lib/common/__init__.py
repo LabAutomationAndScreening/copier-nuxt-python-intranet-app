@@ -16,4 +16,5 @@ from .parsing import create_error_response
 from .parsing import matches_command
 from .parsing import write_response
 from .serial_write import debug_message
+from .simulation import SimulatedPeripheral
 from .singletons import get_firmware_instance

@@ -71,8 +71,20 @@ def get_anyof_simple_nullable_fields(schema: dict[str, Any]) -> dict[str, dict[s
                         other_type = other_item.get("type")
                         other_format = other_item.get("format")
 
+                        # Handle arrays
+                        if other_type == "array":
+                            items = other_item.get("items", {})
+                            item_type = items.get("type")
+                            if item_type == "string":
+                                simple_nullable_fields[field_name] = "list[str]"
+                            elif item_type == "integer":
+                                simple_nullable_fields[field_name] = "list[int]"
+                            elif item_type == "number":
+                                simple_nullable_fields[field_name] = "list[float]"
+                            elif item_type == "boolean":
+                                simple_nullable_fields[field_name] = "list[bool]"
                         # Handle string with date-time format
-                        if other_type == "string" and other_format == "date-time":
+                        elif other_type == "string" and other_format == "date-time":
                             simple_nullable_fields[field_name] = "datetime"
                         # Handle regular simple types
                         elif other_type == "string":
@@ -121,6 +133,7 @@ def fix_model_file(file_path: Path, model_name: str, fields: dict[str, str]) -> 
         getter_method: str
         writer_method: str
         python_type: str
+        primitive_type: str | None = None
 
         if field_type == "str":
             getter_method = "get_str_value"
@@ -143,6 +156,13 @@ def fix_model_file(file_path: Path, model_name: str, fields: dict[str, str]) -> 
             writer_method = "write_datetime_value"
             python_type = "datetime.datetime"
             needs_datetime_import = True
+        elif field_type.startswith("list["):
+            # Extract the inner type (e.g., "list[int]" -> "int")
+            inner_type = field_type[5:-1]  # Remove "list[" and "]"
+            getter_method = "get_collection_of_primitive_values"
+            writer_method = "write_collection_of_primitive_values"
+            python_type = field_type
+            primitive_type = inner_type
         else:
             continue
 
@@ -159,8 +179,12 @@ def fix_model_file(file_path: Path, model_name: str, fields: dict[str, str]) -> 
         # 3. Fix get_field_deserializers
         # Change: lambda n: setattr(self, "field", n.get_object_value(ComposedType))
         # To: lambda n: setattr(self, "field", n.get_str_value()) or n.get_bool_value() etc.
-        deserializer_pattern = rf'("{re.escape(field)}":\s+lambda\s+n\s*:\s*setattr\(self,\s*[\'\"]{re.escape(field)}[\'\"]\s*,\s*)n\.get_object_value\({re.escape(composed_type_name)}\)\)'
-        content = re.sub(deserializer_pattern, rf"\1n.{getter_method}())", content)
+        deserializer_pattern = rf'("{re.escape(field)}":\s+lambda\s+n\s*:\s*setattr\(self,\s*[\'"]{re.escape(field)}[\'"]\s*,\s*)n\.get_object_value\({re.escape(composed_type_name)}\)\)'
+        if primitive_type:
+            # For collections, pass the type
+            content = re.sub(deserializer_pattern, rf"\1n.{getter_method}({primitive_type}))", content)
+        else:
+            content = re.sub(deserializer_pattern, rf"\1n.{getter_method}())", content)
 
         # 4. Fix serialize method
         # Change: writer.write_object_value("field", self.field)

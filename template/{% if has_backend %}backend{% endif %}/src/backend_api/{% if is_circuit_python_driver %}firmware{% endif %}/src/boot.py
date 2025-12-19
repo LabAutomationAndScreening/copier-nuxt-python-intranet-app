@@ -42,7 +42,7 @@ usb_cdc.enable(  # pyright: ignore[reportUnknownMemberType] # the usb_cdc librar
     data=desired_boot_mode
     != BootMode.DEVELOPMENT,  # TODO: consider whether to enable both data and console in dev mode
 )
-if desired_boot_mode == BootMode.NORMAL:
+if desired_boot_mode == BootMode.NORMAL:  # pyright: ignore[reportUnnecessaryComparison] # pyright doesn't seem to understand that what happens in the try/except block could change the variable value
     storage.disable_usb_drive()  # pyright: ignore[reportUnknownMemberType] # the storage library is not well typed
 
 supervisor.set_usb_identification(  # pyright: ignore[reportUnknownMemberType] # the supervisor library is not well typed
