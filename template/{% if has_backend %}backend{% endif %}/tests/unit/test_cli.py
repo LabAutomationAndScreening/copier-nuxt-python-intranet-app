@@ -1,3 +1,4 @@
+import logging
 import random
 import tempfile
 from pathlib import Path
@@ -13,6 +14,23 @@ from backend_api.jinja_constants import DEPLOYED_PORT_NUMBER
 from pytest_mock import MockerFixture
 
 GENERIC_REQUIRED_CLI_ARGS = ()
+
+
+@pytest.fixture(autouse=True)
+def restore_logging_levels():
+    yield
+
+    # Restore all backend_api loggers and root logger to INFO level
+    for logger_name in list(logging.Logger.manager.loggerDict.keys()):
+        if logger_name.startswith("backend_api"):
+            logger = logging.getLogger(logger_name)
+            logger.setLevel(logging.INFO)
+
+    logging.getLogger().setLevel(logging.INFO)
+
+
+def random_non_info_log_level() -> str:
+    return random.choice(["DEBUG", "WARNING", "ERROR", "CRITICAL"])
 
 
 def test_Given_invalid_cli_args__Then_exit_code_is_2():
@@ -71,7 +89,7 @@ class TestCliArgParsing:
         self.spied_configure_logging = self.mocker.spy(cli, cli.configure_logging.__name__)
 
     def test_Given_log_level_specified__Then_app_log_level_passed_to_configure_logging(self):
-        expected_log_level = random.choice(["DEBUG", "WARNING", "ERROR", "CRITICAL"])
+        expected_log_level = random_non_info_log_level()
         self._spy_on_configure_logging()
 
         assert (
@@ -105,7 +123,7 @@ class TestCliArgParsing:
         )
 
     def test_Given_log_level_specified__Then_log_level_passed_to_uvicorn(self):
-        expected_log_level = random.choice(["DEBUG", "WARNING", "ERROR", "CRITICAL"])
+        expected_log_level = random_non_info_log_level()
 
         assert (
             entrypoint(
