@@ -114,7 +114,9 @@ else:
             "in simulation mode this should never have been reached"
         )
 
-    def _write_nvm_data_sim():
+    def _write_nvm_data_sim(
+        data: dict[str, str | int],  # noqa: ARG001 # the signature needs to match the real function
+    ):
         raise RuntimeError(  # noqa: TRY003
             "in simulation mode this should never have been reached"
         )

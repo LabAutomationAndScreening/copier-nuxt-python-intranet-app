@@ -6,13 +6,13 @@ if sys.implementation.name == "circuitpython":
     import microcontroller
     import supervisor  # pyright: ignore[reportMissingImports] # this is a CircuitPython library
     from microcontroller import (
-        cpus,  # noqa: F401 # imported for use in firmware_instance_base.py # pyright: ignore[reportUnknownVariableType,reportAttributeAccessIssue] # this is a CircuitPython library
+        cpus,  # pyright: ignore[reportUnknownVariableType,reportAttributeAccessIssue] # this is a CircuitPython library
     )
     from supervisor import (  # pyright: ignore[reportMissingImports] # this is a CircuitPython library
-        runtime,  # noqa: F401 # imported for use in firmware_instance_base.py # pyright: ignore[reportUnknownVariableType] # this is a CircuitPython library
+        runtime,  # pyright: ignore[reportUnknownVariableType] # this is a CircuitPython library
     )
     from supervisor import (  # pyright: ignore[reportMissingImports] # this is a CircuitPython library
-        status_bar,  # noqa: F401 # imported for use in firmware_instance_base.py # pyright: ignore[reportUnknownVariableType] # this is a CircuitPython library
+        status_bar,  # pyright: ignore[reportUnknownVariableType] # this is a CircuitPython library
     )
 
     def _reset_real(_: str | None = None):

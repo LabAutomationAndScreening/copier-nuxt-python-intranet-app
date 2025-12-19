@@ -9,17 +9,11 @@ from .base import BootMode
 from .base import ErrorCodeBase
 from .base import ResponseError
 from .base import is_command_arg_truthy
-from .device_commands import (
-    cpus,  # pyright: ignore[reportUnknownVariableType,reportAttributeAccessIssue] # this is circuit python
-)
+from .device_commands import cpus  # pyright: ignore[reportUnknownVariableType] # this is circuit python
 from .device_commands import reload
 from .device_commands import reset
-from .device_commands import (
-    runtime,  # pyright: ignore[reportUnknownVariableType,reportAttributeAccessIssue] # this is circuit python
-)
-from .device_commands import (
-    status_bar,  # pyright: ignore[reportUnknownVariableType,reportAttributeAccessIssue] # this is circuit python
-)
+from .device_commands import runtime
+from .device_commands import status_bar
 from .nvm import read_nvm_data
 from .nvm import write_nvm_data
 from .parsing import create_error_response
@@ -249,19 +243,11 @@ class FirmwareInstanceBase(FirmwareInstanceSkeleton):
                 )
                 response_data["os_info"] = {
                     "implementation_version": circuitpython_version,
-                    "runtime_autoreload": runtime.autoreload,  # pyright: ignore[reportUnknownMemberType] # circuit python
-                    "run_reason": str(
-                        runtime.run_reason  # pyright: ignore[reportUnknownMemberType,reportUnknownArgumentType] # circuit python
-                    )
-                    .split(".")[-1]
-                    .rstrip(">"),
-                    "safe_mode_reason": str(
-                        runtime.safe_mode_reason  # pyright: ignore[reportUnknownMemberType,reportUnknownArgumentType] # circuit python
-                    )
-                    .split(".")[-1]
-                    .rstrip(">"),
-                    "status_bar_console": status_bar.console,  # pyright: ignore[reportUnknownMemberType] # circuit python
-                    "status_bar_display": status_bar.display,  # pyright: ignore[reportUnknownMemberType] # circuit python
+                    "runtime_autoreload": runtime.autoreload,
+                    "run_reason": str(runtime.run_reason).split(".")[-1].rstrip(">"),
+                    "safe_mode_reason": str(runtime.safe_mode_reason).split(".")[-1].rstrip(">"),
+                    "status_bar_console": status_bar.console,
+                    "status_bar_display": status_bar.display,
                 }
                 response_data["cpu"] = {  # pyright: ignore[reportArgumentType] # not sure why pyright is upset
                     str(i): {
