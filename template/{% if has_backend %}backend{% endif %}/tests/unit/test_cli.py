@@ -1,7 +1,10 @@
+import logging
 import random
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import ANY
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -13,6 +16,10 @@ from backend_api.jinja_constants import DEPLOYED_PORT_NUMBER
 from pytest_mock import MockerFixture
 
 GENERIC_REQUIRED_CLI_ARGS = ()
+
+
+def random_non_info_log_level() -> str:
+    return random.choice(["DEBUG", "WARNING", "ERROR", "CRITICAL"])
 
 
 def test_Given_invalid_cli_args__Then_exit_code_is_2():
@@ -61,18 +68,32 @@ def test_Given_launched_directly_via_uvicorn__Then_return_zero():
     assert actual == 0
 
 
+@pytest.fixture
+def spied_configure_logging(mocker: MockerFixture) -> Generator[MagicMock, None, None]:
+    """Spy on configure_logging and restore default logging config after test."""
+    spied = mocker.spy(cli, cli.configure_logging.__name__)
+    yield spied
+    # Restore default logging configuration after test
+    if spied.called:
+        # Restore all backend_api loggers and root logger to INFO level
+        for logger_name in list(logging.Logger.manager.loggerDict.keys()):
+            if logger_name.startswith("backend_api"):
+                logger = logging.getLogger(logger_name)
+                logger.setLevel(logging.INFO)
+
+        logging.getLogger().setLevel(logging.INFO)
+
+
 class TestCliArgParsing:
     @pytest.fixture(autouse=True)
     def _setup(self, mocker: MockerFixture):
         self.mocker = mocker
         self.mocked_uvicorn_launch = self.mocker.patch.object(cli.uvicorn, cli.uvicorn.run.__name__, autospec=True)
 
-    def _spy_on_configure_logging(self):
-        self.spied_configure_logging = self.mocker.spy(cli, cli.configure_logging.__name__)
-
-    def test_Given_log_level_specified__Then_app_log_level_passed_to_configure_logging(self):
-        expected_log_level = random.choice(["DEBUG", "WARNING", "ERROR", "CRITICAL"])
-        self._spy_on_configure_logging()
+    def test_Given_log_level_specified__Then_app_log_level_passed_to_configure_logging(
+        self, spied_configure_logging: MagicMock
+    ):
+        expected_log_level = random_non_info_log_level()
 
         assert (
             entrypoint(
@@ -83,10 +104,11 @@ class TestCliArgParsing:
             == 0
         )
 
-        self.spied_configure_logging.assert_called_once_with(log_level=expected_log_level, log_filename_prefix=ANY)
+        spied_configure_logging.assert_called_once_with(log_level=expected_log_level, log_filename_prefix=ANY)
 
-    def test_Given_log_folder_specified__Then_log_folder_passed_to_configure_logging(self):
-        self._spy_on_configure_logging()
+    def test_Given_log_folder_specified__Then_log_folder_passed_to_configure_logging(
+        self, spied_configure_logging: MagicMock
+    ):
         with tempfile.TemporaryDirectory() as temp_dir:
             expected_log_folder = temp_dir
 
@@ -99,13 +121,13 @@ class TestCliArgParsing:
             == 0
         )
 
-        self.spied_configure_logging.assert_called_once_with(
+        spied_configure_logging.assert_called_once_with(
             log_filename_prefix=str(Path(expected_log_folder) / f"{APP_NAME}-"),
             log_level=ANY,
         )
 
     def test_Given_log_level_specified__Then_log_level_passed_to_uvicorn(self):
-        expected_log_level = random.choice(["DEBUG", "WARNING", "ERROR", "CRITICAL"])
+        expected_log_level = random_non_info_log_level()
 
         assert (
             entrypoint(
@@ -162,12 +184,10 @@ class TestCliArgParsing:
             ANY, host=expected_host, port=expected_port, log_level=ANY, workers=ANY
         )
 
-    def test_Given_no_args__Then_default_log_config_used_for_app(self):
-        self._spy_on_configure_logging()
-
+    def test_Given_no_args__Then_default_log_config_used_for_app(self, spied_configure_logging: MagicMock):
         assert entrypoint(GENERIC_REQUIRED_CLI_ARGS) == 0
 
-        self.spied_configure_logging.assert_called_once_with(
+        spied_configure_logging.assert_called_once_with(
             log_filename_prefix=str(Path("logs") / f"{APP_NAME}-"), log_level="INFO"
         )
 
