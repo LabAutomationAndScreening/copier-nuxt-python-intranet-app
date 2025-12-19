@@ -243,6 +243,7 @@ class FirmwareInstanceBase(FirmwareInstanceSkeleton):
                 )
                 response_data["os_info"] = {
                     "implementation_version": circuitpython_version,
+                    "implementation": repr(sys.implementation),
                     "runtime_autoreload": runtime.autoreload,
                     "run_reason": str(runtime.run_reason).split(".")[-1].rstrip(">"),
                     "safe_mode_reason": str(runtime.safe_mode_reason).split(".")[-1].rstrip(">"),
