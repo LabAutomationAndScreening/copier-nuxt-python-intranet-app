@@ -10,7 +10,7 @@ install_aws_ssm_port_forwarding_plugin: true
 configure_vcrpy: true
 configure_python_asyncio: true
 
-node_version: 22.13.0
+node_version: 24.10.4
 
 python_package_registry: PyPI
 aws_identity_center_id: d-9145c20053
