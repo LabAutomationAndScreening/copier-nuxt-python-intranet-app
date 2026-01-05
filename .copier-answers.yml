@@ -1,5 +1,5 @@
 # Changes here will be overwritten by Copier
-_commit: v0.0.91-18-ga6b5c07
+_commit: v0.0.91-19-g7760622
 _src_path: gh:LabAutomationAndScreening/copier-base-template.git
 description: A web app that is hosted within a local intranet. Nuxt frontend, python
     backend, docker-compose
