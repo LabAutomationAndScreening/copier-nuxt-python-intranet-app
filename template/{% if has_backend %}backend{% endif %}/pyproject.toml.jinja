@@ -46,7 +46,7 @@ dev = [
     "pytest-recording{% endraw %}{{ pytest_recording_version }}{% raw %}",
     "vcrpy{% endraw %}{{ vcrpy_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if deploy_as_executable %}{% raw %}
     "pyinstaller{% endraw %}{{ pyinstaller_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
-    "pytest-reserial>={% endraw %}0.6.0{% raw %}",
+    "pytest-reserial{% endraw %}{{ pytest_reserial_version }}{% raw %}",
     "circup>=2.3.0",
     "adafruit-circuitpython-busdevice{% endraw %}{{ adafruit_circuitpython_busdevice_version }}{% raw %}",
     "adafruit-circuitpython-register{% endraw %}{{ adafruit_circuitpython_register_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
