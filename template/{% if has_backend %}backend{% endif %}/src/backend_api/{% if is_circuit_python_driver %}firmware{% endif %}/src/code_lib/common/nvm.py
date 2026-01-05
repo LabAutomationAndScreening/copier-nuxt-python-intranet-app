@@ -28,21 +28,7 @@ def generate_uuid4() -> str:
     )
 
 
-if sys.implementation.name == "cpython":
-
-    def _read_nvm_data_sim():
-        raise RuntimeError(  # noqa: TRY003
-            "in simulation mode this should never have been reached"
-        )
-
-    def _write_nvm_data_sim():
-        raise RuntimeError(  # noqa: TRY003
-            "in simulation mode this should never have been reached"
-        )
-
-    read_nvm_data = _read_nvm_data_sim
-    write_nvm_data = _write_nvm_data_sim
-else:
+if sys.implementation.name == "circuitpython":
     import microcontroller
 
     def _read_string_from_nvm(*, start: int, length: int) -> str:
@@ -119,3 +105,21 @@ else:
 
     read_nvm_data = _read_nvm_data_real
     write_nvm_data = _write_nvm_data_real
+
+
+else:
+
+    def _read_nvm_data_sim():
+        raise RuntimeError(  # noqa: TRY003
+            "in simulation mode this should never have been reached"
+        )
+
+    def _write_nvm_data_sim(
+        data: dict[str, str | int],  # noqa: ARG001 # the signature needs to match the real function
+    ):
+        raise RuntimeError(  # noqa: TRY003
+            "in simulation mode this should never have been reached"
+        )
+
+    read_nvm_data = _read_nvm_data_sim
+    write_nvm_data = _write_nvm_data_sim

@@ -2,7 +2,29 @@ import sys
 
 from .singletons import get_firmware_instance
 
-if sys.implementation.name == "cpython":
+if sys.implementation.name == "circuitpython":
+    import microcontroller
+    import supervisor  # pyright: ignore[reportMissingImports] # this is a CircuitPython library
+    from microcontroller import (
+        cpus,  # pyright: ignore[reportUnknownVariableType,reportAttributeAccessIssue] # this is a CircuitPython library
+    )
+    from supervisor import (  # pyright: ignore[reportMissingImports] # this is a CircuitPython library
+        runtime,  # pyright: ignore[reportUnknownVariableType] # this is a CircuitPython library
+    )
+    from supervisor import (  # pyright: ignore[reportMissingImports] # this is a CircuitPython library
+        status_bar,  # pyright: ignore[reportUnknownVariableType] # this is a CircuitPython library
+    )
+
+    def _reset_real(_: str | None = None):
+        microcontroller.reset()  # pyright: ignore[reportUnknownMemberType,reportAttributeAccessIssue] # the microcontroller library is not well typed
+
+    def _reload_real(_: str | None = None):
+        supervisor.reload()  # pyright: ignore[reportUnknownMemberType] # the supervisor library is not well typed
+
+    reload = _reload_real
+    reset = _reset_real
+
+else:
     from types import SimpleNamespace
 
     cpus = {}
@@ -23,24 +45,3 @@ if sys.implementation.name == "cpython":
 
     reload = _reload_sim
     reset = _reset_sim
-else:
-    import microcontroller
-    import supervisor  # pyright: ignore[reportMissingImports] # this is a CircuitPython library
-    from microcontroller import (
-        cpus,  # noqa: F401 # imported for use in firmware_instance_base.py # pyright: ignore[reportUnknownVariableType,reportAttributeAccessIssue] # this is a CircuitPython library
-    )
-    from supervisor import (  # pyright: ignore[reportMissingImports] # this is a CircuitPython library
-        runtime,  # noqa: F401 # imported for use in firmware_instance_base.py # pyright: ignore[reportUnknownVariableType] # this is a CircuitPython library
-    )
-    from supervisor import (  # pyright: ignore[reportMissingImports] # this is a CircuitPython library
-        status_bar,  # noqa: F401 # imported for use in firmware_instance_base.py # pyright: ignore[reportUnknownVariableType] # this is a CircuitPython library
-    )
-
-    def _reset_real(_: str | None = None):
-        microcontroller.reset()  # pyright: ignore[reportUnknownMemberType,reportAttributeAccessIssue] # the microcontroller library is not well typed
-
-    def _reload_real(_: str | None = None):
-        supervisor.reload()  # pyright: ignore[reportUnknownMemberType] # the supervisor library is not well typed
-
-    reload = _reload_real
-    reset = _reset_real
