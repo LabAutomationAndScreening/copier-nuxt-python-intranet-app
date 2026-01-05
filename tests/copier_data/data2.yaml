@@ -10,7 +10,7 @@ install_aws_ssm_port_forwarding_plugin: false
 configure_vcrpy: false
 configure_python_asyncio: false
 
-node_version: 22.14.0
+node_version: 24.11.1
 
 python_package_registry: AWS CodeArtifact
 aws_central_infrastructure_account_id: 012321432543

@@ -79,7 +79,12 @@ def configure_logging(
 
     json_processors = [
         *shared_processors,
-        structlog.processors.ExceptionRenderer(structlog.tracebacks.ExceptionDictTransformer()),
+        structlog.processors.ExceptionRenderer(
+            structlog.tracebacks.ExceptionDictTransformer(
+                locals_max_length=50,  # increase from default 10
+                locals_max_string=500,  # Increase from default 80
+            )
+        ),
         structlog.processors.EventRenamer(to="message"),
         structlog.stdlib.ProcessorFormatter.remove_processors_meta,
         structlog.processors.JSONRenderer(),
