@@ -349,7 +349,7 @@ jobs:
         if: >-
           needs.get-values.result != 'success' ||{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
           needs.package-images.result != 'success' ||{% endraw %}{% endif %}{% raw %}
-          needs.test-compiled-frontend.result != 'success' ||{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
+          needs.test-compiled-frontend.result != 'success' ||{% endraw %}{% if is_circuit_python_driver %}{% raw %}
           needs.package-firmware.result != 'success' ||{% endraw %}{% endif %}{% raw %}
           needs.e2e-test.result != 'success'
         run: |
