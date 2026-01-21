@@ -35,6 +35,7 @@ dev = [
     "httpx>={% endraw %}{{ httpx_version }}{% raw %}",
     "microsoft-kiota-bundle{% endraw %}{{ python_kiota_bundle_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if backend_uses_graphql %}{% raw %}
     "ariadne-codegen[subscriptions]{% endraw %}{{ ariadne_codegen_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
+    "pyhumps>=3.8.0",
     "pyright{% endraw %}{{ pyright_version }}{% raw %}",
     "ty{% endraw %}{{ ty_version }}{% raw %}",
     "syrupy{% endraw %}{{ syrupy_version }}{% raw %}",

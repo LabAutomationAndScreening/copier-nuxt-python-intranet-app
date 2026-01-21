@@ -3,10 +3,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from kiota_abstractions.api_error import APIError
 from kiota_abstractions.serialization import Parsable, ParseNode, SerializationWriter
-from typing import Any, Optional, TYPE_CHECKING, Union
-
-if TYPE_CHECKING:
-    from .problem_details_error_type import ProblemDetails_errorType
+from typing import Any, Optional, Union
 
 @dataclass
 class ProblemDetails(APIError, Parsable):
@@ -15,7 +12,7 @@ class ProblemDetails(APIError, Parsable):
     # The detail property
     detail: Optional[str] = None
     # The errorType property
-    error_type: Optional[ProblemDetails_errorType] = None
+    error_type: Optional[str] = None
     # The instance property
     instance: Optional[str] = None
     # The status property
@@ -39,13 +36,11 @@ class ProblemDetails(APIError, Parsable):
         The deserialization information for the current model
         Returns: dict[str, Callable[[ParseNode], None]]
         """
-        from .problem_details_error_type import ProblemDetails_errorType
 
-        from .problem_details_error_type import ProblemDetails_errorType
 
         fields: dict[str, Callable[[Any], None]] = {
             "detail": lambda n : setattr(self, 'detail', n.get_str_value()),
-            "errorType": lambda n : setattr(self, 'error_type', n.get_object_value(ProblemDetails_errorType)),
+            "errorType": lambda n : setattr(self, 'error_type', n.get_str_value()),
             "instance": lambda n : setattr(self, 'instance', n.get_str_value()),
             "status": lambda n : setattr(self, 'status', n.get_int_value()),
             "title": lambda n : setattr(self, 'title', n.get_str_value()),
@@ -62,7 +57,7 @@ class ProblemDetails(APIError, Parsable):
         if writer is None:
             raise TypeError("writer cannot be null.")
         writer.write_str_value("detail", self.detail)
-        writer.write_object_value("errorType", self.error_type)
+        writer.write_str_value("errorType", self.error_type)
         writer.write_str_value("instance", self.instance)
         writer.write_int_value("status", self.status)
         writer.write_str_value("title", self.title)
