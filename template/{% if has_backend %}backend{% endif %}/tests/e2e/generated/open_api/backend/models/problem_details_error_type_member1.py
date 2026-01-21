@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 from kiota_abstractions.serialization import Parsable, ParseNode, SerializationWriter
 from typing import Any, Optional, TYPE_CHECKING, Union
 
-
 @dataclass
 class ProblemDetails_errorTypeMember1(Parsable):
     @staticmethod
@@ -17,18 +16,17 @@ class ProblemDetails_errorTypeMember1(Parsable):
         if parse_node is None:
             raise TypeError("parse_node cannot be null.")
         return ProblemDetails_errorTypeMember1()
-
-    def get_field_deserializers(
-        self,
-    ) -> dict[str, Callable[[ParseNode], None]]:
+    
+    def get_field_deserializers(self,) -> dict[str, Callable[[ParseNode], None]]:
         """
         The deserialization information for the current model
         Returns: dict[str, Callable[[ParseNode], None]]
         """
-        fields: dict[str, Callable[[Any], None]] = {}
+        fields: dict[str, Callable[[Any], None]] = {
+        }
         return fields
-
-    def serialize(self, writer: SerializationWriter) -> None:
+    
+    def serialize(self,writer: SerializationWriter) -> None:
         """
         Serializes information the current object
         param writer: Serialization writer to use to serialize this model
@@ -36,3 +34,5 @@ class ProblemDetails_errorTypeMember1(Parsable):
         """
         if writer is None:
             raise TypeError("writer cannot be null.")
+    
+
