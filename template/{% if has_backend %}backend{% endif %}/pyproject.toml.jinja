@@ -33,6 +33,7 @@ dev = [
 
     # Managed by upstream template{% endraw %}{% if not backend_source_uses_kiota %}{% raw %}
     "httpx>={% endraw %}{{ httpx_version }}{% raw %}",
+    "pyhumps>=3.8.0",
     "microsoft-kiota-bundle{% endraw %}{{ python_kiota_bundle_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if backend_uses_graphql %}{% raw %}
     "ariadne-codegen[subscriptions]{% endraw %}{{ ariadne_codegen_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
     "pyright{% endraw %}{{ pyright_version }}{% raw %}",
