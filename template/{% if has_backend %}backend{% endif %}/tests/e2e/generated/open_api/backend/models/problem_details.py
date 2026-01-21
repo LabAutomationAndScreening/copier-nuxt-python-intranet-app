@@ -3,10 +3,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from kiota_abstractions.api_error import APIError
 from kiota_abstractions.serialization import Parsable, ParseNode, SerializationWriter
-from typing import Any, Optional, TYPE_CHECKING, Union
+from typing import Any, Optional, Union
 
-if TYPE_CHECKING:
-    from .problem_details_error_type import ProblemDetails_errorType
 
 @dataclass
 class ProblemDetails(APIError, Parsable):
@@ -15,14 +13,14 @@ class ProblemDetails(APIError, Parsable):
     # The detail property
     detail: Optional[str] = None
     # The errorType property
-    error_type: Optional[ProblemDetails_errorType] = None
+    error_type: Optional[str] = None
     # The instance property
     instance: Optional[str] = None
     # The status property
     status: Optional[int] = None
     # The title property
     title: Optional[str] = None
-    
+
     @staticmethod
     def create_from_discriminator_value(parse_node: ParseNode) -> ProblemDetails:
         """
@@ -33,27 +31,26 @@ class ProblemDetails(APIError, Parsable):
         if parse_node is None:
             raise TypeError("parse_node cannot be null.")
         return ProblemDetails()
-    
-    def get_field_deserializers(self,) -> dict[str, Callable[[ParseNode], None]]:
+
+    def get_field_deserializers(
+        self,
+    ) -> dict[str, Callable[[ParseNode], None]]:
         """
         The deserialization information for the current model
         Returns: dict[str, Callable[[ParseNode], None]]
         """
-        from .problem_details_error_type import ProblemDetails_errorType
-
-        from .problem_details_error_type import ProblemDetails_errorType
 
         fields: dict[str, Callable[[Any], None]] = {
-            "detail": lambda n : setattr(self, 'detail', n.get_str_value()),
-            "errorType": lambda n : setattr(self, 'error_type', n.get_object_value(ProblemDetails_errorType)),
-            "instance": lambda n : setattr(self, 'instance', n.get_str_value()),
-            "status": lambda n : setattr(self, 'status', n.get_int_value()),
-            "title": lambda n : setattr(self, 'title', n.get_str_value()),
-            "type": lambda n : setattr(self, 'type', n.get_str_value()),
+            "detail": lambda n: setattr(self, "detail", n.get_str_value()),
+            "errorType": lambda n: setattr(self, "error_type", n.get_str_value()),
+            "instance": lambda n: setattr(self, "instance", n.get_str_value()),
+            "status": lambda n: setattr(self, "status", n.get_int_value()),
+            "title": lambda n: setattr(self, "title", n.get_str_value()),
+            "type": lambda n: setattr(self, "type", n.get_str_value()),
         }
         return fields
-    
-    def serialize(self,writer: SerializationWriter) -> None:
+
+    def serialize(self, writer: SerializationWriter) -> None:
         """
         Serializes information the current object
         param writer: Serialization writer to use to serialize this model
@@ -62,18 +59,17 @@ class ProblemDetails(APIError, Parsable):
         if writer is None:
             raise TypeError("writer cannot be null.")
         writer.write_str_value("detail", self.detail)
-        writer.write_object_value("errorType", self.error_type)
+        writer.write_str_value("errorType", self.error_type)
         writer.write_str_value("instance", self.instance)
         writer.write_int_value("status", self.status)
         writer.write_str_value("title", self.title)
         writer.write_str_value("type", self.type)
-    
+
     @property
     def primary_message(self) -> Optional[str]:
         """
         The primary error message.
         """
         if self.detail is not None:
-            return '' if self.detail is None else self.detail
-        return ''
-
+            return "" if self.detail is None else self.detail
+        return ""
