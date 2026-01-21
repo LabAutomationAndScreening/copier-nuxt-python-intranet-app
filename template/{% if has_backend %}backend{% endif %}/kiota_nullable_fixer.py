@@ -109,6 +109,13 @@ def pascal_to_snake(pascal_str: str) -> str:
     return snake.lower()
 
 
+def camel_to_snake(camel_str: str) -> str:
+    """Convert camelCase to snake_case."""
+    # Insert underscore before uppercase letters
+    snake = re.sub(r"(?<!^)(?=[A-Z])", "_", camel_str)
+    return snake.lower()
+
+
 def fix_composed_type_file(file_path: Path) -> bool:
     """Remove a composed type file that's no longer needed."""
     if file_path.exists():
@@ -126,8 +133,12 @@ def fix_model_file(file_path: Path, model_name: str, fields: dict[str, str]) -> 
     needs_datetime_import = False
 
     for field, field_type in fields.items():
-        # Convert to the composed type class name (e.g., id -> IdentityModel_id)
-        composed_type_name = f"{model_name}_{field}"
+        # Convert field name from camelCase (in schema) to snake_case (in Python code)
+        field_snake = camel_to_snake(field)
+
+        # Convert to the composed type class name
+        # NOTE: Kiota uses the camelCase field name in the class name, but snake_case in the file name
+        composed_type_class_name = f"{model_name}_{field}"  # Uses camelCase field name
 
         # Determine the appropriate getter/writer methods and type name
         getter_method: str
@@ -166,20 +177,27 @@ def fix_model_file(file_path: Path, model_name: str, fields: dict[str, str]) -> 
         else:
             continue
 
-        # 1. Fix the import statement - remove the composed type import (with any amount of leading whitespace)
-        import_pattern = rf"^\s*from \.{re.escape(pascal_to_snake(model_name))}_{re.escape(field)} import {re.escape(composed_type_name)}\n"
+        # 1. Fix the import statement - remove the composed type import (with any amount of leading/indentation whitespace)
+        # Match both top-level and indented imports (e.g., inside if TYPE_CHECKING:)
+        import_pattern = rf"^[ \t]*from \.{re.escape(pascal_to_snake(model_name))}_{re.escape(field_snake)} import {re.escape(composed_type_class_name)}\n"
+        matches_before = len(re.findall(import_pattern, content, flags=re.MULTILINE))
         content = re.sub(import_pattern, "", content, flags=re.MULTILINE)
+        if matches_before > 0:
+            print(f"    Removed {matches_before} import(s) for {composed_type_class_name}")
 
         # 2. Fix the attribute declaration
         # Change: field_name: Optional[ComposedType] = None
         # To: field_name: Optional[str|bool|int|float|datetime.datetime] = None
-        attr_pattern = rf"(\s+{re.escape(field)}:\s+)Optional\[{re.escape(composed_type_name)}\](\s*=\s*None)"
+        attr_pattern = (
+            rf"(\s+{re.escape(field_snake)}:\s+)Optional\[{re.escape(composed_type_class_name)}\](\s*=\s*None)"
+        )
         content = re.sub(attr_pattern, rf"\1Optional[{python_type}]\2", content)
 
         # 3. Fix get_field_deserializers
         # Change: lambda n: setattr(self, "field", n.get_object_value(ComposedType))
         # To: lambda n: setattr(self, "field", n.get_str_value()) or n.get_bool_value() etc.
-        deserializer_pattern = rf'("{re.escape(field)}":\s+lambda\s+n\s*:\s*setattr\(self,\s*[\'"]{re.escape(field)}[\'"]\s*,\s*)n\.get_object_value\({re.escape(composed_type_name)}\)\)'
+        # Note: The key in the dict is camelCase (from JSON), but the attribute name is snake_case
+        deserializer_pattern = rf'("{re.escape(field)}":\s+lambda\s+n\s*:\s*setattr\(self,\s*[\'"]{re.escape(field_snake)}[\'"]\s*,\s*)n\.get_object_value\({re.escape(composed_type_class_name)}\)\)'
         if primitive_type:
             # For collections, pass the type
             content = re.sub(deserializer_pattern, rf"\1n.{getter_method}({primitive_type}))", content)
@@ -189,8 +207,9 @@ def fix_model_file(file_path: Path, model_name: str, fields: dict[str, str]) -> 
         # 4. Fix serialize method
         # Change: writer.write_object_value("field", self.field)
         # To: writer.write_str_value("field", self.field) or write_bool_value etc.
-        serialize_pattern = rf'writer\.write_object_value\("{re.escape(field)}",\s+self\.{re.escape(field)}\)'
-        content = re.sub(serialize_pattern, f'writer.{writer_method}("{field}", self.{field})', content)
+        # Note: The key is camelCase but the attribute is snake_case
+        serialize_pattern = rf'writer\.write_object_value\("{re.escape(field)}",\s+self\.{re.escape(field_snake)}\)'
+        content = re.sub(serialize_pattern, f'writer.{writer_method}("{field}", self.{field_snake})', content)
 
     # 5. Add datetime import if needed
     if needs_datetime_import and "import datetime" not in content:
@@ -267,7 +286,9 @@ def main() -> None:
 
         # Remove composed type files
         for field in fields.keys():
-            composed_type_file = models_dir / f"{pascal_to_snake(model_name)}_{field}.py"
+            # Convert field name from camelCase to snake_case for the file name
+            field_snake = camel_to_snake(field)
+            composed_type_file = models_dir / f"{pascal_to_snake(model_name)}_{field_snake}.py"
             if fix_composed_type_file(composed_type_file):
                 removed_files += 1
 
