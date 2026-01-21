@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+import humps
 
 
 def load_openapi_schema(source: str) -> dict[str, Any]:
@@ -102,20 +103,6 @@ def get_anyof_simple_nullable_fields(schema: dict[str, Any]) -> dict[str, dict[s
     return result
 
 
-def pascal_to_snake(pascal_str: str) -> str:
-    """Convert PascalCase to snake_case."""
-    # Insert underscore before uppercase letters (except first)
-    snake = re.sub(r"(?<!^)(?=[A-Z])", "_", pascal_str)
-    return snake.lower()
-
-
-def camel_to_snake(camel_str: str) -> str:
-    """Convert camelCase to snake_case."""
-    # Insert underscore before uppercase letters
-    snake = re.sub(r"(?<!^)(?=[A-Z])", "_", camel_str)
-    return snake.lower()
-
-
 def fix_composed_type_file(file_path: Path) -> bool:
     """Remove a composed type file that's no longer needed."""
     if file_path.exists():
@@ -134,7 +121,7 @@ def fix_model_file(file_path: Path, model_name: str, fields: dict[str, str]) -> 
 
     for field, field_type in fields.items():
         # Convert field name from camelCase (in schema) to snake_case (in Python code)
-        field_snake = camel_to_snake(field)
+        field_snake = humps.decamelize(field)
 
         # Convert to the composed type class name
         # NOTE: Kiota uses the camelCase field name in the class name, but snake_case in the file name
@@ -179,7 +166,7 @@ def fix_model_file(file_path: Path, model_name: str, fields: dict[str, str]) -> 
 
         # 1. Fix the import statement - remove the composed type import (with any amount of leading/indentation whitespace)
         # Match both top-level and indented imports (e.g., inside if TYPE_CHECKING:)
-        import_pattern = rf"^[ \t]*from \.{re.escape(pascal_to_snake(model_name))}_{re.escape(field_snake)} import {re.escape(composed_type_class_name)}\n"
+        import_pattern = rf"^[ \t]*from \.{re.escape(humps.decamelize(model_name))}_{re.escape(field_snake)} import {re.escape(composed_type_class_name)}\n"
         matches_before = len(re.findall(import_pattern, content, flags=re.MULTILINE))
         content = re.sub(import_pattern, "", content, flags=re.MULTILINE)
         if matches_before > 0:
@@ -277,7 +264,7 @@ def main() -> None:
         print(f"\nProcessing {model_name}: {', '.join(field_list)}")
 
         # Fix the main model file (convert PascalCase to snake_case)
-        model_file = models_dir / f"{pascal_to_snake(model_name)}.py"
+        model_file = models_dir / f"{humps.decamelize(model_name)}.py"
         if model_file.exists():
             if fix_model_file(model_file, model_name, fields):
                 fixed_models += 1
@@ -287,8 +274,8 @@ def main() -> None:
         # Remove composed type files
         for field in fields.keys():
             # Convert field name from camelCase to snake_case for the file name
-            field_snake = camel_to_snake(field)
-            composed_type_file = models_dir / f"{pascal_to_snake(model_name)}_{field_snake}.py"
+            field_snake = humps.decamelize(field)
+            composed_type_file = models_dir / f"{humps.decamelize(model_name)}_{field_snake}.py"
             if fix_composed_type_file(composed_type_file):
                 removed_files += 1
 
