@@ -1,5 +1,20 @@
 # Questions specific to this template
+has_backend:
+    type: bool
+    help: Does this project have a backend?
+    default: yes
 
+deploy_as_executable:
+    type: bool
+    help: Should this application be deployed as a single standalone executable?
+    default: no
+    when: "{{ has_backend }}"
+
+push_to_ecr:
+    type: bool
+    help: During CI, should the docker images be pushed to an ECR?
+    default: no
+    when: "{{ not deploy_as_executable }}"
 
 
 
@@ -75,24 +90,24 @@ python_package_registry:
 aws_identity_center_id:
     type: str
     help: What's the ID of your Organization's AWS Identity center, e.g. d-9145c20053?
-    when: "{{ python_package_registry == 'AWS CodeArtifact' or install_aws_ssm_port_forwarding_plugin }}"
+    when: "{{ python_package_registry == 'AWS CodeArtifact' or install_aws_ssm_port_forwarding_plugin or push_to_ecr }}"
 
 aws_org_home_region:
     type: str
     help: What is the home region of the AWS Organization (where all of the central infrastructure is deployed)?
     default: us-east-1
-    when: "{{ python_package_registry == 'AWS CodeArtifact' or install_aws_ssm_port_forwarding_plugin }}"
+    when: "{{ python_package_registry == 'AWS CodeArtifact' or install_aws_ssm_port_forwarding_plugin or push_to_ecr }}"
 
 aws_central_infrastructure_account_id:
     type: str
     help: What's the ID of your Organization's AWS Account containing Central Infrastructure (e.g. CodeArtifact)?
-    when: "{{ python_package_registry == 'AWS CodeArtifact' }}"
+    when: "{{ python_package_registry == 'AWS CodeArtifact' or push_to_ecr }}"
     default: "000000000000"
 
 core_infra_base_access_profile_name:
     type: str
     help: What's the AWS Identity Center Profile name for base access to the Central Infrastructure account (i.e. to read from CodeArtifact)?
-    when: "{{ python_package_registry == 'AWS CodeArtifact' }}"
+    when: "{{ python_package_registry == 'AWS CodeArtifact' or push_to_ecr }}"
     default: CoreInfraBaseAccess
 
 
@@ -106,10 +121,7 @@ human_friendly_app_name:
     help: What's the human-friendly name of this application? (e.g. for documentation)
     default: "{{ repo_name.replace('-', ' ').replace('_', ' ') }}"
 
-has_backend:
-    type: bool
-    help: Does this project have a backend?
-    default: yes
+
 
 backend_makes_api_calls:
     type: bool
@@ -135,11 +147,7 @@ backend_uses_graphql:
     default: yes
     when: "{{ has_backend }}"
 
-deploy_as_executable:
-    type: bool
-    help: Should this application be deployed as a single standalone executable?
-    default: no
-    when: "{{ has_backend }}"
+
 
 is_circuit_python_driver:
     type: bool
@@ -159,11 +167,7 @@ create_docker_image_tar_artifact:
     default: no
     when: "{{ not deploy_as_executable }}"
 
-push_to_ecr:
-    type: bool
-    help: During CI, should the docker images be pushed to an ECR?
-    default: no
-    when: "{{ not deploy_as_executable }}"
+
 
 frontend_ecr_base_url:
     type: str
