@@ -224,7 +224,7 @@ if __name__ == "__main__":
     # Load OpenAPI schema
     print(f"Loading OpenAPI schema from: {args.openapi_source}")
     openapi_schema = load_openapi_schema(args.openapi_source)
-    # pylint: disable=duplicate-code # this is shared with the fixer script for typescript code
+    # pylint: enable=duplicate-code
 
     # Override globals with CLI args
     MODELS_DIR = models_dir
