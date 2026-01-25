@@ -3,12 +3,17 @@
 Open github issue: https://github.com/microsoft/kiota/issues/3911
 """
 
+import argparse
 import json
 import re
+import sys
 from pathlib import Path
+from typing import Any
+from urllib.error import URLError
+from urllib.request import urlopen
 
-# Path to OpenAPI schema
-OPENAPI_SCHEMA = (
+# Default path to OpenAPI schema
+DEFAULT_OPENAPI_SCHEMA = (
     Path(__file__).parent.parent
     / "backend"
     / "tests"
@@ -17,17 +22,36 @@ OPENAPI_SCHEMA = (
     / "test_basic_server_functionality"
     / "test_openapi_schema.json"
 )
-assert OPENAPI_SCHEMA.exists() is True
-MODELS_DIR = Path(__file__).parent / "app" / "generated" / "open-api" / "backend" / "models"
-assert MODELS_DIR.exists() is True
+DEFAULT_MODELS_DIR = Path(__file__).parent / "app" / "generated" / "open-api" / "backend" / "models"
 
 
-def get_required_non_nullable_fields() -> dict[str, set[str]]:
+def load_openapi_schema(source: str) -> dict[str, Any]:
+    """Load OpenAPI schema from URL or file path."""
+    # Check if it looks like a URL
+    if source.startswith(("http://", "https://")):
+        try:
+            with urlopen(source, timeout=5.0) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except (URLError, json.JSONDecodeError, OSError) as e:
+            print(f"Error fetching OpenAPI schema from {source}: {e}")
+            sys.exit(1)
+    else:
+        # Treat as file path
+        file_path = Path(source)
+        if not file_path.exists():
+            print(f"Error: OpenAPI schema file not found: {file_path}")
+            sys.exit(1)
+        try:
+            with file_path.open() as f:
+                return json.load(f)
+        except (OSError, json.JSONDecodeError) as e:
+            print(f"Error reading OpenAPI schema from {file_path}: {e}")
+            sys.exit(1)
+
+
+def get_required_non_nullable_fields(schema: dict[str, Any]) -> dict[str, set[str]]:
     """Parse OpenAPI schema to find required, non-nullable fields."""
     # pylint: disable=duplicate-code # in repositories with both frontends and backends, this function appears in both
-    with OPENAPI_SCHEMA.open() as f:
-        schema = json.load(f)
-
     result: dict[str, set[str]] = {}
     schemas = schema.get("components", {}).get("schemas", {})
 
@@ -123,8 +147,24 @@ def fix_typescript_file(file_path: Path, model_name: str, fields: set[str]) -> b
     return False
 
 
-def main():
-    required_fields = get_required_non_nullable_fields()
+def main(schema: dict[str, Any] | None = None):
+    """Main function to fix TypeScript models.
+
+    Args:
+        schema: OpenAPI schema dict. If None, loads from default path for backward compatibility.
+    """
+    if schema is None:
+        # Backward compatibility: load from default path if no schema provided
+        if not DEFAULT_OPENAPI_SCHEMA.exists():
+            print(f"Error: Default OpenAPI schema file not found: {DEFAULT_OPENAPI_SCHEMA}")
+            sys.exit(1)
+        with DEFAULT_OPENAPI_SCHEMA.open() as f:
+            schema = json.load(f)
+            if schema is None:
+                print("Error: Failed to load OpenAPI schema from default path")
+                sys.exit(1)
+
+    required_fields = get_required_non_nullable_fields(schema)
 
     if not required_fields:
         print("No required non-nullable fields found in OpenAPI schema")
@@ -145,4 +185,44 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(
+        description="Fix Kiota's incorrect nullable handling in generated TypeScript models"
+    )
+    _ = parser.add_argument(
+        "openapi_source",
+        nargs="?",
+        default=str(DEFAULT_OPENAPI_SCHEMA),
+        help=(
+            "OpenAPI schema source (URL starting with http:// or https://, or file path). "
+            f"Defaults to {DEFAULT_OPENAPI_SCHEMA.relative_to(Path(__file__).parent.parent)}"
+        ),
+    )
+    _ = parser.add_argument(
+        "models_dir",
+        nargs="?",
+        default=str(DEFAULT_MODELS_DIR),
+        help=(
+            "Path to the directory containing generated Kiota models. "
+            f"Defaults to {DEFAULT_MODELS_DIR.relative_to(Path(__file__).parent)}"
+        ),
+    )
+
+    args = parser.parse_args()
+
+    # Validate models directory
+    models_dir = Path(args.models_dir)
+    if not models_dir.exists():
+        print(f"Error: Models directory not found: {models_dir.absolute()}")
+        sys.exit(1)
+    if not models_dir.is_dir():
+        print(f"Error: Models path is not a directory: {models_dir.absolute()}")
+        sys.exit(1)
+
+    # Load OpenAPI schema
+    print(f"Loading OpenAPI schema from: {args.openapi_source}")
+    openapi_schema = load_openapi_schema(args.openapi_source)
+
+    # Override globals with CLI args
+    MODELS_DIR = models_dir
+
+    main(openapi_schema)

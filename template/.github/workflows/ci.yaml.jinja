@@ -346,14 +346,18 @@ jobs:
     if: always()
     steps:
       - name: fail if prior job failure
-        if: >-
-          needs.get-values.result != 'success' ||{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
-          needs.package-images.result != 'success' ||{% endraw %}{% endif %}{% raw %}
-          needs.test-compiled-frontend.result != 'success' ||{% endraw %}{% if is_circuit_python_driver %}{% raw %}
-          needs.package-firmware.result != 'success' ||{% endraw %}{% endif %}{% raw %}
-          needs.e2e-test.result != 'success'
         run: |
-          exit 1
+          failure_pattern="^(failure|cancelled)$"
+
+          if [[ "${{ needs.get-values.result }}" =~ $failure_pattern ]] ||{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
+              [[ "${{ needs.package-images.result }}" =~ $failure_pattern ]] ||{% endraw %}{% endif %}{% raw %}
+              [[ "${{ needs.test-compiled-frontend.result }}" =~ $failure_pattern ]] ||{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+              [[ "${{ needs.package-firmware.result }}" =~ $failure_pattern ]] ||{% endraw %}{% endif %}{% raw %}
+              [[ "${{ needs.e2e-test.result }}" =~ $failure_pattern ]]; then
+              echo "❌ One or more jobs failed or were cancelled"
+            exit 1
+          fi
+          echo "✅ All jobs completed successfully or were skipped"
       - name: Mark updated Dependabot commit of devcontainer hash as succeeded
         if: needs.get-values.outputs.dependabot-commit-created == 'true'
         env:
