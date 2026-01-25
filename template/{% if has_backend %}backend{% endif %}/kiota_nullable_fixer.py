@@ -29,6 +29,7 @@ def load_openapi_schema(source: str) -> dict[str, Any]:
             print(f"Error fetching OpenAPI schema from {source}: {e}")
             sys.exit(1)
     else:
+        # pylint: disable=duplicate-code # this is shared with the fixer script for typescript code
         # Treat as file path
         file_path = Path(source)
         if not file_path.exists():
@@ -37,9 +38,11 @@ def load_openapi_schema(source: str) -> dict[str, Any]:
         try:
             with file_path.open() as f:
                 return json.load(f)
+
         except (json.JSONDecodeError, IOError) as e:
             print(f"Error reading OpenAPI schema from {file_path}: {e}")
             sys.exit(1)
+        # pylint: enable=duplicate-code
 
 
 def get_anyof_simple_nullable_fields(schema: dict[str, Any]) -> dict[str, dict[str, str]]:
@@ -236,6 +239,7 @@ def main() -> None:
 
     # Validate models directory
     models_dir = Path(args.kiota_dir) / "models"
+    # pylint: disable=duplicate-code # this is shared with the fixer script for typescript code
     if not models_dir.exists():
         print(f"Error: Models directory not found: {models_dir.absolute()}")
         sys.exit(1)
@@ -246,6 +250,7 @@ def main() -> None:
     # Load OpenAPI schema
     print(f"Loading OpenAPI schema from: {args.openapi_source}")
     schema = load_openapi_schema(args.openapi_source)
+    # pylint: enable=duplicate-code
 
     # Find fields to fix
     simple_nullable_fields = get_anyof_simple_nullable_fields(schema)
