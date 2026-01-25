@@ -36,6 +36,7 @@ def load_openapi_schema(source: str) -> dict[str, Any]:
             print(f"Error fetching OpenAPI schema from {source}: {e}")
             sys.exit(1)
     else:
+        # pylint: disable=duplicate-code # this is shared with the fixer script for typescript code
         # Treat as file path
         file_path = Path(source)
         if not file_path.exists():
@@ -47,6 +48,7 @@ def load_openapi_schema(source: str) -> dict[str, Any]:
         except (OSError, json.JSONDecodeError) as e:
             print(f"Error reading OpenAPI schema from {file_path}: {e}")
             sys.exit(1)
+        # pylint: enable=duplicate-code
 
 
 def get_required_non_nullable_fields(schema: dict[str, Any]) -> dict[str, set[str]]:
@@ -211,6 +213,7 @@ if __name__ == "__main__":
 
     # Validate models directory
     models_dir = Path(args.models_dir)
+    # pylint: disable=duplicate-code # this is shared with the fixer script for typescript code
     if not models_dir.exists():
         print(f"Error: Models directory not found: {models_dir.absolute()}")
         sys.exit(1)
@@ -221,6 +224,7 @@ if __name__ == "__main__":
     # Load OpenAPI schema
     print(f"Loading OpenAPI schema from: {args.openapi_source}")
     openapi_schema = load_openapi_schema(args.openapi_source)
+    # pylint: disable=duplicate-code # this is shared with the fixer script for typescript code
 
     # Override globals with CLI args
     MODELS_DIR = models_dir
