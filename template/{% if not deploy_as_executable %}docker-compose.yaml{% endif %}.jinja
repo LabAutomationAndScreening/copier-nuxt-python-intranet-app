@@ -1,5 +1,5 @@
 {% raw %}# aws ecr get-login-password --region us-east-1{% endraw %}{% if pull_from_ecr %}{% raw %} --profile={% endraw %}{{ core_infra_base_access_profile_name }}{% endif %}{% raw %} | docker login --username AWS --password-stdin {% endraw %}{{ frontend_ecr_base_url }}{% raw %}
-# for when running unit tests to create VCRpy cassettes and you don't want the app itself running (TODO: consider using docker compose profiles instead): docker-compose up --scale backend=0 --scale frontend=0
+# for when running unit tests to create VCRpy cassettes and you don't want the app itself running (TODO: consider using docker compose profiles instead): docker-compose up --scale frontend=0{% endraw %}{% if has_backend %}{% raw %} --scale backend=0{% endraw %}{% endif %}{% raw %}
 services:{% endraw %}{% if has_backend %}{% raw %}
   backend:
     build:
