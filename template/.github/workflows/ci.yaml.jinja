@@ -177,14 +177,14 @@ jobs:
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
         with:
-          name: built-application-${{ matrix.os }}
+          name: built-{% endraw %}{{ repo_name }}{% raw %}-${{ matrix.os }}
           path: backend/dist/{% endraw %}{{ repo_name }}{% raw %}/**/*
           if-no-files-found: error
       - name: Upload application artifact (Linux)
         if: runner.os == 'Linux'
         uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
         with:
-          name: built-application-${{ matrix.os }}
+          name: built-{% endraw %}{{ repo_name }}{% raw %}-${{ matrix.os }}
           path: app.tar
           if-no-files-found: error{% endraw %}{% endif %}{% raw %}{% endraw %}{% endif %}{% raw %}
 
@@ -251,7 +251,7 @@ jobs:
       - name: Download Built executable
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
-          name: built-application-${{ matrix.os }}
+          name: built-{% endraw %}{{ repo_name }}{% raw %}-${{ matrix.os }}
           path: backend/dist/{% endraw %}{{ repo_name }}{% raw %}
       - name: Untar the artifact (on Linux)
         if: runner.os == 'Linux'
