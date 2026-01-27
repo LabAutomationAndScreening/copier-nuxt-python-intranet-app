@@ -203,19 +203,37 @@ def fix_anyof_nullable_types(file_path: Path) -> int:
     # Pattern: field = n.getObjectValue<Member1Type>(createXxxMember1...) ?? n.getPrimitiveValue()
     # Replace with: field = n.getPrimitiveValue()
 
-    # Handle string fields
-    deser_string_pattern = r"(\w+\.\w+\s*=\s*)n\.getObjectValue<\w+Member1>\(create\w+Member1FromDiscriminatorValue\)\s*\?\?\s*(n\.getString(?:Value)?\(\)[^;]*)"
-    content, count = re.subn(deser_string_pattern, r"\1\2", content)
+    # Handle string fields - two patterns for different orderings
+    # Pattern 1: getObjectValue first
+    deser_string_pattern1 = r"(\w+\.\w+\s*=\s*)n\.getObjectValue<?(\w+Member1)?>?\(create\w+Member1FromDiscriminatorValue\)\s*\?\?\s*(n\.getString(?:Value)?\(\)[^;]*)"
+    content, count = re.subn(deser_string_pattern1, r"\1\3", content)
     fixes_applied += count
 
-    # Handle boolean fields (order matters - bool before getObjectValue)
-    deser_bool_pattern = r"(\w+\.\w+\s*=\s*)n\.getBooleanValue\(\)\s*\?\?\s*n\.getObjectValue<\w+Member1>\(create\w+Member1FromDiscriminatorValue\)"
-    content, count = re.subn(deser_bool_pattern, r"\1n.getBooleanValue()", content)
+    # Pattern 2: getString first
+    deser_string_pattern2 = r"(\w+\.\w+\s*=\s*)(n\.getString(?:Value)?\(\)[^;]*?)\s*\?\?\s*n\.getObjectValue<?(\w+Member1)?>?\(create\w+Member1FromDiscriminatorValue\)"
+    content, count = re.subn(deser_string_pattern2, r"\1\2", content)
     fixes_applied += count
 
-    # Handle number fields (order matters - number before getObjectValue)
-    deser_number_pattern = r"(\w+\.\w+\s*=\s*)n\.getNumberValue\(\)\s*\?\?\s*n\.getObjectValue<\w+Member1>\(create\w+Member1FromDiscriminatorValue\)"
-    content, count = re.subn(deser_number_pattern, r"\1n.getNumberValue()", content)
+    # Handle boolean fields - two patterns for different orderings
+    # Pattern 1: getObjectValue first
+    deser_bool_pattern1 = r"(\w+\.\w+\s*=\s*)n\.getObjectValue<?(\w+Member1)?>?\(create\w+Member1FromDiscriminatorValue\)\s*\?\?\s*n\.getBooleanValue\(\)"
+    content, count = re.subn(deser_bool_pattern1, r"\1n.getBooleanValue()", content)
+    fixes_applied += count
+
+    # Pattern 2: getBooleanValue first
+    deser_bool_pattern2 = r"(\w+\.\w+\s*=\s*)n\.getBooleanValue\(\)\s*\?\?\s*n\.getObjectValue<?(\w+Member1)?>?\(create\w+Member1FromDiscriminatorValue\)"
+    content, count = re.subn(deser_bool_pattern2, r"\1n.getBooleanValue()", content)
+    fixes_applied += count
+
+    # Handle number fields - two patterns for different orderings
+    # Pattern 1: getObjectValue first
+    deser_number_pattern1 = r"(\w+\.\w+\s*=\s*)n\.getObjectValue<?(\w+Member1)?>?\(create\w+Member1FromDiscriminatorValue\)\s*\?\?\s*n\.getNumberValue\(\)"
+    content, count = re.subn(deser_number_pattern1, r"\1n.getNumberValue()", content)
+    fixes_applied += count
+
+    # Pattern 2: getNumberValue first
+    deser_number_pattern2 = r"(\w+\.\w+\s*=\s*)n\.getNumberValue\(\)\s*\?\?\s*n\.getObjectValue<?(\w+Member1)?>?\(create\w+Member1FromDiscriminatorValue\)"
+    content, count = re.subn(deser_number_pattern2, r"\1n.getNumberValue()", content)
     fixes_applied += count
 
     # Handle collection fields - two patterns depending on order
