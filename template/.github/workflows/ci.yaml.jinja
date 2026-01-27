@@ -177,14 +177,14 @@ jobs:
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
         with:
-          name: built-application-${{ matrix.os }}
+          name: built-{% endraw %}{{ repo_name }}{% raw %}-${{ matrix.os }}
           path: backend/dist/{% endraw %}{{ repo_name }}{% raw %}/**/*
           if-no-files-found: error
       - name: Upload application artifact (Linux)
         if: runner.os == 'Linux'
         uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
         with:
-          name: built-application-${{ matrix.os }}
+          name: built-{% endraw %}{{ repo_name }}{% raw %}-${{ matrix.os }}
           path: app.tar
           if-no-files-found: error{% endraw %}{% endif %}{% raw %}{% endraw %}{% endif %}{% raw %}
 
@@ -251,7 +251,7 @@ jobs:
       - name: Download Built executable
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
-          name: built-application-${{ matrix.os }}
+          name: built-{% endraw %}{{ repo_name }}{% raw %}-${{ matrix.os }}
           path: backend/dist/{% endraw %}{{ repo_name }}{% raw %}
       - name: Untar the artifact (on Linux)
         if: runner.os == 'Linux'
@@ -338,7 +338,9 @@ jobs:
     timeout-minutes: {% endraw %}{{ gha_short_timeout_minutes }}{% raw %}
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     needs:
-      - get-values{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
+      - get-values
+      - lint
+      - unit-test-frontend{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
       - package-images{% endraw %}{% endif %}{% raw %}
       - test-compiled-frontend{% endraw %}{% if is_circuit_python_driver %}{% raw %}
       - package-firmware{% endraw %}{% endif %}{% raw %}
@@ -349,7 +351,9 @@ jobs:
         run: |
           failure_pattern="^(failure|cancelled)$"
 
-          if [[ "${{ needs.get-values.result }}" =~ $failure_pattern ]] ||{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
+          if [[ "${{ needs.get-values.result }}" =~ $failure_pattern ]] ||
+              [[ "${{ needs.lint.result }}" =~ $failure_pattern ]] ||
+              [[ "${{ needs.unit-test-frontend.result }}" =~ $failure_pattern ]] ||{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
               [[ "${{ needs.package-images.result }}" =~ $failure_pattern ]] ||{% endraw %}{% endif %}{% raw %}
               [[ "${{ needs.test-compiled-frontend.result }}" =~ $failure_pattern ]] ||{% endraw %}{% if is_circuit_python_driver %}{% raw %}
               [[ "${{ needs.package-firmware.result }}" =~ $failure_pattern ]] ||{% endraw %}{% endif %}{% raw %}
