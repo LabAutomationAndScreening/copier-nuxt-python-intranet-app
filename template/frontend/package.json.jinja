@@ -32,7 +32,9 @@
     "@nuxtjs/color-mode": "{% endraw %}{{ nuxtjs_color_mode_version }}{% raw %}",
     "nuxt": "{% endraw %}{{ nuxt_version }}{% raw %}",
     "vue": "{% endraw %}{{ vue_version }}{% raw %}",
-    "vue-router": "{% endraw %}{{ vue_router_version }}{% raw %}"
+    "vue-router": "{% endraw %}{{ vue_router_version }}{% raw %}"{% endraw %}{% if frontend_uses_zod %}{% raw %},
+    "zod": "{% endraw %}{{ zod_version }}{% raw %}",
+    "zod-from-json-schema": "{% endraw %}{{ zod_from_json_schema_version }}{% raw %}"{% endraw %}{% endif %}{% raw %}
   },
   "devDependencies": {
     "@faker-js/faker": "{% endraw %}{{ faker_version }}{% raw %}",{% endraw %}{% if frontend_uses_graphql %}{% raw %}

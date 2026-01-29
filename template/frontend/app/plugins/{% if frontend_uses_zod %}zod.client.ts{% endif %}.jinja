@@ -1,0 +1,7 @@
+import { z } from "zod";
+import { en } from "zod/locales";
+import { defineNuxtPlugin } from "#app";
+export default defineNuxtPlugin(() => {
+  // Load the English locale so you get full default messages
+  z.config(en());
+});
