@@ -5,7 +5,7 @@ import path from "path";
 import type { Browser } from "playwright";
 import { chromium } from "playwright";
 import type { TestProject } from "vitest/node";
-import { APP_NAME, DEPLOYED_FRONTEND_PORT_NUMBER } from "~~/tests/setup/constants";
+import { APP_NAME, DEPLOYED_BACKEND_PORT_NUMBER, DEPLOYED_FRONTEND_PORT_NUMBER } from "~~/tests/setup/constants";
 
 function getRandomOpenPort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -54,6 +54,7 @@ export async function setup(project: TestProject) {
   if (isE2E) {
     if (isBuiltBackendE2E) {
       console.log(`Starting app at ${executablePath} ...`);
+      process.env.DEPLOYED_BACKEND_PORT_NUMBER = availablePort.toString();
       const child = spawn(
         executablePath,
         [
@@ -74,6 +75,7 @@ export async function setup(project: TestProject) {
     }
     if (isDockerE2E) {
       console.log("Starting docker-compose...");
+      process.env.DEPLOYED_BACKEND_PORT_NUMBER = DEPLOYED_BACKEND_PORT_NUMBER.toString();
       execSync("docker compose --file=../docker-compose.yaml up --detach --force-recreate --renew-anon-volumes", {
         stdio: "inherit",
       });
