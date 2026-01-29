@@ -156,7 +156,7 @@ install_gcc_in_backend_container_build_phase:
     type: bool
     help: Is GCC required to build any Python dependencies in the backend container?
     default: no
-    when: "{{ not deploy_as_executable }}"
+    when: "{{ not deploy_as_executable and has_backend }}"
 
 create_docker_image_tar_artifact:
     type: bool
