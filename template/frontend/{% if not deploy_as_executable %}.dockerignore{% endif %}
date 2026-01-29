@@ -23,7 +23,6 @@ dist
 
 # Exclude linter configs
 eslint.config.mjs
-tsconfig.json
 
 # Exclude test files
 tests
