@@ -31,6 +31,7 @@ is_circuit_python_driver: false
 install_gcc_in_backend_container_build_phase: false
 frontend_uses_graphql: false
 frontend_deployed_port_number: 3000
+frontend_uses_zod: true
 push_to_ecr: false
 create_docker_image_tar_artifact: false
 frontend_ecr_base_url: 012321432543.dkr.ecr.us-west-2.amazonaws.com

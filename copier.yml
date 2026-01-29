@@ -223,6 +223,11 @@ frontend_deployed_port_number:
     default: 3000
     when: "{{ not deploy_as_executable }}"
 
+frontend_uses_zod:
+    type: bool
+    help: Will the frontend use the zod library for form validation?
+    default: false
+
 _skip_if_exists:
     - backend/src/static/favicon.ico # TODO: figure out if there's another way to stop the template from overriding a changed icon
     - backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json # snapshot file of the OpenAPI schema that will be overwritten by the repo as the schema evolves
