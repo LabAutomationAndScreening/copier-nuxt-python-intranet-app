@@ -21,8 +21,13 @@ dist
 .vscode
 .idea
 
+# Exclude linter configs
+eslint.config.mjs
+tsconfig.json
+
 # Exclude test files
 tests
+vitest.config.ts
 
 # Exclude Docker-related files if needed
 Dockerfile*
