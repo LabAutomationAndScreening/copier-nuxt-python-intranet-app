@@ -53,9 +53,19 @@ uv --directory=backend run python src/entrypoint.py
 
 When running the unit test suite, the `pytest-recording` library records HTTP requests as cassettes. If you encounter errors about a missing cassette, pass `--record-mode=once` to the `pytest` command to perform a live HTTP request instead.{% endraw %}{% endif %}{% if has_backend %}{% raw %}
 
-To (re)generate the client code this app for use in E2E tests of the backend:
+
+To (re)generate the client code for this app for use in E2E tests of the backend:
+
+First, regenerate the openapi.json file that will be used in the next step to generate the Python models:
+
 ```bash
-mkdir -p ./backend/tests/e2e/generated/open_api/backend && docker run --network host -v ./backend/tests/e2e/generated/open_api/backend:/app/output -v ./backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json:/app/openapi.json mcr.microsoft.com/openapi/kiota:{% endraw %}{{ kiota_cli_version }}{% raw %} generate -l python -c BackendClient -n client -d openapi.json --exclude-backward-compatible --clean-output --additional-data false && uv --directory=backend run python kiota_nullable_fixer.py ./tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json ./tests/e2e/generated/open_api/backend
+uv --directory=backend run pytest tests/unit/test_basic_server_functionality.py --snapshot-update
+```
+
+Once created, use Kiota to regenerate all models based on the new openapi.json spec.
+
+```bash
+mkdir -p "./backend/tests/e2e/generated/open_api/backend" && docker run --network host -v "./backend/tests/e2e/generated/open_api/backend:/app/output" -v "./backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json:/app/openapi.json" mcr.microsoft.com/openapi/kiota:{% endraw %}{{ kiota_cli_version }}{% raw %} generate -l python -c BackendClient -n client -d openapi.json --exclude-backward-compatible --clean-output --additional-data false && uv --directory=backend run python kiota_nullable_fixer.py "./tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json" "./tests/e2e/generated/open_api/backend"
 ```{% endraw %}{% endif %}{% if has_backend and backend_uses_graphql %}{% raw %}
 
 To regenerate the GraphQL client code for the E2E test suite, run:
