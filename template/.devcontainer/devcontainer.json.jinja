@@ -20,7 +20,13 @@
       "version": "{% endraw %}{{ node_version }}{% raw %}",
       "pnpmVersion": "{% endraw %}{{ pnpm_version }}{% raw %}"
     }{% endraw %}{% endif %}{% raw %}{% endraw %}{% if install_claude_cli %}{% raw %},
-    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0.5": {}{% endraw %}{% endif %}{% raw %}
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0.5": {},{% endraw %}{% endif %}{% raw %}
+    "ghcr.io/devcontainers/features/git-lfs:1.2.5": {
+      // we are not using git-lfs right now, but its a transitive dep elsewhere. We want to configure auto pull to off since the feature will by default also try to install the git hook
+      // and it breaks creation of the devcontainer since pre-commit hooks are already in place. Probably a better way to fix this but until we use git-lfs we can leave it like this.
+      // https://github.com/devcontainers/features/blob/main/src/git-lfs/README.md
+      "autoPull": false
+    }
   },
   "customizations": {
     "vscode": {
