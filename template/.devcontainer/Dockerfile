@@ -16,7 +16,7 @@ RUN apt-get update -y && apt-get install -y \
 # Create the workspace folders that have docker volume (see docker-compose.yaml) and set permissions for anyone to modify
 # this is necessary to be able to break out these folders as a separate docker volume for better performance on Windows hosts
 ARG REPO_NAME=copier-base-template
-ENV VENV_PATH=/workspaces/${REPO_NAME}/.venv
+ENV VENV_PATH=/workspaces/${REPO_NAME}/backend/.venv
 ENV PNPM_STORE=/workspaces/${REPO_NAME}/.pnpm-store
 ENV FRONTEND_NODE_MODULES=/workspaces/${REPO_NAME}/frontend/node_modules
 RUN mkdir -p /workspaces && \
