@@ -361,7 +361,7 @@ jobs:
             echo "❌ One or more jobs did not finish with skipped or success"
             exit 1
           fi
-          echo "✅ All jobs finished with skipped or success""
+          echo "✅ All jobs finished with skipped or success"
       - name: Mark updated Dependabot commit of devcontainer hash as succeeded
         if: needs.get-values.outputs.dependabot-commit-created == 'true'
         env:
