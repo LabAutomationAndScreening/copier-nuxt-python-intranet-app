@@ -253,6 +253,17 @@ _tasks:
         echo "pyrightconfig.json not found"
       fi
     when: "{{ is_circuit_python_driver }}"
+  - command: |
+      echo "Checking for .coveragerc in repo root..."
+      if [ -f .coveragerc ]; then
+        echo "Moving .coveragerc to backend folder..."
+        mkdir -p backend
+        mv .coveragerc backend/.coveragerc
+        echo ".coveragerc moved successfully"
+      else
+        echo ".coveragerc not found in repo root"
+      fi
+    when: "{{ has_backend }}"
 
 
 # Additional Settings
