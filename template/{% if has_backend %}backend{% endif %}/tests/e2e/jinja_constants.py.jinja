@@ -1,7 +1,7 @@
-{% raw %}from enum import Enum
+{% raw %}from enum import StrEnum
 
 
-class ApplicationBootupModes(str, Enum):
+class ApplicationBootupModes(StrEnum):
     EXE = "exe"
     DOCKER_COMPOSE = "docker-compose"
 
