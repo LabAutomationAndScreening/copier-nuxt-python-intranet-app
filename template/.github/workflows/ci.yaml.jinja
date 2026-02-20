@@ -355,9 +355,9 @@ jobs:
               [[ ! "${{ needs.lint.result }}" =~ $success_pattern ]] &&
               [[ ! "${{ needs.unit-test-frontend.result }}" =~ $success_pattern ]] &&{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
               [[ ! "${{ needs.package-images.result }}" =~ $success_pattern ]] &&{% endraw %}{% endif %}{% raw %}
-              [[ ! "${{ needs.test-compiled-frontend.result }}" =~ $failure_pattern ]] ||{% endraw %}{% if is_circuit_python_driver %}{% raw %}
-              [[ ! "${{ needs.package-firmware.result }}" =~ $failure_pattern ]] ||{% endraw %}{% endif %}{% raw %}
-              [[ ! "${{ needs.e2e-test.result }}" =~ $failure_pattern ]]; then
+              [[ ! "${{ needs.test-compiled-frontend.result }}" =~ $success_pattern ]] ||{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+              [[ ! "${{ needs.package-firmware.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}
+              [[ ! "${{ needs.e2e-test.result }}" =~ $success_pattern ]]; then
               echo "❌ One or more jobs failed or were cancelled"
             exit 1
           fi
