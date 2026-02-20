@@ -21,11 +21,15 @@ dist
 .vscode
 .idea
 
+# Development tooling
+codegen.ts
+
 # Exclude linter configs
 eslint.config.mjs
 
 # Exclude test files
 tests
+.coverage
 vitest.config.ts
 
 # Exclude Docker-related files if needed
