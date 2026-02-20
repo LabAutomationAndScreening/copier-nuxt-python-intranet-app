@@ -17,6 +17,7 @@ services:
     environment:
       - AWS_PROFILE=localstack
       - AWS_DEFAULT_REGION=us-east-1
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
 
 
 volumes:

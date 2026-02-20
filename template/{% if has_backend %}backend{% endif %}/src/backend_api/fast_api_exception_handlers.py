@@ -68,12 +68,9 @@ class ExceptionHandler:
 
         if generator is None:
             raise NotImplementedError("CORS Middleware not found, cannot set CORS headers on exception responses")
-        assert isinstance(
-            generator.simple_headers,  # pyright: ignore[reportUnknownMemberType] # that's why we're asserting
-            dict,
-        ), f"Expected simple_headers to be a dict, got {type(generator.simple_headers)}"
+
         # TODO: consider if more dynamic headers would need to be used for some complex CORS setups
-        self._cors_headers: dict[str, str] = generator.simple_headers  # pyright: ignore[reportUnknownMemberType] # the simple_headers is not fully typed
+        self._cors_headers = generator.simple_headers
 
     def handle_http_exception(self, request: Request, exc: Exception) -> JSONResponse:
         assert isinstance(exc, HTTPException), f"Expected HTTPException, got {type(exc)}"
