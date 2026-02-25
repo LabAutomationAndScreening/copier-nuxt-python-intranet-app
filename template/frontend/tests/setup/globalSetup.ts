@@ -76,9 +76,12 @@ export async function setup(project: TestProject) {
     if (isDockerE2E) {
       console.log("Starting docker-compose...");
       process.env.DEPLOYED_BACKEND_PORT_NUMBER = DEPLOYED_BACKEND_PORT_NUMBER.toString();
-      execSync("docker compose --file=../docker-compose.yaml up --detach --force-recreate --renew-anon-volumes", {
-        stdio: "inherit",
-      });
+      execSync(
+        "docker compose --file=../docker-compose.yaml up --detach --force-recreate --renew-anon-volumes --remove-orphans",
+        {
+          stdio: "inherit",
+        },
+      );
     }
     browser = await chromium.launch(); // headless by default
     // Wait for /api/healthcheck to become available
@@ -147,7 +150,7 @@ export async function teardown() {
     }
     if (isDockerE2E) {
       console.log("Stopping docker-compose...");
-      execSync("docker compose --file=../docker-compose.yaml down", { stdio: "inherit" });
+      execSync("docker compose --file=../docker-compose.yaml down --volumes", { stdio: "inherit" });
     }
   }
 }
