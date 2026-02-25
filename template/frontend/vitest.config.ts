@@ -12,6 +12,7 @@ export default defineVitestConfig({
     fileParallelism: !isE2E, // Disable parallelism for E2E tests // TODO: consider when we start making better use of "workspaces" if we want to only disable it for some files in the E2E test suite
     sequence: {
       shuffle: true,
+      seed: fakerSeed,
     },
     include: ["tests/**/*.spec.ts"],
     root: ".",
