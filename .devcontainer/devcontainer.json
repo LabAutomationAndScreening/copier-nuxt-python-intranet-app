@@ -18,12 +18,12 @@
       "extensions": [
         // basic tooling
         // "eamodio.gitlens@15.5.1",
-        "coderabbit.coderabbit-vscode@0.17.0",
+        "coderabbit.coderabbit-vscode@0.18.1",
         "ms-vscode.live-server@0.5.2025051301",
         "MS-vsliveshare.vsliveshare@1.0.5905",
         "github.copilot@1.388.0",
-        "github.copilot-chat@0.38.2026022001",
-        "anthropic.claude-code@2.1.49",
+        "github.copilot-chat@0.38.2026022704",
+        "anthropic.claude-code@2.1.61",
 
         // Python
         "ms-python.python@2026.2.2026021801",
@@ -61,5 +61,5 @@
   "initializeCommand": "sh .devcontainer/initialize-command.sh",
   "onCreateCommand": "sh .devcontainer/on-create-command.sh",
   "postStartCommand": "sh .devcontainer/post-start-command.sh"
-  // Devcontainer context hash (do not manually edit this, it's managed by a pre-commit hook): d2a0ef0a # spellchecker:disable-line
+  // Devcontainer context hash (do not manually edit this, it's managed by a pre-commit hook): 63a1f57e # spellchecker:disable-line
 }
