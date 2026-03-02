@@ -18,7 +18,7 @@ services:
       - AWS_PROFILE=localstack
       - AWS_DEFAULT_REGION=us-east-1
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - BEADS_DIR=/workspaces/copier-base-template/.claude/.beads
+      - BEADS_DIR=/workspaces/copier-nuxt-python-intranet-app/.claude/.beads
 
 
 volumes:
