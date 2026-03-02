@@ -1,8 +1,22 @@
-- Comments should be used very rarely. Generally the code should speak for itself.
-- Never create a single-line docstring. Either the function should clearly describe what it does, or it is something with very complex behavior that requires a detailed docstring.
-- Don't spend time sorting or removing imports within code files. The pre-commit hooks will do that.
+## Code Style
+- Comments should be used very rarely. Code should generally express its intent.
+- Never write a one-line docstring — either the name is sufficient or the behavior warrants a full explanation.
+- Don't sort or remove imports manually — pre-commit handles it.
 - Always include type hints for pyright in Python
+- Respect the pyright rule reportUnusedCallResult; assign unneeded return values to `_`
+- Prefer keyword-only parameters: use `*` in Python signatures and destructured options objects in TypeScript.
+
+## Testing
+- Test runners will detect unit and e2e tests by default, so always run tests with a path. e.g. `uv run pytest tests/unit`
+- Test coverage requirements are usually at 100%, so when running a subset of tests, always disable test coverage to avoid the test run failing for insufficient coverage.
+- Avoid magic values in comparisons in tests in all languages (like ruff rule PLR2004 specifies)
+- Prefer using random values in tests rather than arbitrary ones (e.g. the faker library, uuids, random.randint) when possible.
+
+## Tooling
 - Always use `uv run python` instead of `python3` or `python` when running Python commands.
+- Check .devcontainer/devcontainer.json for tooling versions (Python, Node, etc.) when reasoning about version-specific stdlib or tooling behavior.
+<!-- Allows better automated utilization of command allow/deny list -->
+- When running terminal commands, execute exactly one command per tool call. Do not chain commands with shell operators or metacharacters such as &&, ||, ;, |, or & unless the user explicitly asks for it. If two commands are needed, run them in separate tool calls.
 
 <!-- BEGIN BEADS INTEGRATION -->
 ## Issue Tracking with bd (beads)
@@ -45,7 +59,11 @@ bd close bd-42 --reason "Completed" --json
 ```
 
 **Creating human readable file:**
-- After every command CRUD command on an issue, run `bd export -o .claude/.beads/issues-dump.jsonl`
+After every command CRUD command on an issue, export it:
+
+```bash
+bd export -o .claude/.beads/issues-dump.jsonl
+```
 
 ### Issue Types
 
