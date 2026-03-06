@@ -113,5 +113,5 @@ For more details, see README.md and docs/QUICKSTART.md.
 
 ## Project Structure
 - This is a statically generated frontend---using the Nuxt and @nuxt/ui frameworks---meant to operate in an air-gapped environment. That code is in the `frontend/` directory.
-- There may also be a backend that the frontend talks to, in `backend/`. If present, it will be a Python FastAPI uvicorn server.
+- There may also be a backend that the frontend interacts with, in `backend/`. If present, it will be a Python FastAPI uvicorn server.
 - Kiota is used for codegen from the OpenAPI schema
