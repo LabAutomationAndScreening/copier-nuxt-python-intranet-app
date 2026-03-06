@@ -4,7 +4,7 @@
 - Don't sort or remove imports manually — pre-commit handles it.
 - Always include type hints for pyright in Python
 - Respect the pyright rule reportUnusedCallResult; assign unneeded return values to `_`
-- Prefer keyword-only parameters: use `*` in Python signatures and destructured options objects in TypeScript.
+- Prefer keyword-only parameters (unless a very clear single-argument function): use `*` in Python signatures and destructured options objects in TypeScript.
 
 ## Testing
 - Always run tests with an explicit path (e.g. uv run pytest tests/unit) — test runners discover all types by default.
@@ -12,9 +12,15 @@
 - Avoid magic values in comparisons in tests in all languages (like ruff rule PLR2004 specifies)
 - Prefer using random values in tests rather than arbitrary ones (e.g. the faker library, uuids, random.randint) when possible.
 
+### Python Testing
+- When using `mocker.spy` on a class-level method (including inherited ones), the spy records the unbound call, so assertions need `ANY` as the first argument to match self:  `spy.assert_called_once_with(ANY, expected_arg)`
+- Before writing new mock/spy helpers, check the `tests/unit/` folder for pre-built helpers in files like `fixtures.py` or `*mocks.py`
+
+
 ## Tooling
 - Always use `uv run python` instead of `python3` or `python` when running Python commands.
 - Check .devcontainer/devcontainer.json for tooling versions (Python, Node, etc.) when reasoning about version-specific stdlib or tooling behavior.
+- For frontend work, run commands via `pnpm` scripts from `frontend/package.json`
 <!-- Allows better automated utilization of command allow/deny list -->
 - When running terminal commands, execute exactly one command per tool call. Do not chain commands with &&, ||, ;, or & unless the user explicitly asks for it. Pipes (|) are allowed for output transformation (e.g., head, tail, grep). If two sequential commands are needed, run them in separate tool calls.
 
@@ -104,3 +110,8 @@ bd export -o .claude/.beads/issues-dump.jsonl
 For more details, see README.md and docs/QUICKSTART.md.
 
 <!-- END BEADS INTEGRATION -->
+
+## Project Structure
+- This is a statically generated frontend---using the Nuxt and @nuxt/ui frameworks---meant to operate in an air-gapped environment. That code is in the `frontend/` directory.
+- There may also be a backend that the frontend interacts with, in `backend/`. If present, it will be a Python FastAPI uvicorn server.
+- Kiota is used for codegen from the OpenAPI schema
