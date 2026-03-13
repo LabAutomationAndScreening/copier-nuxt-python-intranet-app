@@ -21,6 +21,8 @@
 - When a test needs a fixture only for its side effects (not its return value), use `@pytest.mark.usefixtures(fixture_name.__name__)` instead of adding an unused parameter with a noqa comment
 - Use `__name__` instead of string literals when referencing functions/methods (e.g., `mocker.patch.object(MyClass, MyClass.method.__name__)`, `pytest.mark.usefixtures(my_fixture.__name__)`). This enables IDE refactoring tools to catch renames.
 
+## FastAPI
+- Use `fastapi.status` constants (e.g., `status.HTTP_204_NO_CONTENT`) instead of raw integers for status codes
 
 ## Tooling
 - Always use `uv run python` instead of `python3` or `python` when running Python commands.
