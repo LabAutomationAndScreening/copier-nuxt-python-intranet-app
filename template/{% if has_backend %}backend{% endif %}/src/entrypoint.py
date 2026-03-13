@@ -1,7 +1,7 @@
-import pip_system_certs.wrapt_requests  # pragma: no cover # we can't unit test the entrypoint itself. It is tested in the E2E test of the app
+import pip_system_certs.wrapt_requests
 
 # ruff: noqa: E402 # we need to inject the truststore before we import anything else
-pip_system_certs.wrapt_requests.inject_truststore()  # pragma: no cover # we can't unit test the entrypoint itself. It is tested in the E2E test of the app
+pip_system_certs.wrapt_requests.inject_truststore()
 import sys
 
 from backend_api.app_def import app
