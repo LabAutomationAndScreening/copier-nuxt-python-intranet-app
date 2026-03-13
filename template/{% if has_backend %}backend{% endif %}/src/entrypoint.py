@@ -4,10 +4,8 @@ import pip_system_certs.wrapt_requests
 pip_system_certs.wrapt_requests.inject_truststore()
 import sys
 
-from backend_api.app_def import app
+from backend_api.app_def import app  # noqa: F401 # this needs to be imported for the FastAPI app to actually lanch
 from backend_api.cli import entrypoint
-
-_ = app
 
 exit_code = entrypoint(sys.argv[1:])
 if (  # needed to enable using hot-reloading with uvicorn. if we always call sys.exit even with 0, then the FastAPI app won't work correctly when launched directly by uvicorn
