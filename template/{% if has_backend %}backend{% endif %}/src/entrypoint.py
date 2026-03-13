@@ -1,20 +1,14 @@
-import sys  # pragma: no cover # we can't unit test the entrypoint itself. It is tested in the E2E test of the app
+import pip_system_certs.wrapt_requests
 
-from backend_api.app_def import (
-    app,
-)  # pragma: no cover # we can't unit test the entrypoint itself. It is tested in the E2E test of the app
-from backend_api.cli import (
-    entrypoint,
-)  # pragma: no cover # we can't unit test the entrypoint itself. It is tested in the E2E test of the app
+# ruff: noqa: E402 # we need to inject the truststore before we import anything else
+pip_system_certs.wrapt_requests.inject_truststore()
+import sys
 
-_ = app  # pragma: no cover # we can't unit test the entrypoint itself. It is tested in the E2E test of the app
+from backend_api.app_def import app  # noqa: F401 # this needs to be imported for the FastAPI app to actually lanch
+from backend_api.cli import entrypoint
 
-exit_code = entrypoint(
-    sys.argv[1:]
-)  # pragma: no cover # we can't unit test the entrypoint itself. It is tested in the E2E test of the app
+exit_code = entrypoint(sys.argv[1:])
 if (  # needed to enable using hot-reloading with uvicorn. if we always call sys.exit even with 0, then the FastAPI app won't work correctly when launched directly by uvicorn
     exit_code != 0
-):  # pragma: no cover # we can't unit test the entrypoint itself. It is tested in the E2E test of the app
-    sys.exit(
-        exit_code
-    )  # pragma: no cover # we can't unit test the entrypoint itself. It is tested in the E2E test of the app
+):
+    sys.exit(exit_code)

@@ -8,6 +8,8 @@ omit =
     # omit CircuitPython firmware
     */firmware/code.py
     */firmware/boot.py
+    # a pyinstaller entrypoint cannot be unit tested, only E2E tested
+    */src/entrypoint.py
 
 [report]
 # Regexes for lines to exclude from consideration

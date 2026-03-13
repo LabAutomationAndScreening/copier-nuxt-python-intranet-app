@@ -14,6 +14,7 @@ dependencies = [
     "fastapi-offline{% endraw %}{{ fastapi_offline_version }}{% raw %}",
     "uuid-utils{% endraw %}{{ uuid_utils_version }}{% raw %}",{% endraw %}{% if backend_uses_graphql %}{% raw %}
     "strawberry-graphql{% endraw %}{{ strawberry_graphql_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
+    "pip-system-certs>=5.3",
     "pydantic{% endraw %}{{ pydantic_version }}{% raw %}",
     "uvicorn{% endraw %}{{ uvicorn_version }}{% raw %}",
     "structlog{% endraw %}{{ structlog_version }}{% raw %}",{% endraw %}{% if backend_source_uses_kiota %}{% raw %}
