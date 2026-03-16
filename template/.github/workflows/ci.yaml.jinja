@@ -383,7 +383,8 @@ jobs:
       - unit-test-frontend{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
       - package-images{% endraw %}{% endif %}{% raw %}
       - test-compiled-frontend{% endraw %}{% if is_circuit_python_driver %}{% raw %}
-      - package-firmware{% endraw %}{% endif %}{% raw %}
+      - package-firmware{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
+      - e2e-test-backend{% endraw %}{% endif %}{% raw %}
       - e2e-test
     if: always()
     steps:
