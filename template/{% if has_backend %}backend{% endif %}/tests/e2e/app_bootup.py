@@ -190,8 +190,7 @@ def start_compose(
             "--force-recreate",
             "--renew-anon-volumes",
             "--remove-orphans",
-            "--scale",
-            "frontend=0",  # don't boot up the frontend for tests of only the backend
+            *(["--scale", "frontend=0"] if not services_to_start or "frontend" not in services_to_start else []),
             *(services_to_start or []),
         ],
         check=True,
