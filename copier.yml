@@ -207,7 +207,7 @@ backend_image_name:
 
 run_backend_e2e_in_ci:
     type: bool
-    help: Should a separate job in CI be created to run E2E tests just against the backend?
+    help: Should a separate job in CI be created to run E2E tests just against the backend (Note - this does not actually work for executables yet, still TODO)?
     default: false
     when: "{{ has_backend }}"
 
