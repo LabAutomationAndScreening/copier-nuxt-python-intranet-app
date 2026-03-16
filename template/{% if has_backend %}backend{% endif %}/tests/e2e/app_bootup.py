@@ -102,7 +102,7 @@ def wait_for_service_to_be_healthy(*, max_retries: int = 15, retry_delay: int = 
         raise RuntimeError(f"Application containers failed to become healthy after {max_retries} attempts")
 
 
-def get_images_from_compose(compose_file: Path) -> list[str]:
+def get_images_from_compose(compose_file: Path, *, services: list[str] | None = None) -> list[str]:
     result = subprocess.run(  # noqa: S603 # we trust this input
         [  # noqa: S607 # docker should definitely be in PATH
             "docker",
@@ -120,7 +120,9 @@ def get_images_from_compose(compose_file: Path) -> list[str]:
     )
 
     config = json.loads(result.stdout)
-    return [s["image"] for s in config.get("services", {}).values() if "image" in s and "build" not in s]
+    all_services: dict[str, dict[str, str]] = config.get("services", {})
+    relevant = {name: svc for name, svc in all_services.items() if services is None or name in services}
+    return [s["image"] for s in relevant.values() if "image" in s and "build" not in s]
 
 
 def image_exists_locally(image: str) -> bool:
@@ -138,8 +140,8 @@ def image_exists_locally(image: str) -> bool:
     return result.returncode == 0
 
 
-def pull_images(*, compose_file: Path = DEFAULT_COMPOSE_FILE):
-    images = get_images_from_compose(compose_file)
+def pull_images(*, compose_file: Path = DEFAULT_COMPOSE_FILE, services: list[str] | None = None):
+    images = get_images_from_compose(compose_file, services=services)
     for image in images:
         if image_exists_locally(image):
             logger.info(f"Image already exists locally: {image}")
@@ -156,8 +158,14 @@ def pull_images(*, compose_file: Path = DEFAULT_COMPOSE_FILE):
         )
 
 
-def start_compose(*, compose_file: Path = DEFAULT_COMPOSE_FILE):
+def start_compose(
+    *,
+    compose_file: Path = DEFAULT_COMPOSE_FILE,
+    services_to_build: list[str] | None = None,
+    services_to_start: list[str] | None = None,
+):
     assert compose_file.exists(), f"Compose file {compose_file} does not exist"
+    build_targets = services_to_build or []
     _ = subprocess.run(  # noqa: S603 # we trust this input
         [  # noqa: S607 # docker should definitely be in PATH
             "docker",
@@ -165,12 +173,12 @@ def start_compose(*, compose_file: Path = DEFAULT_COMPOSE_FILE):
             "--file",
             str(compose_file),
             "build",
-            "backend",  # don't build the frontend in tests of just the backend
+            *build_targets,
         ],
         check=True,
         timeout=300,
     )
-    pull_images(compose_file=compose_file)
+    pull_images(compose_file=compose_file, services=services_to_start)
     _ = subprocess.run(  # noqa: S603 # we trust this input
         [  # noqa: S607 # docker should definitely be in PATH
             "docker",
@@ -182,8 +190,8 @@ def start_compose(*, compose_file: Path = DEFAULT_COMPOSE_FILE):
             "--force-recreate",
             "--renew-anon-volumes",
             "--remove-orphans",
-            "--scale",
-            "frontend=0",  # don't boot up the frontend for tests of only the backend
+            *(["--scale", "frontend=0"] if not services_to_start or "frontend" not in services_to_start else []),
+            *(services_to_start or []),
         ],
         check=True,
         timeout=220,  # TODO: figure out why the frontend still attempts to build in CI...so we can reset the timeout back to 20
