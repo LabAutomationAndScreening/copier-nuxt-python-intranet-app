@@ -209,7 +209,7 @@ jobs:
       - name: Test
         run: pnpm --dir=frontend test-compiled{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
 
-  backend-e2e-test:
+  e2e-test-backend:
     name: End-to-end Testing of the Backend
     strategy:
       matrix:
@@ -397,7 +397,7 @@ jobs:
             [[ ! "${{ needs.package-images.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}
             [[ ! "${{ needs.test-compiled-frontend.result }}" =~ $success_pattern ]] ||{% endraw %}{% if is_circuit_python_driver %}{% raw %}
             [[ ! "${{ needs.package-firmware.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
-            [[ ! "${{ needs.backend-e2e-test.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}
+            [[ ! "${{ needs.e2e-test-backend.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}
             [[ ! "${{ needs.e2e-test.result }}" =~ $success_pattern ]]; then
             echo "❌ One or more jobs did not finish with skipped or success"
             exit 1
