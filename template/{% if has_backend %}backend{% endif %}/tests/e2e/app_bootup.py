@@ -165,10 +165,7 @@ def start_compose(
     services_to_start: list[str] | None = None,
 ):
     assert compose_file.exists(), f"Compose file {compose_file} does not exist"
-    if services_to_build is None:
-        services_to_build = [
-            "backend"
-        ]  # don't build the frontend for tests of only the backend # TODO: try and read this dynamically from the compose file
+    build_targets = services_to_build or []
     _ = subprocess.run(  # noqa: S603 # we trust this input
         [  # noqa: S607 # docker should definitely be in PATH
             "docker",
@@ -176,7 +173,7 @@ def start_compose(
             "--file",
             str(compose_file),
             "build",
-            *services_to_build,
+            *build_targets,
         ],
         check=True,
         timeout=300,
