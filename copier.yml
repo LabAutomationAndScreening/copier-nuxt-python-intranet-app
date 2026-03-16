@@ -205,6 +205,12 @@ backend_image_name:
     default: "{{ repo_name }}/backend"
     when: "{{ has_backend and not deploy_as_executable }}"
 
+run_backend_e2e_in_ci:
+    type: bool
+    help: Should a separate job in CI be created to run E2E tests just against the backend?
+    default: false
+    when: "{{ has_backend }}"
+
 frontend_uses_graphql:
     type: bool
     help: Do you want the frontend to make GraphQL calls?
