@@ -211,6 +211,24 @@ run_backend_e2e_in_ci:
     default: false
     when: "{{ has_backend }}"
 
+auth_to_ecr_for_backend_e2e_in_ci:
+    type: bool
+    help: Will the Backend E2E job in CI need to authenticate into an ECR to pull images?
+    default: false
+    when: "{{ run_backend_e2e_in_ci }}"
+
+auth_to_ecr_for_backend_e2e_in_ci_region:
+    type: str
+    help: What AWS region should the Backend E2E job in CI authenticate to ECR in?
+    default: "{{ aws_org_home_region }}"
+    when: "{{ auth_to_ecr_for_backend_e2e_in_ci }}"
+
+auth_to_ecr_for_backend_e2e_in_ci_role_arn:
+    type: str
+    help: What is the ARN of the role to assume for authenticating to ECR in the Backend E2E job in CI?
+    default: "arn:aws:iam::{{ aws_central_infrastructure_account_id }}:role/{{ core_infra_base_access_profile_name }}"
+    when: "{{ auth_to_ecr_for_backend_e2e_in_ci }}"
+
 frontend_uses_graphql:
     type: bool
     help: Do you want the frontend to make GraphQL calls?
