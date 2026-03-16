@@ -207,7 +207,47 @@ jobs:
           skip-installing-ssm-plugin-manager: true
 
       - name: Test
-        run: pnpm --dir=frontend test-compiled
+        run: pnpm --dir=frontend test-compiled{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
+
+  e2e-test-backend:
+    name: End-to-end Testing of the Backend
+    strategy:
+      matrix:
+        os:
+          - "{% endraw %}{{ gha_linux_runner }}{% raw %}"
+    runs-on: ${{ matrix.os }}
+    needs:
+      - build-backend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
+
+      - name: Install latest versions of python packages
+        uses: ./.github/actions/install_deps
+        with:
+          python-version: {% endraw %}{{ python_version }}{% raw %}
+          skip-installing-ssm-plugin-manager: true
+
+      - name: Download Backend Artifact
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: ${{ needs.build-backend.outputs.artifact-name }}
+          path: deployment-package-folder{% endraw %}{% if auth_to_ecr_for_backend_e2e_in_ci %}{% raw %}
+
+      - name: ECR Auth to pull images for E2E tests
+        uses: ./.github/actions/ecr-auth
+        with:
+          aws-region: {% endraw %}{{ auth_to_ecr_for_backend_e2e_in_ci_region }}{% raw %}
+          role-arn: {% endraw %}{{ auth_to_ecr_for_backend_e2e_in_ci_role_arn }}{% raw %}{% endraw %}{% endif %}{% raw %}
+
+      - name: Load docker images
+        run: |
+          ls deployment-package-folder -a
+          # load all images in the folder
+          ls -1 deployment-package-folder/*.tar | xargs --no-run-if-empty -L 1 docker load -i
+
+      - name: E2E test
+        run: uv --directory=backend run pytest tests/e2e --durations=5{% endraw %}{% endif %}{% raw %}
 
   e2e-test:
     name: End-to-end Testing
@@ -233,7 +273,7 @@ jobs:
       - name: Download Backend Artifact
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
-          name: {% endraw %}{{ backend_image_name | replace('/', '-') }}{% raw %}
+          name: ${{ needs.build-backend.outputs.artifact-name }}
           path: deployment-package-folder{% endraw %}{% endif %}{% raw %}
 
       - name: Download Frontend Artifact
@@ -343,7 +383,8 @@ jobs:
       - unit-test-frontend{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
       - package-images{% endraw %}{% endif %}{% raw %}
       - test-compiled-frontend{% endraw %}{% if is_circuit_python_driver %}{% raw %}
-      - package-firmware{% endraw %}{% endif %}{% raw %}
+      - package-firmware{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
+      - e2e-test-backend{% endraw %}{% endif %}{% raw %}
       - e2e-test
     if: always()
     steps:
@@ -356,7 +397,8 @@ jobs:
             [[ ! "${{ needs.unit-test-frontend.result }}" =~ $success_pattern ]] ||{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
             [[ ! "${{ needs.package-images.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}
             [[ ! "${{ needs.test-compiled-frontend.result }}" =~ $success_pattern ]] ||{% endraw %}{% if is_circuit_python_driver %}{% raw %}
-            [[ ! "${{ needs.package-firmware.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}
+            [[ ! "${{ needs.package-firmware.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
+            [[ ! "${{ needs.e2e-test-backend.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}
             [[ ! "${{ needs.e2e-test.result }}" =~ $success_pattern ]]; then
             echo "❌ One or more jobs did not finish with skipped or success"
             exit 1

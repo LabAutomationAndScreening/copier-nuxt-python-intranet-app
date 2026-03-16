@@ -40,3 +40,7 @@ frontend_image_name: another-cup/of-wine
 backend_ecr_base_url: 543215433233.dkr.ecr.us-east-2.amazonaws.com
 backend_ecr_push_role_name: got-it-bad
 backend_image_name: for-you-girl
+run_backend_e2e_in_ci: true
+auth_to_ecr_for_backend_e2e_in_ci: true
+auth_to_ecr_for_backend_e2e_in_ci_region: us-west-2
+auth_to_ecr_for_backend_e2e_in_ci_role_arn: arn:aws:iam::543215433233:role/CoreInfraBaseAccess

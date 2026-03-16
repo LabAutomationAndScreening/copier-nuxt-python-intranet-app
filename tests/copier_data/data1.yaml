@@ -40,3 +40,4 @@ frontend_image_name: my-namespaceaaooga/booga
 backend_ecr_base_url: 543215433233.dkr.ecr.us-east-2.amazonaws.com
 backend_ecr_push_role_name: wakka-WAKKA
 backend_image_name: cool-project/foobar
+run_backend_e2e_in_ci: false
