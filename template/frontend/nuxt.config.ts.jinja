@@ -67,7 +67,8 @@ export default defineNuxtConfig({
       // prettier-ignore
       include: [{% endraw %}{% if frontend_uses_zod %}{% raw %}
                 "zod",
-                "zod/locales",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if frontend_uses_graphql %}{% raw %}
+                "zod/locales",
+                "zod-from-json-schema",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if frontend_uses_graphql %}{% raw %}
                 "graphql-tag",{% endraw %}{% endif %}{% raw %}
                ],
     },
