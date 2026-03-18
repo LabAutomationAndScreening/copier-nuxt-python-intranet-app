@@ -4,7 +4,7 @@ import pip_system_certs.wrapt_requests
 pip_system_certs.wrapt_requests.inject_truststore()
 import sys
 
-from backend_api.app_def import app  # noqa: F401 # this needs to be imported for the FastAPI app to actually lanch
+from backend_api.app_def import app  # noqa: F401 # this needs to be imported for the FastAPI app to actually launch
 from backend_api.cli import entrypoint
 
 exit_code = entrypoint(sys.argv[1:])

@@ -1,5 +1,8 @@
 {% raw %}// https://nuxt.com/docs/api/configuration/nuxt-config
 import { defineNuxtConfig } from "nuxt/config";
+
+const useOptimizeDeps = process.env.NUXT_DISABLE_OPTIMIZE_DEPS !== "1";
+
 export default defineNuxtConfig({
   compatibilityDate: "2024-11-01",
   future: {
@@ -62,6 +65,20 @@ export default defineNuxtConfig({
         usePolling: true, // this seems to be explicitly needed when in a devcontainer in order for hot reloading to work
       },
     },
+    ...(useOptimizeDeps
+      ? {
+          optimizeDeps: {
+            // the conditional modules added in by the template make it complicated to format consistently
+            // prettier-ignore
+            include: [{% endraw %}{% if frontend_uses_zod %}{% raw %}
+                        "zod",
+                        "zod/locales",
+                        "zod-from-json-schema",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if frontend_uses_graphql %}{% raw %}
+                        "graphql-tag",{% endraw %}{% endif %}{% raw %}
+                     ],
+          },
+        }
+      : {}),
   },{% endraw %}{% if frontend_uses_graphql %}{% raw %}
   apollo: {
     clients: {

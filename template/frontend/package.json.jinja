@@ -13,11 +13,11 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare && if [ \"$SKIP_PLAYWRIGHT_INSTALL\" != \"1\" ]; then pnpm exec playwright-core install --with-deps --only-shell chromium-headless-shell; fi",
-    "test-unit": "vitest --exclude=\"tests/e2e/**\" --exclude=\"tests/compiled/**\" --run --coverage",
+    "test-unit": "vitest --exclude=\"tests/e2e/**\" --exclude=\"tests/compiled/**\" run --coverage",
     "test-unit:watch": "vitest --exclude=\"tests/e2e/**\" --exclude=\"tests/compiled/**\"",
-    "test-compiled": "vitest --exclude=\"tests/e2e/**\" --exclude=\"tests/unit/**\" --test-timeout=15000 --run",
-    "test-e2e": "{% endraw %}{% if not deploy_as_executable %}{% raw %}docker compose --file=../docker-compose.yaml build && dotenv -v USE_DOCKER_COMPOSE_FOR_VITEST_E2E=1{% endraw %}{% else %}{% raw %}dotenv -v USE_BUILT_BACKEND_FOR_VITEST_E2E=1{% endraw %}{% endif %}{% raw %} -- vitest --exclude=\"tests/unit/**\" --exclude=\"tests/compiled/**\" --test-timeout=15000 --run",
-    "test-compiled:watch": "vitest --exclude=\"tests/e2e/**\" --exclude=\"tests/unit/**\" --test-timeout=15000"{% endraw %}{% if frontend_uses_graphql %}{% raw %},
+    "test-compiled": "NUXT_DISABLE_OPTIMIZE_DEPS=1 vitest --exclude=\"tests/e2e/**\" --exclude=\"tests/unit/**\" --test-timeout=15000 run",
+    "test-e2e": "{% endraw %}{% if not deploy_as_executable %}{% raw %}docker compose --file=../docker-compose.yaml build && dotenv -v USE_DOCKER_COMPOSE_FOR_VITEST_E2E=1{% endraw %}{% else %}{% raw %}dotenv -v USE_BUILT_BACKEND_FOR_VITEST_E2E=1{% endraw %}{% endif %}{% raw %} -- vitest --exclude=\"tests/unit/**\" --exclude=\"tests/compiled/**\" --test-timeout=15000 run",
+    "test-compiled:watch": "NUXT_DISABLE_OPTIMIZE_DEPS=1 vitest --exclude=\"tests/e2e/**\" --exclude=\"tests/unit/**\" --test-timeout=15000"{% endraw %}{% if frontend_uses_graphql %}{% raw %},
     "codegen": "graphql-codegen --config codegen.ts"{% endraw %}{% endif %}{% raw %}
   },
   "dependencies": {
@@ -41,7 +41,7 @@
     "@graphql-codegen/cli": "{% endraw %}{{ graphql_codegen_cli_version }}{% raw %}",
     "@graphql-codegen/typescript": "{% endraw %}{{ graphql_codegen_typescript_version }}{% raw %}",
     "@graphql-codegen/typescript-operations": "{% endraw %}{{ graphql_codegen_typescript_version }}{% raw %}",
-    "@graphql-codegen/typescript-vue-apollo": "^4.1.2",
+    "@graphql-codegen/typescript-vue-apollo": "^5.0.0",
     "@graphql-tools/mock": "^9.0.22",
     "@graphql-tools/schema": "^10.0.23",{% endraw %}{% endif %}{% raw %}
     "@nuxt/eslint": "{% endraw %}{{ nuxt_eslint_version }}{% raw %}",
