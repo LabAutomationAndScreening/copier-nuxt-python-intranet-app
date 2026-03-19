@@ -70,7 +70,9 @@ export default defineNuxtConfig({
           optimizeDeps: {
             // the conditional modules added in by the template make it complicated to format consistently
             // prettier-ignore
-            include: [{% endraw %}{% if frontend_uses_zod %}{% raw %}
+            include: [
+                        "@microsoft/kiota-abstractions",
+                        "@microsoft/kiota-http-fetchlibrary",{% endraw %}{% if frontend_uses_zod %}{% raw %}
                         "zod",
                         "zod/locales",
                         "zod-from-json-schema",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if frontend_uses_graphql %}{% raw %}
