@@ -165,19 +165,20 @@ def start_compose(
     services_to_start: list[str] | None = None,
 ):
     assert compose_file.exists(), f"Compose file {compose_file} does not exist"
-    build_targets = services_to_build or []
-    _ = subprocess.run(  # noqa: S603 # we trust this input
-        [  # noqa: S607 # docker should definitely be in PATH
-            "docker",
-            "compose",
-            "--file",
-            str(compose_file),
-            "build",
-            *build_targets,
-        ],
-        check=True,
-        timeout=300,
-    )
+    if "CI" not in os.environ:
+        build_targets = services_to_build or []
+        _ = subprocess.run(  # noqa: S603 # we trust this input
+            [  # noqa: S607 # docker should definitely be in PATH
+                "docker",
+                "compose",
+                "--file",
+                str(compose_file),
+                "build",
+                *build_targets,
+            ],
+            check=True,
+            timeout=300,
+        )
     pull_images(compose_file=compose_file, services=services_to_start)
     _ = subprocess.run(  # noqa: S603 # we trust this input
         [  # noqa: S607 # docker should definitely be in PATH
@@ -187,6 +188,7 @@ def start_compose(
             str(compose_file),
             "up",
             "--detach",
+            "--no-build",  # without this, the frontend will attempt to be built even though scale=0. We already prebuild the images in an earlier step anyway
             "--force-recreate",
             "--renew-anon-volumes",
             "--remove-orphans",
@@ -194,7 +196,7 @@ def start_compose(
             *(services_to_start or []),
         ],
         check=True,
-        timeout=220,  # TODO: figure out why the frontend still attempts to build in CI...so we can reset the timeout back to 20
+        timeout=60,
     )
     try:
         wait_for_service_to_be_healthy(compose_file=compose_file)
