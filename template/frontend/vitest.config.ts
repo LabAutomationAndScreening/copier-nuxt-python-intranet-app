@@ -28,6 +28,7 @@ export default defineVitestConfig({
         "**/codegen.ts",
         "**/generated/open-api",
         "**/nuxt.config.ts",
+        "**/scipts/postinstall.mjs",
         ...coverageConfigDefaults.exclude,
       ],
     },
