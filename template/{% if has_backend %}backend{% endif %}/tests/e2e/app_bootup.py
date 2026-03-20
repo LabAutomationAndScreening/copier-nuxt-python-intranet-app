@@ -186,6 +186,11 @@ def start_compose(
             timeout=300,
         )
     pull_images(compose_file=compose_file, services=services_to_start)
+    extra_up_args: list[str] = []
+    if "frontend" in get_services_from_compose(compose_file) and (
+        services_to_start is None or "frontend" not in services_to_start
+    ):
+        extra_up_args.extend(["--scale", "frontend=0"])
     _ = subprocess.run(  # noqa: S603 # we trust this input
         [  # noqa: S607 # docker should definitely be in PATH
             "docker",
@@ -198,7 +203,7 @@ def start_compose(
             "--force-recreate",
             "--renew-anon-volumes",
             "--remove-orphans",
-            *(["--scale", "frontend=0"] if not services_to_start or "frontend" not in services_to_start else []),
+            *extra_up_args,
             *(services_to_start or []),
         ],
         check=True,
