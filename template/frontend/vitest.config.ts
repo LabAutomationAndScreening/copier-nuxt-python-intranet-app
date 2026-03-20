@@ -24,11 +24,11 @@ export default defineVitestConfig({
         "100": true,
       },
       exclude: [
+        "**/scipts/postinstall.mjs",
         "**/generated/graphql.ts",
         "**/codegen.ts",
         "**/generated/open-api",
         "**/nuxt.config.ts",
-        "**/scipts/postinstall.mjs",
         ...coverageConfigDefaults.exclude,
       ],
     },
