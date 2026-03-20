@@ -5,6 +5,10 @@
     root /usr/share/nginx/html;
     index index.html;
 
+    # Nginx's default port_in_redirect uses the listen port (FRONTEND_PORT), not the external
+    # NodePort the user arrived on. Using relative redirects lets the browser preserve its origin.
+    absolute_redirect off;
+
     # Serve the static site
     location / {
         try_files $uri $uri/ /index.html;
