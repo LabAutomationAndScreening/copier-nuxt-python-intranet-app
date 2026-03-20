@@ -102,7 +102,7 @@ def wait_for_service_to_be_healthy(*, max_retries: int = 15, retry_delay: int = 
         raise RuntimeError(f"Application containers failed to become healthy after {max_retries} attempts")
 
 
-def get_images_from_compose(compose_file: Path, *, services: list[str] | None = None) -> list[str]:
+def get_services_from_compose(compose_file: Path) -> dict[str, dict[str, str]]:
     result = subprocess.run(  # noqa: S603 # we trust this input
         [  # noqa: S607 # docker should definitely be in PATH
             "docker",
@@ -120,7 +120,13 @@ def get_images_from_compose(compose_file: Path, *, services: list[str] | None = 
     )
 
     config = json.loads(result.stdout)
-    all_services: dict[str, dict[str, str]] = config.get("services", {})
+    all_services = config.get("services", {})
+    assert isinstance(all_services, dict), f"Expected services to be a dict, got {type(all_services)}: {all_services}"
+    return all_services  # pyright: ignore[reportUnknownVariableType] # there's only so much we can assert about dicts
+
+
+def get_images_from_compose(compose_file: Path, *, services: list[str] | None = None) -> list[str]:
+    all_services = get_services_from_compose(compose_file)
     relevant = {name: svc for name, svc in all_services.items() if services is None or name in services}
     return [s["image"] for s in relevant.values() if "image" in s and "build" not in s]
 
@@ -180,6 +186,11 @@ def start_compose(
             timeout=300,
         )
     pull_images(compose_file=compose_file, services=services_to_start)
+    extra_up_args: list[str] = []
+    if "frontend" in get_services_from_compose(compose_file) and (
+        services_to_start is None or "frontend" not in services_to_start
+    ):
+        extra_up_args.extend(["--scale", "frontend=0"])
     _ = subprocess.run(  # noqa: S603 # we trust this input
         [  # noqa: S607 # docker should definitely be in PATH
             "docker",
@@ -192,7 +203,7 @@ def start_compose(
             "--force-recreate",
             "--renew-anon-volumes",
             "--remove-orphans",
-            *(["--scale", "frontend=0"] if not services_to_start or "frontend" not in services_to_start else []),
+            *extra_up_args,
             *(services_to_start or []),
         ],
         check=True,
