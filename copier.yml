@@ -231,7 +231,7 @@ run_backend_e2e_in_ci:
 auth_to_ecr_for_backend_e2e_in_ci:
     type: bool
     help: Will the Backend E2E job in CI need to authenticate into an ECR to pull images?
-    default: "{{ auth_to_ecr_for_e2e_in_ci }}"
+    default: "{{ auth_to_ecr_for_e2e_in_ci and run_backend_e2e_in_ci }}"
     when: "{{ run_backend_e2e_in_ci }}"
 
 auth_to_ecr_for_backend_e2e_in_ci_region:
