@@ -5,6 +5,7 @@ services:{% endraw %}{% if has_backend %}{% raw %}
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: {% endraw %}{{ backend_image_name }}{% raw %}:local
     container_name: {% endraw %}{{ repo_name }}{% raw %}-backend
     ports:
       - "{% endraw %}{{ backend_deployed_port_number }}{% raw %}:{% endraw %}{{ backend_deployed_port_number }}{% raw %}"
@@ -19,6 +20,7 @@ services:{% endraw %}{% if has_backend %}{% raw %}
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    image: {% endraw %}{{ frontend_image_name }}{% raw %}:local
     container_name: {% endraw %}{{ repo_name }}{% raw %}-frontend
     ports:
       - "{% endraw %}{{ frontend_deployed_port_number }}{% raw %}:{% endraw %}{{ frontend_deployed_port_number }}{% raw %}"{% endraw %}{% if has_backend %}{% raw %}
