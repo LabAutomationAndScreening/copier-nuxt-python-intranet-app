@@ -12,12 +12,12 @@
     "openapi-codegen": "mkdir -p ./app/generated/open-api/backend && docker run --network host --user $(id -u):$(id -g) -v ./app/generated/open-api/backend:/app/output -v $PWD/../backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json:/app/openapi.json mcr.microsoft.com/openapi/kiota:{% endraw %}{{ kiota_cli_version }}{% raw %} generate -l typescript -c BackendClient -n client -d openapi.json --exclude-backward-compatible --clean-output --additional-data false && python3 ./kiota_nullable_fixer.py",{% endraw %}{% endif %}{% raw %}
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare && if [ \"$SKIP_PLAYWRIGHT_INSTALL\" != \"1\" ]; then pnpm exec playwright-core install --with-deps --only-shell chromium-headless-shell; fi",
-    "test-unit": "vitest --exclude=\"tests/e2e/**\" --exclude=\"tests/compiled/**\" run --coverage",
+    "postinstall": "node ./scripts/postinstall.mjs",
+    "test-unit": "vitest run --exclude=\"tests/e2e/**\" --exclude=\"tests/compiled/**\" --coverage",
     "test-unit:watch": "vitest --exclude=\"tests/e2e/**\" --exclude=\"tests/compiled/**\"",
-    "test-compiled": "NUXT_DISABLE_OPTIMIZE_DEPS=1 vitest --exclude=\"tests/e2e/**\" --exclude=\"tests/unit/**\" --test-timeout=15000 run",
-    "test-e2e": "{% endraw %}{% if not deploy_as_executable %}{% raw %}docker compose --file=../docker-compose.yaml build && dotenv -v USE_DOCKER_COMPOSE_FOR_VITEST_E2E=1{% endraw %}{% else %}{% raw %}dotenv -v USE_BUILT_BACKEND_FOR_VITEST_E2E=1{% endraw %}{% endif %}{% raw %} -- vitest --exclude=\"tests/unit/**\" --exclude=\"tests/compiled/**\" --test-timeout=15000 run",
-    "test-compiled:watch": "NUXT_DISABLE_OPTIMIZE_DEPS=1 vitest --exclude=\"tests/e2e/**\" --exclude=\"tests/unit/**\" --test-timeout=15000"{% endraw %}{% if frontend_uses_graphql %}{% raw %},
+    "test-compiled": "dotenv -v NUXT_DISABLE_OPTIMIZE_DEPS=1 -- vitest run --exclude=\"tests/e2e/**\" --exclude=\"tests/unit/**\" --test-timeout=15000",
+    "test-e2e": "{% endraw %}{% if not deploy_as_executable %}{% raw %}docker compose --file=../docker-compose.yaml build && dotenv -v USE_DOCKER_COMPOSE_FOR_VITEST_E2E=1{% endraw %}{% else %}{% raw %}dotenv -v USE_BUILT_BACKEND_FOR_VITEST_E2E=1{% endraw %}{% endif %}{% raw %} -- vitest run --exclude=\"tests/unit/**\" --exclude=\"tests/compiled/**\" --test-timeout=15000",
+    "test-compiled:watch": "dotenv -v NUXT_DISABLE_OPTIMIZE_DEPS=1 -- vitest --exclude=\"tests/e2e/**\" --exclude=\"tests/unit/**\" --test-timeout=15000"{% endraw %}{% if frontend_uses_graphql %}{% raw %},
     "codegen": "graphql-codegen --config codegen.ts"{% endraw %}{% endif %}{% raw %}
   },
   "dependencies": {
