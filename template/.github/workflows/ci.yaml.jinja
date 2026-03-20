@@ -293,8 +293,8 @@ jobs:
 
       - name: Retag loaded images to stable local names
         run: |
-          docker tag ${{ needs.build-frontend.outputs.full-image-tag }} {% endraw %}{{ frontend_image_name }}{% raw %}:local
-          docker tag ${{ needs.build-backend.outputs.full-image-tag }} {% endraw %}{{ backend_image_name }}{% raw %}:local
+          docker tag ${{ needs.build-frontend.outputs.full-image-tag }} {% endraw %}{{ frontend_image_name }}{% raw %}:local{% endraw %}{% if has_backend %}{% raw %}
+          docker tag ${{ needs.build-backend.outputs.full-image-tag }} {% endraw %}{{ backend_image_name }}{% raw %}:local{% endraw %}{% endif %}{% raw %}
 {% endraw %}{% else %}{% raw %}
       - name: Download Built executable
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
