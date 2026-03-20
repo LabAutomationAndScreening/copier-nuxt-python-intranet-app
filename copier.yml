@@ -205,6 +205,23 @@ backend_image_name:
     default: "{{ repo_name }}/backend"
     when: "{{ has_backend and not deploy_as_executable }}"
 
+auth_to_ecr_for_e2e_in_ci:
+    type: bool
+    help: Will the E2E job in CI need to authenticate into an ECR to pull images?
+    default: false
+
+auth_to_ecr_for_e2e_in_ci_region:
+    type: str
+    help: What AWS region should the E2E job in CI authenticate to ECR in?
+    default: "{{ aws_org_home_region }}"
+    when: "{{ auth_to_ecr_for_e2e_in_ci }}"
+
+auth_to_ecr_for_e2e_in_ci_role_arn:
+    type: str
+    help: What is the ARN of the role to assume for authenticating to ECR in the E2E job in CI?
+    default: "arn:aws:iam::{{ aws_central_infrastructure_account_id }}:role/{{ core_infra_base_access_profile_name }}"
+    when: "{{ auth_to_ecr_for_e2e_in_ci }}"
+
 run_backend_e2e_in_ci:
     type: bool
     help: Should a separate job in CI be created to run E2E tests just against the backend (Note - this does not actually work for executables yet, still TODO)?
@@ -214,7 +231,7 @@ run_backend_e2e_in_ci:
 auth_to_ecr_for_backend_e2e_in_ci:
     type: bool
     help: Will the Backend E2E job in CI need to authenticate into an ECR to pull images?
-    default: false
+    default: "{{ auth_to_ecr_for_e2e_in_ci }}"
     when: "{{ run_backend_e2e_in_ci }}"
 
 auth_to_ecr_for_backend_e2e_in_ci_region:
