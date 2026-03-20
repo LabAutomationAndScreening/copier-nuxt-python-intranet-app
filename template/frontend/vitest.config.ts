@@ -24,7 +24,7 @@ export default defineVitestConfig({
         "100": true,
       },
       exclude: [
-        "**/scipts/postinstall.mjs",
+        "**/scripts/postinstall.mjs",
         "**/generated/graphql.ts",
         "**/codegen.ts",
         "**/generated/open-api",
