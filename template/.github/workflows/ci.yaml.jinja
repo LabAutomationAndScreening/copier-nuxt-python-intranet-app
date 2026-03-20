@@ -246,6 +246,9 @@ jobs:
           # load all images in the folder
           ls -1 deployment-package-folder/*.tar | xargs --no-run-if-empty -L 1 docker load -i
 
+      - name: Retag loaded backend image to stable local name
+        run: docker tag ${{ needs.build-backend.outputs.full-image-tag }} {% endraw %}{{ backend_image_name }}{% raw %}:local
+
       - name: E2E test
         run: uv --directory=backend run pytest tests/e2e --durations=5{% endraw %}{% endif %}{% raw %}
 
@@ -287,6 +290,11 @@ jobs:
           ls deployment-package-folder -a
           # load all images in the folder
           ls -1 deployment-package-folder/*.tar | xargs --no-run-if-empty -L 1 docker load -i
+
+      - name: Retag loaded images to stable local names
+        run: |
+          docker tag ${{ needs.build-frontend.outputs.full-image-tag }} {% endraw %}{{ frontend_image_name }}{% raw %}:local
+          docker tag ${{ needs.build-backend.outputs.full-image-tag }} {% endraw %}{{ backend_image_name }}{% raw %}:local
 {% endraw %}{% else %}{% raw %}
       - name: Download Built executable
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
