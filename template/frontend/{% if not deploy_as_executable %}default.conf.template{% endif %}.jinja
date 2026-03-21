@@ -9,8 +9,17 @@
     # NodePort the user arrived on. Using relative redirects lets the browser preserve its origin.
     absolute_redirect off;
 
+    # Cache Nuxt static assets since they already have content hashes in their filenames and won't change until the next deployment
+    location /_nuxt/ {
+        expires 1w;
+        add_header Cache-Control "private, immutable";
+    }
+
     # Serve the static site
     location / {
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma "no-cache";
+        add_header Expires "0";
         try_files $uri $uri/ /index.html;
     }
 
@@ -45,6 +54,9 @@
 
     # Named location with shared proxy configuration
     location @proxy {
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma "no-cache";
+        add_header Expires "0";
         proxy_pass http://${BACKEND_HOST}:${BACKEND_PORT};
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
