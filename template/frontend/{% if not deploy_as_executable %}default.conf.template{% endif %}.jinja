@@ -9,10 +9,9 @@
     # NodePort the user arrived on. Using relative redirects lets the browser preserve its origin.
     absolute_redirect off;
 
-    # Cache Nuxt static assets since they already have content hashes in their filenames and won't change until the next deployment
     location /_nuxt/ {
-        expires 1w;
-        add_header Cache-Control "private, immutable";
+        # Cache Nuxt static assets since they already have content hashes in their filenames and won't change until the next deployment
+        add_header Cache-Control "max-age=604800, private, immutable" always;
     }
 
     # Serve the static site
