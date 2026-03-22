@@ -1,5 +1,10 @@
-## Memory and Rules
-- Before saving any memory or adding any rule, explicitly ask the user whether the concept should be: (1) added to AGENTS.md as a general rule applicable across all projects, (2) added to AGENTS.md as a rule specific to this project, or (3) stored as a temporary local memory only relevant to the current active work. The devcontainer environment is ephemeral, so local memory files are rarely the right choice.
+# Project Structure
+
+- This is a statically generated frontend---using the Nuxt and @nuxt/ui frameworks---meant to operate in an air-gapped environment. That code is in the `frontend/` directory.
+- There may also be a backend that the frontend interacts with, in `backend/`. If present, it will be a Python FastAPI uvicorn server.
+- Kiota is used for codegen from the OpenAPI schema
+
+# Code Guidelines
 
 ## Code Style
 - Comments should be used very rarely. Code should generally express its intent.
@@ -32,6 +37,11 @@
 - Use `fastapi.status` constants (e.g., `status.HTTP_204_NO_CONTENT`) instead of raw integers for status codes
 - All HTTP request and response payloads must use camelCase field names in JSON. Use Pydantic's `alias_generator=to_camel` with `populate_by_name=True` on models so that Python code uses snake_case internally while the wire format uses camelCase.
 - When a route raises an `HTTPException` for a specific status code, document it in the route decorator's `responses` parameter using `fastapi.status` constants: `responses={status.HTTP_404_NOT_FOUND: {"description": "Resource not found"}}`. This ensures the OpenAPI chema reflects all possible responses, not just the success case.
+
+# Agent Implementations & Configurations
+
+## Memory and Rules
+- Before saving any memory or adding any rule, explicitly ask the user whether the concept should be: (1) added to AGENTS.md as a general rule applicable across all projects, (2) added to AGENTS.md as a rule specific to this project, or (3) stored as a temporary local memory only relevant to the current active work. The devcontainer environment is ephemeral, so local memory files are rarely the right choice.
 
 ## Tooling
 - Always use `uv run python` instead of `python3` or `python` when running Python commands.
@@ -129,8 +139,3 @@ bd export -o .claude/.beads/issues-dump.jsonl
 For more details, see README.md and docs/QUICKSTART.md.
 
 <!-- END BEADS INTEGRATION -->
-
-## Project Structure
-- This is a statically generated frontend---using the Nuxt and @nuxt/ui frameworks---meant to operate in an air-gapped environment. That code is in the `frontend/` directory.
-- There may also be a backend that the frontend interacts with, in `backend/`. If present, it will be a Python FastAPI uvicorn server.
-- Kiota is used for codegen from the OpenAPI schema
