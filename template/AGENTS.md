@@ -26,6 +26,7 @@
 
 ## FastAPI
 - Use `fastapi.status` constants (e.g., `status.HTTP_204_NO_CONTENT`) instead of raw integers for status codes
+- When a route raises an `HTTPException` for a specific status code, document it in the route decorator's `responses` parameter using `fastapi.status` constants: `responses={status.HTTP_404_NOT_FOUND: {"description": "Resource not found"}}`. This ensures the OpenAPI chema reflects all possible responses, not just the success case.
 
 ## Tooling
 - Always use `uv run python` instead of `python3` or `python` when running Python commands.
