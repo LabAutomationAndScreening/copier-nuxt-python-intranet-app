@@ -11,7 +11,7 @@
 
     location /_nuxt/ {
         # Cache Nuxt static assets since they already have content hashes in their filenames and won't change until the next deployment
-        add_header Cache-Control "max-age=604800, private, immutable" always;
+        add_header Cache-Control "max-age=604800, private, immutable";
     }
 
     # Serve the static site
