@@ -11,7 +11,7 @@
 
     location /_nuxt/ {
         # Cache Nuxt static assets since they already have content hashes in their filenames and won't change until the next deployment
-        add_header Cache-Control "max-age=604800, private, immutable" always;
+        add_header Cache-Control "max-age=604800, private, immutable";
     }
 
     # Serve the static site
@@ -53,9 +53,9 @@
 
     # Named location with shared proxy configuration
     location @proxy {
-        add_header Cache-Control "no-cache, no-store, must-revalidate";
-        add_header Pragma "no-cache";
-        add_header Expires "0";
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        add_header Pragma "no-cache" always;
+        add_header Expires "0" always;
         proxy_pass http://${BACKEND_HOST}:${BACKEND_PORT};
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
