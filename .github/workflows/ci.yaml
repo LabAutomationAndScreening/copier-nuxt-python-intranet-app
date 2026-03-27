@@ -177,6 +177,13 @@ jobs:
           name: pre-commit-log--${{ github.jobs.lint-matrix.name }}
           path: "${{ github.workspace }}/.precommit_cache/pre-commit.log"
 
+  confirm-on-tagged-copier-template:
+    uses: ./.github/workflows/confirm-on-tagged-copier-template.yaml
+    permissions:
+      contents: read
+      pull-requests: read # needed to check if PR exists for current branch
+
+
   required-check:
     runs-on: ubuntu-24.04
     timeout-minutes: 2
