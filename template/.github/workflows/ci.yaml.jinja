@@ -133,6 +133,8 @@ jobs:
 {% endraw %}{% if push_to_ecr %}{% raw %}      push-role-name: {% endraw %}{{ frontend_ecr_push_role_name }}{% endif %}{% else %}{% raw %}
     timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
+    permissions:
+      contents: write # needed for mutex
     steps:
       - name: Checkout code
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
@@ -179,6 +181,8 @@ jobs:
       - build-frontend
       - check-skip-duplicate
     if: needs.check-skip-duplicate.outputs.should-run == 'true'
+    permissions:
+      contents: write # needed for mutex
     strategy:
       matrix:
         os:
