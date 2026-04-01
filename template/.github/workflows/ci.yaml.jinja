@@ -449,7 +449,10 @@ jobs:
       - get-values
       - check-skip-duplicate
       - lint
-      - unit-test-frontend{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
+      - unit-test-frontend
+      - build-frontend{% endraw %}{% if has_backend %}{% raw %}
+      - unit-test-backend
+      - build-backend{% endraw %}{% endif %}{% raw %}{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
       - package-images{% endraw %}{% endif %}{% raw %}
       - test-compiled-frontend{% endraw %}{% if is_circuit_python_driver %}{% raw %}
       - package-firmware{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
@@ -467,7 +470,10 @@ jobs:
           if [[ ! "${{ needs.get-values.result }}" =~ $success_pattern ]] ||
             [[ ! "${{ needs.check-skip-duplicate.result }}" =~ $success_pattern ]] ||
             [[ ! "${{ needs.lint.result }}" =~ $success_pattern ]] ||
-            [[ ! "${{ needs.unit-test-frontend.result }}" =~ $success_pattern ]] ||{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
+            [[ ! "${{ needs.unit-test-frontend.result }}" =~ $success_pattern ]] ||
+            [[ ! "${{ needs.build-frontend.result }}" =~ $success_pattern ]] ||{% endraw %}{% if has_backend %}{% raw %}
+            [[ ! "${{ needs.unit-test-backend.result }}" =~ $success_pattern ]] ||
+            [[ ! "${{ needs.build-backend.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
             [[ ! "${{ needs.package-images.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}
             [[ ! "${{ needs.test-compiled-frontend.result }}" =~ $success_pattern ]] ||{% endraw %}{% if is_circuit_python_driver %}{% raw %}
             [[ ! "${{ needs.package-firmware.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
