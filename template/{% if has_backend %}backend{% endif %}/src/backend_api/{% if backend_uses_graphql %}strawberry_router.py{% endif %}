@@ -65,7 +65,7 @@ class CdnUrlNotFoundInHtmlError(Exception):
 
 def _get_graphiql_html_base() -> str:
     # separate for mocking
-    return (Path(strawberry.__file__).with_name("static") / "graphiql.html").read_text()
+    return (Path(strawberry.__file__).with_name("static") / "graphiql.html").read_text(encoding="utf-8")
 
 
 def generate_offline_graphiql_html() -> str:
