@@ -14,7 +14,6 @@ services:{% endraw %}{% if has_backend %}{% raw %}
     volumes:
       - ./docker-compose-logs:/app/logs
     restart: unless-stopped
-    network_mode: host
 {% endraw %}{% endif %}{% raw %}
   frontend:
     build:
