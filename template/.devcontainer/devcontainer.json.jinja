@@ -23,7 +23,7 @@
       // https://github.com/devcontainers/features/blob/main/src/python/devcontainer-feature.json
       "version": "{% endraw %}{{ python_version }}{% raw %}",
       "installTools": false,
-      "optimize": true{% endraw %}{% if deploy_as_executable %}{% raw %},
+      "optimize": false{% endraw %}{% if deploy_as_executable %}{% raw %},
       "enableShared": true{% endraw %}{% endif %}{% raw %}
     }{% endraw %}{% if is_child_of_copier_base_template is not defined and template_uses_javascript is defined and template_uses_javascript is sameas(true) %}{% raw %},
     "ghcr.io/devcontainers/features/node:1.7.1": {
@@ -46,7 +46,7 @@
         "MS-vsliveshare.vsliveshare@1.0.5905",
         "github.copilot@1.388.0",
         "github.copilot-chat@0.42.2026032602",{% endraw %}{% if install_claude_cli %}{% raw %}
-        "anthropic.claude-code@2.1.84",{% endraw %}{% endif %}{% raw %}
+        "anthropic.claude-code@2.1.109",{% endraw %}{% endif %}{% raw %}
 
         // Python
         "ms-python.python@2026.5.2026032701",

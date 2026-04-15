@@ -11,7 +11,7 @@
       // https://github.com/devcontainers/features/blob/main/src/python/devcontainer-feature.json
       "version": "3.12.7",
       "installTools": false,
-      "optimize": true
+      "optimize": false
     },
     // https://github.com/anthropics/devcontainer-features/blob/main/src/claude-code/devcontainer-feature.json
     "ghcr.io/anthropics/devcontainer-features/claude-code:1.0.5": {}
@@ -27,7 +27,7 @@
         "MS-vsliveshare.vsliveshare@1.0.5905",
         "github.copilot@1.388.0",
         "github.copilot-chat@0.42.2026032602",
-        "anthropic.claude-code@2.1.84",
+        "anthropic.claude-code@2.1.109",
 
         // Python
         "ms-python.python@2026.5.2026032701",
