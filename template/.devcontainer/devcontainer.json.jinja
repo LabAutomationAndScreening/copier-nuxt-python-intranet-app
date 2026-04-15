@@ -88,6 +88,11 @@
       }
     }
   },
+  "forwardPorts": [3000{% endraw %}{% if has_backend %}{% raw %}, 4000{% endraw %}{% endif %}{% raw %}],
+  "portsAttributes": {
+    "3000": { "label": "Frontend" }{% endraw %}{% if has_backend %}{% raw %},
+    "8000": { "label": "Backend" }{% endraw %}{% endif %}{% raw %}
+  },
   "initializeCommand": "sh .devcontainer/initialize-command.sh",
   "onCreateCommand": "sh .devcontainer/on-create-command.sh",
   "postStartCommand": "sh .devcontainer/post-start-command.sh"
