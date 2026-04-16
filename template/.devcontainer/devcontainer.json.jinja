@@ -46,7 +46,7 @@
         "MS-vsliveshare.vsliveshare@1.0.5905",
         "github.copilot@1.388.0",
         "github.copilot-chat@0.42.2026032602",{% endraw %}{% if install_claude_cli %}{% raw %}
-        "anthropic.claude-code@2.1.84",{% endraw %}{% endif %}{% raw %}
+        "anthropic.claude-code@2.1.109",{% endraw %}{% endif %}{% raw %}
 
         // Python
         "ms-python.python@2026.5.2026032701",
@@ -87,6 +87,13 @@
         }
       }
     }
+  },
+  "forwardPorts": [3000{% endraw %}{% if has_backend %}{% raw %}, 4000{% endraw %}{% endif %}{% if frontend_deployed_port_number != 3000 %}{% raw %}, {% endraw %}{{ frontend_deployed_port_number }}{% endif %}{% if has_backend and backend_deployed_port_number != 4000 %}{% raw %}, {% endraw %}{{ backend_deployed_port_number }}{% endif %}{% raw %}],
+  "portsAttributes": {
+    "3000": { "label": "Frontend" }{% endraw %}{% if has_backend %}{% raw %},
+    "4000": { "label": "Backend" }{% endraw %}{% endif %}{% if frontend_deployed_port_number != 3000 %}{% raw %},
+    "{% endraw %}{{ frontend_deployed_port_number }}{% raw %}": { "label": "Frontend (deployed)" }{% endraw %}{% endif %}{% if has_backend and backend_deployed_port_number != 4000 %}{% raw %},
+    "{% endraw %}{{ backend_deployed_port_number }}{% raw %}": { "label": "Backend (deployed)" }{% endraw %}{% endif %}{% raw %}
   },
   "initializeCommand": "sh .devcontainer/initialize-command.sh",
   "onCreateCommand": "sh .devcontainer/on-create-command.sh",
