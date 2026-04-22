@@ -1,3 +1,0 @@
-Adafruit CircuitPython 10.0.3 on 2025-10-17; Pimoroni Tiny 2350 with rp2350a
-Board ID:pimoroni_tiny2350
-UID:3B2EE881546769BB
