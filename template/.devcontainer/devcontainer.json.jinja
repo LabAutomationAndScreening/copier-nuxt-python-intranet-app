@@ -86,8 +86,14 @@
           "editor.formatOnSave": true
         }
       }
-    }
-  },
+    },{% endraw %}{% if repo_names_for_codespaces_read_permissions is defined and repo_names_for_codespaces_read_permissions.strip() %}{% set _cs_repos = repo_names_for_codespaces_read_permissions.split(',') | map('trim') | reject('equalto', '') | list %}{% if _cs_repos %}
+    "codespaces": {
+      "repositories": {
+{% for cs_repo_item in _cs_repos %}        "{{ repo_org_name }}/{{ cs_repo_item }}": {
+          "permissions": { "contents": "read" }
+        }{% if not loop.last %},{% endif %}
+{% endfor %}      }
+    },{% endif %}{% endif %}{% raw %}
   "forwardPorts": [3000{% endraw %}{% if has_backend %}{% raw %}, 4000{% endraw %}{% endif %}{% if frontend_deployed_port_number != 3000 %}{% raw %}, {% endraw %}{{ frontend_deployed_port_number }}{% endif %}{% if has_backend and backend_deployed_port_number != 4000 %}{% raw %}, {% endraw %}{{ backend_deployed_port_number }}{% endif %}{% raw %}],
   "portsAttributes": {
     "3000": { "label": "Frontend" }{% endraw %}{% if has_backend %}{% raw %},

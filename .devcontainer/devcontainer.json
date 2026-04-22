@@ -60,7 +60,7 @@
           "editor.formatOnSave": true
         }
       }
-    }
+    },
   },
   "initializeCommand": "sh .devcontainer/initialize-command.sh",
   "onCreateCommand": "sh .devcontainer/on-create-command.sh",
