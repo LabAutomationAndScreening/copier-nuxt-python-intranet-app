@@ -94,6 +94,7 @@
         }{% if not loop.last %},{% endif %}
 {% endfor %}      }
     },{% endif %}{% endif %}{% raw %}
+  },
   "forwardPorts": [3000{% endraw %}{% if has_backend %}{% raw %}, 4000{% endraw %}{% endif %}{% if frontend_deployed_port_number != 3000 %}{% raw %}, {% endraw %}{{ frontend_deployed_port_number }}{% endif %}{% if has_backend and backend_deployed_port_number != 4000 %}{% raw %}, {% endraw %}{{ backend_deployed_port_number }}{% endif %}{% raw %}],
   "portsAttributes": {
     "3000": { "label": "Frontend" }{% endraw %}{% if has_backend %}{% raw %},
