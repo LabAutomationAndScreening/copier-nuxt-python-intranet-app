@@ -450,6 +450,7 @@ def get_models_with_primitive_array_fields(schema: dict[str, Any]) -> dict[str, 
                 continue
 
             field_type = field_schema.get("type")
+            field_format = field_schema.get("format")
 
             if field_type == "array":
                 items = field_schema.get("items", {})
@@ -475,6 +476,8 @@ def get_models_with_primitive_array_fields(schema: dict[str, Any]) -> dict[str, 
                         "writeCollectionOfPrimitiveValues<boolean>",
                     )
                     has_primitive_array = True
+            elif field_type == "string" and field_format == "date-time":
+                field_specs[field_name] = ("Date", "getDateValue()", "writeDateValue")
             elif field_type == "string":
                 field_specs[field_name] = ("string", "getStringValue()", "writeStringValue")
             elif field_type in ("integer", "number"):
