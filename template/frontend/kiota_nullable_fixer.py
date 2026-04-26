@@ -40,7 +40,7 @@ def load_openapi_schema(source: str) -> dict[str, Any]:
             print(f"Error fetching OpenAPI schema from {source}: {e}")
             sys.exit(1)
     else:
-        # pylint: disable=duplicate-code # this is shared with the fixer script for typescript code
+        # pylint: disable=duplicate-code # this is shared with the fixer script for python code
         # Treat as file path
         file_path = Path(source)
         if not file_path.exists():
@@ -585,7 +585,7 @@ def main(schema: dict[str, Any] | None = None):
     if anyof_fixes > 0:
         print(f"✓ Fixed {anyof_fixes} types with anyOf nullable issues")
 
-    # pylint: disable=duplicate-code # this is shared with the fixer script for typescript code
+    # pylint: disable=duplicate-code # this is shared with the fixer script for python code
     # Fix 3: Inject fields Kiota dropped due to primitive array types
     models_with_array_fields = get_models_with_primitive_array_fields(schema)
     if not models_with_array_fields:
