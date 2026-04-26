@@ -62,7 +62,7 @@ dependencies = [
 requires-dist = [
     { name = "copier", specifier = "==9.14.3" },
     { name = "copier-template-extensions", specifier = "==0.3.3" },
-    { name = "pyright", extras = ["nodejs"], specifier = ">=1.1.408" },
+    { name = "pyright", extras = ["nodejs"], specifier = ">=1.1.409" },
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
     { name = "pytest-randomly", specifier = ">=4.1.0" },

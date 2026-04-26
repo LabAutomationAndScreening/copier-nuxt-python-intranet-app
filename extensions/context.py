@@ -13,7 +13,7 @@ class ContextUpdater(ContextHook):
         context["uv_version"] = "0.11.7"
         context["pnpm_version"] = "10.33.1"
         context["pre_commit_version"] = "4.5.1"
-        context["pyright_version"] = ">=1.1.408"
+        context["pyright_version"] = ">=1.1.409"
         context["pytest_version"] = ">=9.0.3"
         context["pytest_randomly_version"] = ">=4.1.0"
         context["pytest_cov_version"] = ">=7.1.0"
@@ -35,7 +35,7 @@ class ContextUpdater(ContextHook):
         context["strawberry_graphql_version"] = ">=0.298.0"
         context["fastapi_version"] = ">=0.135.3"
         context["fastapi_offline_version"] = ">=1.7.4"
-        context["uvicorn_version"] = ">=0.44.0"
+        context["uvicorn_version"] = ">=0.46.0"
         context["lab_auto_pulumi_version"] = ">=0.2.0"
         context["ariadne_codegen_version"] = ">=0.18.0"
         context["pytest_mock_version"] = ">=3.15.1"
@@ -112,7 +112,7 @@ class ContextUpdater(ContextHook):
         context["alpine_image_version"] = "3.23"
         context["nginx_image_version"] = "1.29.4"
 
-        context["kiota_cli_version"] = "1.31.0"
+        context["kiota_cli_version"] = "1.31.1"
 
         context["py312_version"] = "3.12.7"
         context["py313_version"] = "3.13.9"
