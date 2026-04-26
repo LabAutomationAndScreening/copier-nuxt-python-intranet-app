@@ -432,6 +432,122 @@ def fix_anyof_nullable_types(file_path: Path) -> int:
     return 0
 
 
+def get_models_with_primitive_array_fields(schema: dict[str, Any]) -> dict[str, dict[str, tuple[str, str, str]]]:
+    """Find models whose fields Kiota silently drops due to primitive array types.
+
+    Returns: dict mapping model_name -> {field_name: (ts_type, getter_call, writer_method)}
+    """
+    result: dict[str, dict[str, tuple[str, str, str]]] = {}
+    schemas = schema.get("components", {}).get("schemas", {})
+
+    for model_name, model_schema in schemas.items():
+        properties = model_schema.get("properties", {})
+        has_primitive_array = False
+        field_specs: dict[str, tuple[str, str, str]] = {}
+
+        for field_name, field_schema in properties.items():
+            if "anyOf" in field_schema or "$ref" in field_schema:
+                continue
+
+            field_type = field_schema.get("type")
+
+            if field_type == "array":
+                items = field_schema.get("items", {})
+                item_type = items.get("type")
+                if item_type == "string":
+                    field_specs[field_name] = (
+                        "string[]",
+                        "getCollectionOfPrimitiveValues<string>()",
+                        "writeCollectionOfPrimitiveValues<string>",
+                    )
+                    has_primitive_array = True
+                elif item_type in ("integer", "number"):
+                    field_specs[field_name] = (
+                        "number[]",
+                        "getCollectionOfPrimitiveValues<number>()",
+                        "writeCollectionOfPrimitiveValues<number>",
+                    )
+                    has_primitive_array = True
+                elif item_type == "boolean":
+                    field_specs[field_name] = (
+                        "boolean[]",
+                        "getCollectionOfPrimitiveValues<boolean>()",
+                        "writeCollectionOfPrimitiveValues<boolean>",
+                    )
+                    has_primitive_array = True
+            elif field_type == "string":
+                field_specs[field_name] = ("string", "getStringValue()", "writeStringValue")
+            elif field_type in ("integer", "number"):
+                field_specs[field_name] = ("number", "getNumberValue()", "writeNumberValue")
+            elif field_type == "boolean":
+                field_specs[field_name] = ("boolean", "getBooleanValue()", "writeBooleanValue")
+
+        if has_primitive_array and field_specs:
+            result[model_name] = field_specs
+
+    return result
+
+
+def inject_missing_typescript_fields(content: str, model_name: str, fields: dict[str, tuple[str, str, str]]) -> str:
+    """Inject fields that Kiota dropped from a TypeScript model due to the primitive array bug.
+
+    Kiota issue: https://github.com/microsoft/kiota/issues/4054
+    """
+    var_name = model_name[0].lower() + model_name[1:]
+
+    interface_props: list[str] = []
+    deser_entries: list[str] = []
+    serializer_calls: list[str] = []
+
+    deser_func_name = f"deserializeInto{model_name}"
+    deser_func_idx = content.find(f"function {deser_func_name}")
+
+    for field_name, (ts_type, getter, writer) in fields.items():
+        camel_field = re.sub(r"_([a-z])", lambda m: m.group(1).upper(), field_name)
+
+        # Skip if field already present in this model's deserializer
+        if deser_func_idx != -1:
+            deser_end = content.find("\n}\n", deser_func_idx)
+            if f'"{field_name}"' in content[deser_func_idx : deser_end + 3]:
+                continue
+
+        interface_props.append(f" {camel_field}?: {ts_type} | null;")
+        deser_entries.append(f' "{field_name}": n => {{ {var_name}.{camel_field} = n.{getter}; }},')
+        serializer_calls.append(f' writer.{writer}("{field_name}", {var_name}.{camel_field});')
+
+    if not interface_props:
+        return content
+
+    # Inject interface properties into empty interface
+    empty_interface = f"export interface {model_name} extends Parsable {{\n}}"
+    if empty_interface in content:
+        filled_interface = f"export interface {model_name} extends Parsable {{\n" + "\n".join(interface_props) + "\n}"
+        content = content.replace(empty_interface, filled_interface, 1)
+
+    # Inject deserializer entries into empty return dict
+    empty_return = " return {\n }"
+    if deser_func_idx != -1:
+        return_idx = content.find(empty_return, deser_func_idx)
+        func_end = content.find("\n}\n", deser_func_idx)
+        if return_idx != -1 and return_idx < func_end:
+            filled_return = " return {\n" + "\n".join(deser_entries) + "\n }"
+            content = content[:return_idx] + filled_return + content[return_idx + len(empty_return) :]
+
+    # Inject serializer calls after the early-return guard
+    serialize_func_name = f"serialize{model_name}"
+    serialize_func_idx = content.find(f"function {serialize_func_name}")
+    if serialize_func_idx != -1:
+        early_return = "{ return; }\n}"
+        early_idx = content.find(early_return, serialize_func_idx)
+        func_end = content.find("\n}\n", serialize_func_idx)
+        if early_idx != -1 and early_idx < func_end + 3:
+            filled_body = "{ return; }\n" + "\n".join(serializer_calls) + "\n}"
+            content = content[:early_idx] + filled_body + content[early_idx + len(early_return) :]
+
+    print(f"  Injected missing fields into {model_name}: {', '.join(fields.keys())}")
+    return content
+
+
 def main(schema: dict[str, Any] | None = None):
     """Main function to fix TypeScript models.
 
@@ -468,6 +584,19 @@ def main(schema: dict[str, Any] | None = None):
     anyof_fixes = fix_anyof_nullable_types(index_file)
     if anyof_fixes > 0:
         print(f"✓ Fixed {anyof_fixes} types with anyOf nullable issues")
+
+    # pylint: disable=duplicate-code # this is shared with the fixer script for typescript code
+    # Fix 3: Inject fields Kiota dropped due to primitive array types
+    models_with_array_fields = get_models_with_primitive_array_fields(schema)
+    if not models_with_array_fields:
+        print("\nNo models with primitive array fields found")
+    else:
+        print(f"\nFound {len(models_with_array_fields)} models with primitive array fields to inject")
+        content = index_file.read_text()
+        for model_name, fields in models_with_array_fields.items():
+            content = inject_missing_typescript_fields(content, model_name, fields)
+        _ = index_file.write_text(content)
+    # pylint: enable=duplicate-code
 
 
 if __name__ == "__main__":
