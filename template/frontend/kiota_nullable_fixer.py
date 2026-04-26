@@ -449,8 +449,8 @@ def get_models_with_primitive_array_fields(schema: dict[str, Any]) -> dict[str, 
             if "anyOf" in field_schema or "$ref" in field_schema:
                 continue
 
-            field_type = field_schema.get("type")
             field_format = field_schema.get("format")
+            field_type = field_schema.get("type")
 
             if field_type == "array":
                 items = field_schema.get("items", {})
