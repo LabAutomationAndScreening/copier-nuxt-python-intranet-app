@@ -224,6 +224,148 @@ def fix_model_file(file_path: Path, model_name: str, fields: dict[str, str]) -> 
     return False
 
 
+def get_models_with_primitive_array_fields(schema: dict[str, Any]) -> dict[str, dict[str, str]]:
+    """Find models whose fields Kiota silently drops due to primitive array types.
+
+    Kiota drops ALL fields from a model when any field has a direct (non-anyOf) primitive array
+    type. This function identifies those models and returns ALL their simple (non-$ref) fields so
+    they can be injected back into the generated output.
+
+    Returns: dict mapping model_name -> {field_name: python_type}
+    """
+    result: dict[str, dict[str, str]] = {}
+    schemas = schema.get("components", {}).get("schemas", {})
+
+    for model_name, model_schema in schemas.items():
+        properties = model_schema.get("properties", {})
+        has_primitive_array = False
+        field_types: dict[str, str] = {}
+
+        for field_name, field_schema in properties.items():
+            if "anyOf" in field_schema or "$ref" in field_schema:
+                continue
+
+            field_type = field_schema.get("type")
+            field_format = field_schema.get("format")
+
+            if field_type == "array":
+                items = field_schema.get("items", {})
+                item_type = items.get("type")
+                if item_type == "string":
+                    field_types[field_name] = "list[str]"
+                    has_primitive_array = True
+                elif item_type == "integer":
+                    field_types[field_name] = "list[int]"
+                    has_primitive_array = True
+                elif item_type == "number":
+                    field_types[field_name] = "list[float]"
+                    has_primitive_array = True
+                elif item_type == "boolean":
+                    field_types[field_name] = "list[bool]"
+                    has_primitive_array = True
+            elif field_type == "string" and field_format == "date-time":
+                field_types[field_name] = "datetime"
+            elif field_type == "string":
+                field_types[field_name] = "str"
+            elif field_type == "integer":
+                field_types[field_name] = "int"
+            elif field_type == "number":
+                field_types[field_name] = "float"
+            elif field_type == "boolean":
+                field_types[field_name] = "bool"
+
+        if has_primitive_array and field_types:
+            result[model_name] = field_types
+
+    return result
+
+
+def inject_missing_python_fields(file_path: Path, model_name: str, fields: dict[str, str]) -> bool:
+    """Inject fields that Kiota dropped from a Python model due to the primitive array bug.
+
+    Kiota issue: https://github.com/microsoft/kiota/issues/4054
+    """
+    content = file_path.read_text()
+    original_content = content
+    needs_datetime_import = False
+
+    field_declarations: list[str] = []
+    deser_entries: list[str] = []
+    serializer_calls: list[str] = []
+
+    for field_name, field_type in fields.items():
+        field_snake = humps.decamelize(field_name)
+
+        if f'"{field_name}"' in content:
+            continue
+
+        if field_type == "str":
+            getter = "get_str_value()"
+            writer_call = f'writer.write_str_value("{field_name}", self.{field_snake})'
+            python_type = "str"
+        elif field_type == "bool":
+            getter = "get_bool_value()"
+            writer_call = f'writer.write_bool_value("{field_name}", self.{field_snake})'
+            python_type = "bool"
+        elif field_type == "int":
+            getter = "get_int_value()"
+            writer_call = f'writer.write_int_value("{field_name}", self.{field_snake})'
+            python_type = "int"
+        elif field_type == "float":
+            getter = "get_float_value()"
+            writer_call = f'writer.write_float_value("{field_name}", self.{field_snake})'
+            python_type = "float"
+        elif field_type == "datetime":
+            getter = "get_datetime_value()"
+            writer_call = f'writer.write_datetime_value("{field_name}", self.{field_snake})'
+            python_type = "datetime.datetime"
+            needs_datetime_import = True
+        elif field_type.startswith("list["):
+            inner = field_type[5:-1]
+            getter = f"get_collection_of_primitive_values({inner})"
+            writer_call = f'writer.write_collection_of_primitive_values("{field_name}", self.{field_snake})'
+            python_type = field_type
+        else:
+            continue
+
+        field_declarations.append(f"    {field_snake}: Optional[{python_type}] = None")
+        deser_entries.append(f"            \"{field_name}\": lambda n : setattr(self, '{field_snake}', n.{getter}),")
+        serializer_calls.append(f"        {writer_call}")
+
+    if not field_declarations:
+        return False
+
+    decl_block = "\n".join(field_declarations) + "\n"
+    content = content.replace(
+        "    @staticmethod\n    def create_from_discriminator_value",
+        f"{decl_block}    @staticmethod\n    def create_from_discriminator_value",
+        1,
+    )
+
+    deser_block = "\n".join(deser_entries) + "\n        "
+    content = content.replace(
+        "        fields: dict[str, Callable[[Any], None]] = {\n        }",
+        f"        fields: dict[str, Callable[[Any], None]] = {{\n{deser_block}}}",
+        1,
+    )
+
+    serializer_block = "\n".join(serializer_calls) + "\n"
+    content = content.replace(
+        '            raise TypeError("writer cannot be null.")\n    \n',
+        f'            raise TypeError("writer cannot be null.")\n{serializer_block}    \n',
+        1,
+    )
+
+    if needs_datetime_import and "import datetime" not in content:
+        content = re.sub(r"(from __future__ import annotations\n)", r"\1import datetime\n", content)
+
+    if content != original_content:
+        _ = file_path.write_text(content)
+        print(f"  Injected missing fields into {model_name}: {', '.join(fields.keys())}")
+        return True
+    return False
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Fix Kiota's incorrect nullable handling in generated Python models")
     _ = parser.add_argument(
@@ -252,37 +394,49 @@ def main() -> None:
     schema = load_openapi_schema(args.openapi_source)
     # pylint: enable=duplicate-code
 
-    # Find fields to fix
-    simple_nullable_fields = get_anyof_simple_nullable_fields(schema)
-
-    if not simple_nullable_fields:
-        print("No anyOf [simple_type, null] fields found in OpenAPI schema")
-        return
-
-    print(f"Found {len(simple_nullable_fields)} models with anyOf [simple_type, null] fields")
-
     fixed_models = 0
     removed_files = 0
 
-    for model_name, fields in simple_nullable_fields.items():
-        field_list = [f"{k}:{v}" for k, v in fields.items()]
-        print(f"\nProcessing {model_name}: {', '.join(field_list)}")
+    # Fix 1: anyOf [simple_type, null] fields
+    simple_nullable_fields = get_anyof_simple_nullable_fields(schema)
+    if not simple_nullable_fields:
+        print("No anyOf [simple_type, null] fields found in OpenAPI schema")
+    else:
+        print(f"Found {len(simple_nullable_fields)} models with anyOf [simple_type, null] fields")
+        for model_name, fields in simple_nullable_fields.items():
+            field_list = [f"{k}:{v}" for k, v in fields.items()]
+            print(f"\nProcessing {model_name}: {', '.join(field_list)}")
 
-        # Fix the main model file (convert PascalCase to snake_case)
-        model_file = models_dir / f"{humps.decamelize(model_name)}.py"
-        if model_file.exists():
-            if fix_model_file(model_file, model_name, fields):
-                fixed_models += 1
-        else:
-            print(f"  Warning: Model file not found: {model_file}")
+            model_file = models_dir / f"{humps.decamelize(model_name)}.py"
+            if model_file.exists():
+                if fix_model_file(model_file, model_name, fields):
+                    fixed_models += 1
+            else:
+                print(f"  Warning: Model file not found: {model_file}")
 
-        # Remove composed type files
-        for field in fields.keys():
-            # Convert field name from camelCase to snake_case for the file name
-            field_snake = humps.decamelize(field)
-            composed_type_file = models_dir / f"{humps.decamelize(model_name)}_{field_snake}.py"
-            if fix_composed_type_file(composed_type_file):
-                removed_files += 1
+            for field in fields.keys():
+                field_snake = humps.decamelize(field)
+                composed_type_file = models_dir / f"{humps.decamelize(model_name)}_{field_snake}.py"
+                if fix_composed_type_file(composed_type_file):
+                    removed_files += 1
+
+    # pylint: disable=duplicate-code # this is shared with the fixer script for typescript code
+    # Fix 2: Inject fields Kiota dropped due to primitive array types
+    models_with_array_fields = get_models_with_primitive_array_fields(schema)
+    if not models_with_array_fields:
+        print("\nNo models with primitive array fields found")
+    else:
+        print(f"\nFound {len(models_with_array_fields)} models with primitive array fields to inject")
+        for model_name, fields in models_with_array_fields.items():
+            field_list = [f"{k}:{v}" for k, v in fields.items()]
+            print(f"\nInjecting into {model_name}: {', '.join(field_list)}")
+            model_file = models_dir / f"{humps.decamelize(model_name)}.py"
+            if model_file.exists():
+                if inject_missing_python_fields(model_file, model_name, fields):
+                    fixed_models += 1
+            else:
+                print(f"  Warning: Model file not found: {model_file}")
+    # pylint: enable=duplicate-code
 
     print(f"\n✓ Fixed {fixed_models} model files")
     print(f"✓ Removed {removed_files} composed type files")
