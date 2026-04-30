@@ -1,7 +1,8 @@
 {% raw %}import logging
 import os
 import threading
-import time
+import time{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+from contextlib import asynccontextmanager{% endraw %}{% endif %}{% raw %}
 from importlib.metadata import version
 from pathlib import Path
 from typing import Any
@@ -13,7 +14,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi_offline import FastAPIOffline
 from pydantic import BaseModel
-from pydantic import Field
+from pydantic import Field{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+from zeroconf.asyncio import AsyncZeroconf{% endraw %}{% endif %}{% raw %}
 
 from .fast_api_exception_handlers import register_exception_handlers
 from .jinja_constants import HUMAN_FRIENDLY_APP_NAME{% endraw %}{% if backend_uses_graphql %}{% raw %}
