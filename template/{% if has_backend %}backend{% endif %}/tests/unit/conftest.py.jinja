@@ -52,4 +52,4 @@ def clear_servers_container():
 def allow_all_bridges_by_default():
     """Set DEVICE_SOURCE_BRIDGE_ALLOW_LIST to allow all bridges for backwards compatibility in tests."""
     with mock.patch.dict(os.environ, {DEVICE_SOURCE_BRIDGE_ALLOW_LIST_ENV_VAR_NAME: "*"}):
-        yield{% endraw %}
+        yield{% endraw %}{% endif %}{% raw %}{% endraw %}
