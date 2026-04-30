@@ -1,6 +1,20 @@
 # Questions specific to this template
+has_backend:
+    type: bool
+    help: Does this project have a backend?
+    default: yes
 
+is_circuit_python_driver:
+    type: bool
+    help: Is this backend a CircuitPython device driver?
+    default: no
+    when: "{{ has_backend }}"
 
+has_circuit_python_backend_template_been_instantiated:
+    type: bool
+    help: Has the CircuitPython backend template been instantiated in this repository yet?
+    default: no
+    when: "{{ is_circuit_python_driver }}"
 
 
 
@@ -57,11 +71,13 @@ install_aws_ssm_port_forwarding_plugin:
 configure_vcrpy:
     type: bool
     help: Should VCRpy be configured for use during unit testing in Python?
-    default: no
+    default: "{{ is_circuit_python_driver }}"
+    when: "{{ not is_circuit_python_driver }}"
 configure_python_asyncio:
     type: bool
     help: Will Python code be using asyncio?
-    default: no
+    default: "{{ is_circuit_python_driver }}"
+    when: "{{ not is_circuit_python_driver }}"
 
 python_version:
     type: str
@@ -109,22 +125,17 @@ human_friendly_app_name:
     help: What's the human-friendly name of this application? (e.g. for documentation)
     default: "{{ repo_name.replace('-', ' ').replace('_', ' ') }}"
 
-has_backend:
-    type: bool
-    help: Does this project have a backend?
-    default: yes
-
 backend_makes_api_calls:
     type: bool
     help: Will the backend make calls to an external API?
-    default: no
-    when: "{{ has_backend }}"
+    default: "{{ is_circuit_python_driver }}"
+    when: "{{ has_backend and not is_circuit_python_driver }}"
 
 backend_source_uses_kiota:
     type: bool
     help: Will the backend make calls to an external API using Kiota-generated client code?
-    default: no
-    when: "{{ has_backend and backend_makes_api_calls }}"
+    default: "{{ is_circuit_python_driver }}"
+    when: "{{ has_backend and backend_makes_api_calls and not is_circuit_python_driver }}"
 
 backend_deployed_port_number:
     type: int
@@ -135,26 +146,20 @@ backend_deployed_port_number:
 backend_uses_graphql:
     type: bool
     help: Is the backend GraphQL?
-    default: yes
-    when: "{{ has_backend }}"
+    default: "{{ not is_circuit_python_driver }}"
+    when: "{{ has_backend and not is_circuit_python_driver }}"
 
 deploy_as_executable:
     type: bool
     help: Should this application be deployed as a single standalone executable?
     default: no
-    when: "{{ has_backend }}"
-
-is_circuit_python_driver:
-    type: bool
-    help: Is this backend a CircuitPython device driver?
-    default: no
-    when: "{{ has_backend }}"
+    when: "{{ has_backend and not is_circuit_python_driver }}"
 
 install_gcc_in_backend_container_build_phase:
     type: bool
     help: Is GCC required to build any Python dependencies in the backend container?
-    default: no
-    when: "{{ not deploy_as_executable and has_backend }}"
+    default: "{{ is_circuit_python_driver }}"
+    when: "{{ not deploy_as_executable and has_backend and not is_circuit_python_driver }}"
 
 create_docker_image_tar_artifact:
     type: bool
@@ -224,8 +229,8 @@ auth_to_ecr_for_e2e_in_ci_role_arn:
 run_backend_e2e_in_ci:
     type: bool
     help: Should a separate job in CI be created to run E2E tests just against the backend (Note - this does not actually work for executables yet, still TODO)?
-    default: false
-    when: "{{ has_backend }}"
+    default: "{{ is_circuit_python_driver }}"
+    when: "{{ has_backend and not is_circuit_python_driver }}"
 
 auth_to_ecr_for_backend_e2e_in_ci:
     type: bool
