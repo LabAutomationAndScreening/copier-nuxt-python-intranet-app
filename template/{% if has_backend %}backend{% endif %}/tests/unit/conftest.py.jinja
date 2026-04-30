@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 
 @pytest.fixture(autouse=True, scope="session")
 def configure_log():
-    configure_logging(log_filename_prefix="logs/pytest-")
-{% endraw %}{% if configure_vcrpy %}{% raw %}
+    configure_logging(log_filename_prefix="logs/pytest-"){% endraw %}{% if configure_vcrpy %}{% raw %}
+
     # force the vcr.cassette logger to WARNING+ because otherwise the logs get super noisy with the playback of all the cassettes
     vcr_logger = logging.getLogger("vcr.cassette")
     vcr_logger.setLevel(logging.WARNING){% endraw %}{% endif %}{% raw %}
