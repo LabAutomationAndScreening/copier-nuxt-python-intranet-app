@@ -73,8 +73,8 @@ async def lifespan(app: FastAPI):
                 logger.exception(f"Error shutting down driver with ID {driver.id}")
     logger.info("Shutting down FastAPI application")
 
-
-{% endraw %}{% endif %}{% raw %}try:
+{% endraw %}{% endif %}{% raw %}
+try:
     app = FastAPIOffline(
         title=HUMAN_FRIENDLY_APP_NAME,
         favicon_url="favicon.ico",
