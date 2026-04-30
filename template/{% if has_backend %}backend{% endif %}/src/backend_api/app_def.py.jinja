@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Any
 from typing import override
 
+{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
+from fastapi import FastAPI{% endraw %}{% endif %}{% raw %}
 from fastapi import Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
