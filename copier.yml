@@ -153,8 +153,8 @@ is_circuit_python_driver:
 install_gcc_in_backend_container_build_phase:
     type: bool
     help: Is GCC required to build any Python dependencies in the backend container?
-    default: no
-    when: "{{ not deploy_as_executable and has_backend }}"
+    default: "{{ is_circuit_python_driver }}"
+    when: "{{ not deploy_as_executable and has_backend and not is_circuit_python_driver }}"
 
 create_docker_image_tar_artifact:
     type: bool
