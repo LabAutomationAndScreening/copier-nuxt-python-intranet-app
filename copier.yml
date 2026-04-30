@@ -1,6 +1,14 @@
 # Questions specific to this template
+has_backend:
+    type: bool
+    help: Does this project have a backend?
+    default: yes
 
-
+is_circuit_python_driver:
+    type: bool
+    help: Is this backend a CircuitPython device driver?
+    default: no
+    when: "{{ has_backend }}"
 
 
 
@@ -109,11 +117,6 @@ human_friendly_app_name:
     help: What's the human-friendly name of this application? (e.g. for documentation)
     default: "{{ repo_name.replace('-', ' ').replace('_', ' ') }}"
 
-has_backend:
-    type: bool
-    help: Does this project have a backend?
-    default: yes
-
 backend_makes_api_calls:
     type: bool
     help: Will the backend make calls to an external API?
@@ -141,12 +144,6 @@ backend_uses_graphql:
 deploy_as_executable:
     type: bool
     help: Should this application be deployed as a single standalone executable?
-    default: no
-    when: "{{ has_backend }}"
-
-is_circuit_python_driver:
-    type: bool
-    help: Is this backend a CircuitPython device driver?
     default: no
     when: "{{ has_backend }}"
 
