@@ -80,7 +80,8 @@ async def lifespan(app: FastAPI):
         favicon_url="favicon.ico",
         version=VERSION,
         docs_url="/api-docs",
-        static_url="/static/swagger",
+        static_url="/static/swagger",{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+        lifespan=lifespan,{% endraw %}{% endif %}{% raw %}
     )
 except (  # pragma: no cover # This is just logging unexpected errors, and it's very challenging to explicitly unit test
     Exception
@@ -152,7 +153,10 @@ try:
     ){% endraw %}{% if backend_uses_graphql %}{% raw %}
 
     graphql_app = OfflineGraphQLRouter(schema)
-    app.include_router(graphql_app, prefix="/api/graphql"){% endraw %}{% endif %}{% raw %}
+    app.include_router(graphql_app, prefix="/api/graphql"){% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+    app.include_router(driver_router, prefix="/api/driver")
+    app.include_router(bridges_router, prefix="/api/bridges", tags=["debug"])
+    app.include_router(mdns_router, prefix="/api", tags=["mDNS"]){% endraw %}{% endif %}{% raw %}
     app.mount(
         "/", NoCacheStaticFiles(directory=STATIC_DIR, html=True), name="static"
     )  # this needs to go after any defined routes so that the routes take precedence
