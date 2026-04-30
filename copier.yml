@@ -10,6 +10,12 @@ is_circuit_python_driver:
     default: no
     when: "{{ has_backend }}"
 
+has_circuit_python_backend_template_been_instantiated:
+    type: bool
+    help: Has the CircuitPython backend template been instantiated in this repository yet?
+    default: no
+    when: "{{ is_circuit_python_driver }}"
+
 
 
 # Questions managed by upstream template
