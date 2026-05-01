@@ -1,8 +1,12 @@
-{% raw %}import logging
+{% raw %}import logging{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
+import os
+from unittest import mock{% endraw %}{% endif %}{% raw %}
 
 import pytest
 from backend_api import configure_logging
-from backend_api.app_def import app
+from backend_api.app_def import app{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
+from backend_api.common.mdns import DEVICE_SOURCE_BRIDGE_ALLOW_LIST_ENV_VAR_NAME
+from backend_api.common.rfc_servers_jinja import reset_servers_container{% endraw %}{% endif %}{% raw %}
 from fastapi import FastAPI
 
 {% endraw %}{% if configure_python_asyncio %}{% raw %}from .asyncio_fixtures import fail_on_background_task_errors  # noqa: F401 # this is an autouse fixture
@@ -15,7 +19,11 @@ logger = logging.getLogger(__name__)
 
 @pytest.fixture(autouse=True, scope="session")
 def configure_log():
-    configure_logging(log_filename_prefix="logs/pytest-")
+    configure_logging(log_filename_prefix="logs/pytest-"){% endraw %}{% if configure_vcrpy %}{% raw %}
+
+    # force the vcr.cassette logger to WARNING+ because otherwise the logs get super noisy with the playback of all the cassettes
+    vcr_logger = logging.getLogger("vcr.cassette")
+    vcr_logger.setLevel(logging.WARNING){% endraw %}{% endif %}{% raw %}
 
 
 def _get_all_state_attributes(app: FastAPI) -> set[str]:
@@ -34,4 +42,18 @@ def reset_app_state():
     current_attrs = _get_all_state_attributes(app)
     added_attrs = current_attrs - original_attrs
     for attr in added_attrs:
-        delattr(app.state, attr){% endraw %}
+        delattr(app.state, attr){% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
+
+
+@pytest.fixture(autouse=True)
+def clear_servers_container():
+    reset_servers_container()
+    yield
+    reset_servers_container()
+
+
+@pytest.fixture(autouse=True)
+def allow_all_bridges_by_default():
+    """Set DEVICE_SOURCE_BRIDGE_ALLOW_LIST to allow all bridges for backwards compatibility in tests."""
+    with mock.patch.dict(os.environ, {DEVICE_SOURCE_BRIDGE_ALLOW_LIST_ENV_VAR_NAME: "*"}):
+        yield{% endraw %}{% endif %}{% raw %}{% endraw %}
