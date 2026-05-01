@@ -71,7 +71,7 @@ install_aws_ssm_port_forwarding_plugin:
 configure_vcrpy:
     type: bool
     help: Should VCRpy be configured for use during unit testing in Python?
-    default: "{{ has_circuit_python_backend_template_been_instantiated }}"
+    default: "{{ is_circuit_python_driver }}"
     when: "{{ not is_circuit_python_driver }}"
 configure_python_asyncio:
     type: bool
@@ -229,7 +229,7 @@ auth_to_ecr_for_e2e_in_ci_role_arn:
 run_backend_e2e_in_ci:
     type: bool
     help: Should a separate job in CI be created to run E2E tests just against the backend (Note - this does not actually work for executables yet, still TODO)?
-    default: "{{ is_circuit_python_driver }}"
+    default: "{{ has_circuit_python_backend_template_been_instantiated  }}"
     when: "{{ has_backend and not is_circuit_python_driver }}"
 
 auth_to_ecr_for_backend_e2e_in_ci:
