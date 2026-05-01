@@ -395,7 +395,7 @@ jobs:
       with:
         name: {% endraw %}{{ repo_name }}{% raw %}-deployment-package
         path: deployment-package-folder/**/*
-        if-no-files-found: error{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+        if-no-files-found: error{% endraw %}{% endif %}{% raw %}{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
 
   package-firmware:
     name: Package Firmware
@@ -454,7 +454,7 @@ jobs:
       - unit-test-backend
       - build-backend{% endraw %}{% endif %}{% raw %}{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
       - package-images{% endraw %}{% endif %}{% raw %}
-      - test-compiled-frontend{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+      - test-compiled-frontend{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
       - package-firmware{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
       - e2e-test-backend{% endraw %}{% endif %}{% raw %}
       - e2e-test
@@ -475,7 +475,7 @@ jobs:
             [[ ! "${{ needs.unit-test-backend.result }}" =~ $success_pattern ]] ||
             [[ ! "${{ needs.build-backend.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
             [[ ! "${{ needs.package-images.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}
-            [[ ! "${{ needs.test-compiled-frontend.result }}" =~ $success_pattern ]] ||{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+            [[ ! "${{ needs.test-compiled-frontend.result }}" =~ $success_pattern ]] ||{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
             [[ ! "${{ needs.package-firmware.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
             [[ ! "${{ needs.e2e-test-backend.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}
             [[ ! "${{ needs.e2e-test.result }}" =~ $success_pattern ]] ||
