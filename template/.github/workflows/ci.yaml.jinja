@@ -129,6 +129,8 @@ jobs:
       id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
     with:
       context: ./frontend
+      build-contexts: repo-root=.
+      additional-hash-paths: pnpm-workspace.yaml pnpm-lock.yaml
       save-as-artifact: true
       tag-for-production: ${{ github.ref == 'refs/heads/main' }}
       repository: {% endraw %}{{ frontend_ecr_base_url }}{% raw %}
