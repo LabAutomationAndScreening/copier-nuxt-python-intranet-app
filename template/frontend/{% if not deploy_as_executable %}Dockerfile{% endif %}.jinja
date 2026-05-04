@@ -21,7 +21,7 @@ COPY package.json ./frontend/
 COPY scripts/postinstall.mjs ./frontend/scripts/postinstall.mjs
 
 # Install dependencies from workspace root
-RUN pnpm install --frozen-lockfile
+RUN pnpm ci
 
 COPY . ./frontend/
 
