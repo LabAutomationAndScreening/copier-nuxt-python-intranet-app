@@ -285,9 +285,9 @@ repos:
               .*/generated/open[-_]api/.*|
           )$
       - id: ruff
-        name: ruff-tests
+        name: ruff-non-src # tests, scripts and other non-production code
         args: [--fix, --config=./ruff-test.toml]
-        files: tests?/.+\.py$
+        files: (?!src/).+\.py$
         exclude: |
           (?x)^(
               .*/generated/graphql/.*|
