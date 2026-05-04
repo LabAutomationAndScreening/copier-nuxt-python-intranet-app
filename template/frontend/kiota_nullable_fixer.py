@@ -153,8 +153,7 @@ def fix_typescript_file(file_path: Path, model_name: str, fields: set[str]) -> b
     return False
 
 
-# TODO: decide what to do about these fixer scripts long term
-def fix_anyof_nullable_types(file_path: Path) -> int:  # noqa: C901, PLR0912, PLR0915
+def fix_anyof_nullable_types(file_path: Path) -> int:  # noqa: C901, PLR0912, PLR0915 # TODO: decide what to do about these fixer scripts long term
     """Fix Kiota's bogus Member1 interfaces for anyOf nullable types.
 
     Kiota generates empty Member1 interfaces for fields with anyOf: [type, null].

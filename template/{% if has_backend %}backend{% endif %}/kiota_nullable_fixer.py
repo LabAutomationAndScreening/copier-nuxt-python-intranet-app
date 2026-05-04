@@ -45,7 +45,6 @@ def load_openapi_schema(source: str) -> dict[str, Any]:
         # pylint: enable=duplicate-code
 
 
-# TODO: decide what to do about these fixer scripts long term
 def get_anyof_simple_nullable_fields(schema: dict[str, Any]) -> dict[str, dict[str, str]]:  # noqa: C901, PLR0912 # TODO: decide what to do about these fixer scripts long term
     """Parse OpenAPI schema to find fields defined as anyOf: [simple_type, null].
 
