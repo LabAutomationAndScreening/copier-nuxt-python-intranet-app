@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     name: Fail if template under development
+    env:
+        ANSWERS_FILE_PATTERN: ${{ inputs.answers_file_pattern }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6.0.2
@@ -21,7 +23,7 @@ jobs:
 
       - name: Check _commit is a clean release tag
         run: |
-          PATTERN="${{ inputs.answers_file_pattern }}"
+          PATTERN="$ANSWERS_FILE_PATTERN"
           mapfile -t ANSWERS_FILES < <(find . -type f -printf '%P\n' | grep -E "$PATTERN")
           if [ ${#ANSWERS_FILES[@]} -eq 0 ]; then
             echo "Error: No files matching pattern '$PATTERN' found"
