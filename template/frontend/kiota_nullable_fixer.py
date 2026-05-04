@@ -433,7 +433,7 @@ def fix_anyof_nullable_types(file_path: Path) -> int:  # noqa: C901, PLR0912, PL
     return 0
 
 
-def get_models_with_primitive_array_fields(schema: dict[str, Any]) -> dict[str, dict[str, tuple[str, str, str]]]:  # noqa: C901
+def get_models_with_primitive_array_fields(schema: dict[str, Any]) -> dict[str, dict[str, tuple[str, str, str]]]:  # noqa: C901 # TODO: decide what to do about these fixer scripts long term
     """Find models whose fields Kiota silently drops due to primitive array types.
 
     Returns: dict mapping model_name -> {field_name: (ts_type, getter_call, writer_method)}
