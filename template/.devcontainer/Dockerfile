@@ -19,7 +19,7 @@ RUN apt-get update -y && apt-get install -y \
 ARG REPO_NAME=copier-base-template
 ENV VENV_PATH=/workspaces/${REPO_NAME}/backend/.venv
 ENV PNPM_STORE=/workspaces/${REPO_NAME}/.pnpm-store
-ENV FRONTEND_NODE_MODULES=/workspaces/${REPO_NAME}/frontend/node_modules
+ENV FRONTEND_NODE_MODULES=/workspaces/${REPO_NAME}/node_modules
 RUN mkdir -p /workspaces && \
     mkdir -p ${VENV_PATH} && \
     mkdir -p ${PNPM_STORE} && \

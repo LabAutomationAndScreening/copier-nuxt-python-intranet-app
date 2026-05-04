@@ -26,26 +26,26 @@ def load_openapi_schema(source: str) -> dict[str, Any]:
             _ = response.raise_for_status()
             return response.json()
         except httpx.HTTPError as e:
-            print(f"Error fetching OpenAPI schema from {source}: {e}")
+            print(f"Error fetching OpenAPI schema from {source}: {e}")  # noqa: T201 # this just runs as a simple script, so using print instead of log
             sys.exit(1)
     else:
         # pylint: disable=duplicate-code # this is shared with the fixer script for typescript code
         # Treat as file path
         file_path = Path(source)
         if not file_path.exists():
-            print(f"Error: OpenAPI schema file not found: {file_path}")
+            print(f"Error: OpenAPI schema file not found: {file_path}")  # noqa: T201 # this just runs as a simple script, so using print instead of log
             sys.exit(1)
         try:
             with file_path.open() as f:
                 return json.load(f)
 
-        except (json.JSONDecodeError, IOError) as e:
-            print(f"Error reading OpenAPI schema from {file_path}: {e}")
+        except (OSError, json.JSONDecodeError) as e:
+            print(f"Error reading OpenAPI schema from {file_path}: {e}")  # noqa: T201 # this just runs as a simple script, so using print instead of log
             sys.exit(1)
         # pylint: enable=duplicate-code
 
 
-def get_anyof_simple_nullable_fields(schema: dict[str, Any]) -> dict[str, dict[str, str]]:
+def get_anyof_simple_nullable_fields(schema: dict[str, Any]) -> dict[str, dict[str, str]]:  # noqa: C901, PLR0912 # TODO: decide what to do about these fixer scripts long term
     """Parse OpenAPI schema to find fields defined as anyOf: [simple_type, null].
 
     Returns: dict mapping model_name -> {field_name: type_name}
@@ -61,7 +61,7 @@ def get_anyof_simple_nullable_fields(schema: dict[str, Any]) -> dict[str, dict[s
             # Check if it's an anyOf with exactly 2 items
             if "anyOf" in field_schema:
                 any_of: list[dict[str, Any]] = field_schema["anyOf"]
-                if len(any_of) == 2:
+                if len(any_of) == 2:  # noqa: PLR2004 # 2 is the exact expected length: [type, null]
                     # Check for null type
                     null_item: dict[str, Any] | None = None
                     other_item: dict[str, Any] | None = None
@@ -110,12 +110,12 @@ def fix_composed_type_file(file_path: Path) -> bool:
     """Remove a composed type file that's no longer needed."""
     if file_path.exists():
         file_path.unlink()
-        print(f"  Removed composed type file: {file_path.name}")
+        print(f"  Removed composed type file: {file_path.name}")  # noqa: T201 # this just runs as a simple script, so using print instead of log
         return True
     return False
 
 
-def fix_model_file(file_path: Path, model_name: str, fields: dict[str, str]) -> bool:
+def fix_model_file(file_path: Path, model_name: str, fields: dict[str, str]) -> bool:  # noqa: C901, PLR0912, PLR0915 # TODO: decide what to do about these fixer scripts long term
     """Fix a model file to use Optional[type] instead of composed types."""
     content = file_path.read_text()
     original_content = content
@@ -173,7 +173,7 @@ def fix_model_file(file_path: Path, model_name: str, fields: dict[str, str]) -> 
         matches_before = len(re.findall(import_pattern, content, flags=re.MULTILINE))
         content = re.sub(import_pattern, "", content, flags=re.MULTILINE)
         if matches_before > 0:
-            print(f"    Removed {matches_before} import(s) for {composed_type_class_name}")
+            print(f"    Removed {matches_before} import(s) for {composed_type_class_name}")  # noqa: T201 # this just runs as a simple script, so using print instead of log
 
         # 2. Fix the attribute declaration
         # Change: field_name: Optional[ComposedType] = None
@@ -184,7 +184,7 @@ def fix_model_file(file_path: Path, model_name: str, fields: dict[str, str]) -> 
         content = re.sub(attr_pattern, rf"\1Optional[{python_type}]\2", content)
 
         # 3. Fix get_field_deserializers
-        # Change: lambda n: setattr(self, "field", n.get_object_value(ComposedType))
+        # Change: lambda n: setattr(self, "field", n.get_object_value(ComposedType))  # noqa: ERA001 # documents the transformation, not commented-out code
         # To: lambda n: setattr(self, "field", n.get_str_value()) or n.get_bool_value() etc.
         # Note: The key in the dict is camelCase (from JSON), but the attribute name is snake_case
         deserializer_pattern = rf'("{re.escape(field)}":\s+lambda\s+n\s*:\s*setattr\(self,\s*[\'"]{re.escape(field_snake)}[\'"]\s*,\s*)n\.get_object_value\({re.escape(composed_type_class_name)}\)\)'
@@ -195,7 +195,7 @@ def fix_model_file(file_path: Path, model_name: str, fields: dict[str, str]) -> 
             content = re.sub(deserializer_pattern, rf"\1n.{getter_method}())", content)
 
         # 4. Fix serialize method
-        # Change: writer.write_object_value("field", self.field)
+        # Change: writer.write_object_value("field", self.field)  # noqa: ERA001 # documents the transformation, not commented-out code
         # To: writer.write_str_value("field", self.field) or write_bool_value etc.
         # Note: The key is camelCase but the attribute is snake_case
         serialize_pattern = rf'writer\.write_object_value\("{re.escape(field)}",\s+self\.{re.escape(field_snake)}\)'
@@ -219,12 +219,12 @@ def fix_model_file(file_path: Path, model_name: str, fields: dict[str, str]) -> 
 
     if content != original_content:
         _ = file_path.write_text(content)
-        print(f"  Fixed model file: {model_name}")
+        print(f"  Fixed model file: {model_name}")  # noqa: T201 # this just runs as a simple script, so using print instead of log
         return True
     return False
 
 
-def get_models_with_primitive_array_fields(schema: dict[str, Any]) -> dict[str, dict[str, str]]:
+def get_models_with_primitive_array_fields(schema: dict[str, Any]) -> dict[str, dict[str, str]]:  # noqa: C901, PLR0912 # TODO: decide what to do about these fixer scripts long term
     """Find models whose fields Kiota silently drops due to primitive array types.
 
     Kiota drops ALL fields from a model when any field has a direct (non-anyOf) primitive array
@@ -280,7 +280,7 @@ def get_models_with_primitive_array_fields(schema: dict[str, Any]) -> dict[str, 
     return result
 
 
-def inject_missing_python_fields(file_path: Path, model_name: str, fields: dict[str, str]) -> bool:
+def inject_missing_python_fields(file_path: Path, model_name: str, fields: dict[str, str]) -> bool:  # noqa: C901, PLR0915 # TODO: decide what to do about these fixer scripts long term
     """Inject fields that Kiota dropped from a Python model due to the primitive array bug.
 
     Kiota issue: https://github.com/microsoft/kiota/issues/4054
@@ -361,12 +361,12 @@ def inject_missing_python_fields(file_path: Path, model_name: str, fields: dict[
 
     if content != original_content:
         _ = file_path.write_text(content)
-        print(f"  Injected missing fields into {model_name}: {', '.join(fields.keys())}")
+        print(f"  Injected missing fields into {model_name}: {', '.join(fields.keys())}")  # noqa: T201 # this just runs as a simple script, so using print instead of log
         return True
     return False
 
 
-def main() -> None:
+def main() -> None:  # noqa: C901, PLR0912 # TODO: decide what to do about these fixer scripts long term
     parser = argparse.ArgumentParser(description="Fix Kiota's incorrect nullable handling in generated Python models")
     _ = parser.add_argument(
         "openapi_source",
@@ -383,14 +383,14 @@ def main() -> None:
     models_dir = Path(args.kiota_dir) / "models"
     # pylint: disable=duplicate-code # this is shared with the fixer script for typescript code
     if not models_dir.exists():
-        print(f"Error: Models directory not found: {models_dir.absolute()}")
+        print(f"Error: Models directory not found: {models_dir.absolute()}")  # noqa: T201 # this just runs as a simple script, so using print instead of log
         sys.exit(1)
     if not models_dir.is_dir():
-        print(f"Error: Models path is not a directory: {models_dir.absolute()}")
+        print(f"Error: Models path is not a directory: {models_dir.absolute()}")  # noqa: T201 # this just runs as a simple script, so using print instead of log
         sys.exit(1)
 
     # Load OpenAPI schema
-    print(f"Loading OpenAPI schema from: {args.openapi_source}")
+    print(f"Loading OpenAPI schema from: {args.openapi_source}")  # noqa: T201 # this just runs as a simple script, so using print instead of log
     schema = load_openapi_schema(args.openapi_source)
     # pylint: enable=duplicate-code
 
@@ -400,21 +400,21 @@ def main() -> None:
     # Fix 1: anyOf [simple_type, null] fields
     simple_nullable_fields = get_anyof_simple_nullable_fields(schema)
     if not simple_nullable_fields:
-        print("No anyOf [simple_type, null] fields found in OpenAPI schema")
+        print("No anyOf [simple_type, null] fields found in OpenAPI schema")  # noqa: T201 # this just runs as a simple script, so using print instead of log
     else:
-        print(f"Found {len(simple_nullable_fields)} models with anyOf [simple_type, null] fields")
+        print(f"Found {len(simple_nullable_fields)} models with anyOf [simple_type, null] fields")  # noqa: T201 # this just runs as a simple script, so using print instead of log
         for model_name, fields in simple_nullable_fields.items():
             field_list = [f"{k}:{v}" for k, v in fields.items()]
-            print(f"\nProcessing {model_name}: {', '.join(field_list)}")
+            print(f"\nProcessing {model_name}: {', '.join(field_list)}")  # noqa: T201 # this just runs as a simple script, so using print instead of log
 
             model_file = models_dir / f"{humps.decamelize(model_name)}.py"
             if model_file.exists():
                 if fix_model_file(model_file, model_name, fields):
                     fixed_models += 1
             else:
-                print(f"  Warning: Model file not found: {model_file}")
+                print(f"  Warning: Model file not found: {model_file}")  # noqa: T201 # this just runs as a simple script, so using print instead of log
 
-            for field in fields.keys():
+            for field in fields:
                 field_snake = humps.decamelize(field)
                 composed_type_file = models_dir / f"{humps.decamelize(model_name)}_{field_snake}.py"
                 if fix_composed_type_file(composed_type_file):
@@ -424,22 +424,22 @@ def main() -> None:
     # Fix 2: Inject fields Kiota dropped due to primitive array types
     models_with_array_fields = get_models_with_primitive_array_fields(schema)
     if not models_with_array_fields:
-        print("\nNo models with primitive array fields found")
+        print("\nNo models with primitive array fields found")  # noqa: T201 # this just runs as a simple script, so using print instead of log
     else:
-        print(f"\nFound {len(models_with_array_fields)} models with primitive array fields to inject")
+        print(f"\nFound {len(models_with_array_fields)} models with primitive array fields to inject")  # noqa: T201 # this just runs as a simple script, so using print instead of log
         for model_name, fields in models_with_array_fields.items():
             field_list = [f"{k}:{v}" for k, v in fields.items()]
-            print(f"\nInjecting into {model_name}: {', '.join(field_list)}")
+            print(f"\nInjecting into {model_name}: {', '.join(field_list)}")  # noqa: T201 # this just runs as a simple script, so using print instead of log
             model_file = models_dir / f"{humps.decamelize(model_name)}.py"
             if model_file.exists():
                 if inject_missing_python_fields(model_file, model_name, fields):
                     fixed_models += 1
             else:
-                print(f"  Warning: Model file not found: {model_file}")
+                print(f"  Warning: Model file not found: {model_file}")  # noqa: T201 # this just runs as a simple script, so using print instead of log
     # pylint: enable=duplicate-code
 
-    print(f"\n✓ Fixed {fixed_models} model files")
-    print(f"✓ Removed {removed_files} composed type files")
+    print(f"\n✓ Fixed {fixed_models} model files")  # noqa: T201 # this just runs as a simple script, so using print instead of log
+    print(f"✓ Removed {removed_files} composed type files")  # noqa: T201 # this just runs as a simple script, so using print instead of log
 
 
 if __name__ == "__main__":

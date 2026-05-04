@@ -19,6 +19,8 @@ services:{% endraw %}{% if has_backend %}{% raw %}
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      additional_contexts:
+        repo-root: .
     image: {% endraw %}{{ frontend_image_name }}{% raw %}:local
     container_name: {% endraw %}{{ repo_name }}{% raw %}-frontend
     ports:

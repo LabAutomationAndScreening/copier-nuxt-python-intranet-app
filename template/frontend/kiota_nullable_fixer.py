@@ -34,23 +34,23 @@ def load_openapi_schema(source: str) -> dict[str, Any]:
     # Check if it looks like a URL
     if source.startswith(("http://", "https://")):
         try:
-            with urlopen(source, timeout=5.0) as response:
+            with urlopen(source, timeout=5.0) as response:  # noqa: S310 # scheme already validated above via startswith check
                 return json.loads(response.read().decode("utf-8"))
         except (URLError, json.JSONDecodeError, OSError) as e:
-            print(f"Error fetching OpenAPI schema from {source}: {e}")
+            print(f"Error fetching OpenAPI schema from {source}: {e}")  # noqa: T201 # this just runs as a simple script, so using print instead of log
             sys.exit(1)
     else:
         # pylint: disable=duplicate-code # this is shared with the fixer script for python code
         # Treat as file path
         file_path = Path(source)
         if not file_path.exists():
-            print(f"Error: OpenAPI schema file not found: {file_path}")
+            print(f"Error: OpenAPI schema file not found: {file_path}")  # noqa: T201 # this just runs as a simple script, so using print instead of log
             sys.exit(1)
         try:
             with file_path.open() as f:
                 return json.load(f)
         except (OSError, json.JSONDecodeError) as e:
-            print(f"Error reading OpenAPI schema from {file_path}: {e}")
+            print(f"Error reading OpenAPI schema from {file_path}: {e}")  # noqa: T201 # this just runs as a simple script, so using print instead of log
             sys.exit(1)
         # pylint: enable=duplicate-code
 
@@ -90,7 +90,7 @@ def extract_model_block(content: str, model_name: str) -> tuple[str | None, int,
     match = re.search(pattern, content)
 
     if not match:
-        print(f"Could not find model {model_name} in content")
+        print(f"Could not find model {model_name} in content")  # noqa: T201 # this just runs as a simple script, so using print instead of log
         return None, -1, -1
 
     start_pos = match.start()
@@ -124,7 +124,7 @@ def fix_typescript_file(file_path: Path, model_name: str, fields: set[str]) -> b
     block_content, start_pos, end_pos = extract_model_block(content, model_name)
 
     if block_content is None:
-        print(f"Could not find block content for {model_name} in {file_path}")
+        print(f"Could not find block content for {model_name} in {file_path}")  # noqa: T201 # this just runs as a simple script, so using print instead of log
         return False
 
     original_block = block_content
@@ -148,12 +148,12 @@ def fix_typescript_file(file_path: Path, model_name: str, fields: set[str]) -> b
         # Replace the block in the original content
         new_content = content[:start_pos] + block_content + content[end_pos:]
         _ = file_path.write_text(new_content)
-        print(f"Fixed {model_name}: {', '.join(fields)}")
+        print(f"Fixed {model_name}: {', '.join(fields)}")  # noqa: T201 # this just runs as a simple script, so using print instead of log
         return True
     return False
 
 
-def fix_anyof_nullable_types(file_path: Path) -> int:
+def fix_anyof_nullable_types(file_path: Path) -> int:  # noqa: C901, PLR0912, PLR0915 # TODO: decide what to do about these fixer scripts long term
     """Fix Kiota's bogus Member1 interfaces for anyOf nullable types.
 
     Kiota generates empty Member1 interfaces for fields with anyOf: [type, null].
@@ -255,13 +255,13 @@ def fix_anyof_nullable_types(file_path: Path) -> int:
     fixes_applied += count
 
     # Remove serialization calls to serializeXxxMember1
-    # Pattern: serializeXxxMember1(writer, foo);
+    # Pattern: serializeXxxMember1(writer, foo);  # noqa: ERA001 # documents the regex pattern, not commented-out code
     serialize_call_pattern = r"serialize\w+Member1\([^)]+\)\s*;"
     content, count = re.subn(serialize_call_pattern, "", content)
     fixes_applied += count
 
     # Fix writeObjectValue calls with Member1 type parameters
-    # Pattern: writer.writeObjectValue<XxxMember1>("field", value, serializeFunc);
+    # Pattern: writer.writeObjectValue<XxxMember1>("field", value, serializeFunc);  # noqa: ERA001 # documents the regex pattern, not commented-out code
     # Replace with: writer.writeObjectValue("field", value, serializeFunc); (remove type param)
     write_member1_pattern = r"writer\.writeObjectValue<(\w+Member1)>"
     content, count = re.subn(write_member1_pattern, r"writer.writeObjectValue", content)
@@ -319,7 +319,7 @@ def fix_anyof_nullable_types(file_path: Path) -> int:
 
     # Step 4.25: Fix writeObjectValue issues that are only visible after Member1 removal
     # Handle fields where Kiota incorrectly generated primitive instead of primitive[]
-    # Pattern: writer.writeObjectValue<number>("raw_readings", value, serializeType_raw_readings)
+    # Pattern: writer.writeObjectValue<number>("raw_readings", value, serializeType_raw_readings)  # noqa: ERA001 # documents the regex pattern, not commented-out code
     # This happens when Kiota generates <Member1 | number> instead of <Member1 | number[]>
     # After Step 3.5 removes Member1, we're left with <number> but should be array
     # The serialize function follows the pattern serialize{TypeName}_{field_name}
@@ -334,7 +334,7 @@ def fix_anyof_nullable_types(file_path: Path) -> int:
     fixes_applied += count
 
     # Handle non-array fields that correctly remain as writeObjectValue after Member1 removal
-    # Pattern: writer.writeObjectValue< primitive>("field", value, serializeFunc)
+    # Pattern: writer.writeObjectValue< primitive>("field", value, serializeFunc)  # noqa: ERA001 # documents the regex pattern, not commented-out code
     # These should stay as writeObjectValue but fix the spacing (they don't have underscore pattern)
     write_primitive_pattern = r"writer\.writeObjectValue<\s*(string|number|boolean)\s*>\("
     content, count = re.subn(write_primitive_pattern, r"writer.writeObjectValue<\1>(", content)
@@ -426,13 +426,13 @@ def fix_anyof_nullable_types(file_path: Path) -> int:
 
     if content != original_content:
         _ = file_path.write_text(content)
-        print(f"Applied {fixes_applied} anyOf nullable fixes")
+        print(f"Applied {fixes_applied} anyOf nullable fixes")  # noqa: T201 # this just runs as a simple script, so using print instead of log
         return fixes_applied
 
     return 0
 
 
-def get_models_with_primitive_array_fields(schema: dict[str, Any]) -> dict[str, dict[str, tuple[str, str, str]]]:
+def get_models_with_primitive_array_fields(schema: dict[str, Any]) -> dict[str, dict[str, tuple[str, str, str]]]:  # noqa: C901 # TODO: decide what to do about these fixer scripts long term
     """Find models whose fields Kiota silently drops due to primitive array types.
 
     Returns: dict mapping model_name -> {field_name: (ts_type, getter_call, writer_method)}
@@ -547,12 +547,12 @@ def inject_missing_typescript_fields(content: str, model_name: str, fields: dict
             filled_body = "{ return; }\n" + "\n".join(serializer_calls) + "\n}"
             content = content[:early_idx] + filled_body + content[early_idx + len(early_return) :]
 
-    print(f"  Injected missing fields into {model_name}: {', '.join(fields.keys())}")
+    print(f"  Injected missing fields into {model_name}: {', '.join(fields.keys())}")  # noqa: T201 # this just runs as a simple script, so using print instead of log
     return content
 
 
 def main(schema: dict[str, Any] | None = None):
-    """Main function to fix TypeScript models.
+    """Fix nullable handling in generated TypeScript models.
 
     Args:
         schema: OpenAPI schema dict. If None, loads from default path for backward compatibility.
@@ -560,12 +560,12 @@ def main(schema: dict[str, Any] | None = None):
     if schema is None:
         # Backward compatibility: load from default path if no schema provided
         if not DEFAULT_OPENAPI_SCHEMA.exists():
-            print(f"Error: Default OpenAPI schema file not found: {DEFAULT_OPENAPI_SCHEMA}")
+            print(f"Error: Default OpenAPI schema file not found: {DEFAULT_OPENAPI_SCHEMA}")  # noqa: T201 # this just runs as a simple script, so using print instead of log
             sys.exit(1)
         with DEFAULT_OPENAPI_SCHEMA.open() as f:
             schema = json.load(f)
             if schema is None:
-                print("Error: Failed to load OpenAPI schema from default path")
+                print("Error: Failed to load OpenAPI schema from default path")  # noqa: T201 # this just runs as a simple script, so using print instead of log
                 sys.exit(1)
 
     index_file = MODELS_DIR / "index.ts"
@@ -573,28 +573,28 @@ def main(schema: dict[str, Any] | None = None):
     # Fix 1: Required non-nullable fields (original functionality)
     required_fields = get_required_non_nullable_fields(schema)
     if required_fields:
-        print(f"Found {len(required_fields)} models with required non-nullable fields")
+        print(f"Found {len(required_fields)} models with required non-nullable fields")  # noqa: T201 # this just runs as a simple script, so using print instead of log
         fixed_count = 0
         for model_name, fields in required_fields.items():
             if fix_typescript_file(index_file, model_name, fields):
                 fixed_count += 1
-        print(f"Fixed {fixed_count} models for required fields")
+        print(f"Fixed {fixed_count} models for required fields")  # noqa: T201 # this just runs as a simple script, so using print instead of log
     else:
-        print("No required non-nullable field fixes needed")
+        print("No required non-nullable field fixes needed")  # noqa: T201 # this just runs as a simple script, so using print instead of log
 
     # Fix 2: anyOf nullable types with Member1 interfaces
-    print("\nFixing anyOf nullable types...")
+    print("\nFixing anyOf nullable types...")  # noqa: T201 # this just runs as a simple script, so using print instead of log
     anyof_fixes = fix_anyof_nullable_types(index_file)
     if anyof_fixes > 0:
-        print(f"✓ Fixed {anyof_fixes} types with anyOf nullable issues")
+        print(f"✓ Fixed {anyof_fixes} types with anyOf nullable issues")  # noqa: T201 # this just runs as a simple script, so using print instead of log
 
     # pylint: disable=duplicate-code # this is shared with the fixer script for python code
     # Fix 3: Inject fields Kiota dropped due to primitive array types
     models_with_array_fields = get_models_with_primitive_array_fields(schema)
     if not models_with_array_fields:
-        print("\nNo models with primitive array fields found")
+        print("\nNo models with primitive array fields found")  # noqa: T201 # this just runs as a simple script, so using print instead of log
     else:
-        print(f"\nFound {len(models_with_array_fields)} models with primitive array fields to inject")
+        print(f"\nFound {len(models_with_array_fields)} models with primitive array fields to inject")  # noqa: T201 # this just runs as a simple script, so using print instead of log
         content = index_file.read_text()
         for model_name, fields in models_with_array_fields.items():
             content = inject_missing_typescript_fields(content, model_name, fields)
@@ -631,14 +631,14 @@ if __name__ == "__main__":
     models_dir = Path(args.models_dir)
     # pylint: disable=duplicate-code # this is shared with the fixer script for typescript code
     if not models_dir.exists():
-        print(f"Error: Models directory not found: {models_dir.absolute()}")
+        print(f"Error: Models directory not found: {models_dir.absolute()}")  # noqa: T201 # this just runs as a simple script, so using print instead of log
         sys.exit(1)
     if not models_dir.is_dir():
-        print(f"Error: Models path is not a directory: {models_dir.absolute()}")
+        print(f"Error: Models path is not a directory: {models_dir.absolute()}")  # noqa: T201 # this just runs as a simple script, so using print instead of log
         sys.exit(1)
 
     # Load OpenAPI schema
-    print(f"Loading OpenAPI schema from: {args.openapi_source}")
+    print(f"Loading OpenAPI schema from: {args.openapi_source}")  # noqa: T201 # this just runs as a simple script, so using print instead of log
     openapi_schema = load_openapi_schema(args.openapi_source)
     # pylint: enable=duplicate-code
 

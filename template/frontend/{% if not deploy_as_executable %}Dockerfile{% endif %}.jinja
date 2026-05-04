@@ -1,7 +1,7 @@
 {% raw %}# ------------ Stage 1: Build ------------
 FROM node:{% endraw %}{{ node_version }}{% raw %}-{% endraw %}{{ debian_release_name }}{% raw %} AS builder
 
-# docker build -t my-nuxt-app .
+# docker build --build-context repo-root=.. -t my-nuxt-app .
 # docker run -p {% endraw %}{{ frontend_deployed_port_number }}{% raw %}:3000 my-nuxt-app
 
 # Install pnpm globally
@@ -12,17 +12,21 @@ WORKDIR /app
 # Skip Playwright browser install in Docker builds (not needed for static generate)
 ENV SKIP_PLAYWRIGHT_INSTALL=1
 
+# Mirror repo workspace structure: root files at /app, frontend source at /app/frontend
 # First just copy in the dependency information for better caching
-COPY package.json pnpm-lock.yaml ./
-COPY scripts/postinstall.mjs ./scripts/postinstall.mjs
+# repo-root is a named --build-context, not a FROM alias, so DL3022 doesn't apply here
+# hadolint ignore=DL3022
+COPY --from=repo-root pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY package.json ./frontend/
+COPY scripts/postinstall.mjs ./frontend/scripts/postinstall.mjs
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Install dependencies from workspace root
+RUN pnpm ci
 
-COPY . .
+COPY . ./frontend/
 
-# build the Nuxt app (generates .output folder in Nuxt 3)
-RUN pnpm list && pnpm generate
+# build the Nuxt app (generates .output folder in Nuxt 4)
+RUN pnpm list && pnpm --filter ./frontend generate
 
 # ------------ Stage 2: Production ------------
 FROM nginx:{% endraw %}{{ nginx_image_version }}{% raw %}-alpine{% endraw %}{{ alpine_image_version }}{% raw %}-slim AS production
@@ -30,7 +34,7 @@ FROM nginx:{% endraw %}{{ nginx_image_version }}{% raw %}-alpine{% endraw %}{{ a
 # bring in envsubst (part of gettext) (no particular reason for this version, just pinning for best practice)
 RUN apk add --no-cache gettext~=0.24.1
 COPY default.conf.template /etc/nginx/conf.d/default.conf.template
-COPY --from=builder /app/.output/public /usr/share/nginx/html
+COPY --from=builder /app/frontend/.output/public /usr/share/nginx/html
 
 # set sensible defaults (overridable at `docker run`)
 ENV BACKEND_HOST=host.docker.internal \
