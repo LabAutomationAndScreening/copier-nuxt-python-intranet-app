@@ -19,10 +19,10 @@ env:
 service:
   frontend:
     type: NodePort
-    nodePort: '30060' # pulumi will override this for cloud deployment
+    nodePort: '{% endraw %}{{ frontend_nodeport_number }}{% raw %}' # pulumi will override this for cloud deployment
   backend:
     type: NodePort
-    nodePort: '30061' # pulumi will override this for cloud deployment
+    nodePort: '{% endraw %}{{ backend_nodeport_number }}{% raw %}' # pulumi will override this for cloud deployment
 
 
 persistence:
