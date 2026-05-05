@@ -129,8 +129,8 @@ spec:
               value: "{{ index .Values.env.backend "mDNS_ID" }}"
 {{- end }}
 {{- end }}
-      volumes:
 {{- if .Values.persistence.backend.enabled }}
+      volumes:
         - name: backend-logs
           persistentVolumeClaim:
             claimName: {{ include "{% endraw %}{{ repo_name }}{% raw %}.fullname" . }}-backend-logs
