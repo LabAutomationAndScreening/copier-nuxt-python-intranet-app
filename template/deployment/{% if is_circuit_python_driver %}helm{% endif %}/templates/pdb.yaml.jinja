@@ -1,0 +1,11 @@
+{% raw %}{{- if .Values.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "{% endraw %}{{ repo_name }}{% raw %}.fullname" . }}
+spec:
+  minAvailable: {{ .Values.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      app: '{{ include "{% endraw %}{{ repo_name }}{% raw %}.fullname" . }}'
+{{- end }}{% endraw %}
