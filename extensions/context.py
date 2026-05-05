@@ -108,7 +108,7 @@ class ContextUpdater(ContextHook):
         context["gha_azure_setup_helm"] = "v5.0.0"
         context["helm_version"] = "v3.18.3"
         context["gha_azure_setup_kubectl"] = "v5.1.0"
-        context["kubectl_version"] = "v1.15.0"
+        context["kubectl_version"] = "v1.36.0"
         context["gha_linux_runner"] = "ubuntu-24.04"
         context["gha_windows_runner"] = "windows-2025"
         context["gha_short_timeout_minutes"] = "2"
