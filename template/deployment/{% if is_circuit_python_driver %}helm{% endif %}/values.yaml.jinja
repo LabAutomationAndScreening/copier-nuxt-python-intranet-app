@@ -7,6 +7,7 @@ hostNetwork:
 image:
   frontend: "{% endraw %}{{ frontend_ecr_base_url }}{% raw %}/{% endraw %}{{ frontend_image_name }}{% raw %}:context-80941550"
   backend: "{% endraw %}{{ backend_ecr_base_url }}{% raw %}/{% endraw %}{{ backend_image_name }}{% raw %}:context-51ee64c9"
+  pullPolicy: ""  # leave empty to use Kubernetes default; set to Never for local/k3d/k3s images
 
 env:
   frontend:

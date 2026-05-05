@@ -68,6 +68,9 @@ spec:
       containers:
         - name: frontend
           image: "{{ .Values.image.frontend }}"
+{{- if .Values.image.pullPolicy }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+{{- end }}
           ports:
             - containerPort: {{ .Values.env.frontend.FRONTEND_PORT }}
               name: frontend-port
@@ -80,6 +83,9 @@ spec:
               value: "{{ .Values.env.frontend.BACKEND_PORT }}"
         - name: backend
           image: "{{ .Values.image.backend }}"
+{{- if .Values.image.pullPolicy }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+{{- end }}
 {{- if .Values.persistence.backend.enabled }}
           volumeMounts:
             - name: backend-logs
