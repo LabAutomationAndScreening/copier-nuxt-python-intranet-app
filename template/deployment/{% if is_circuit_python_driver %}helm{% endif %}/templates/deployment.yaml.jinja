@@ -102,6 +102,10 @@ spec:
             - name: DEVICE_SOURCE_BRIDGE_ALLOW_LIST
               value: "{{ .Values.env.backend.DEVICE_SOURCE_BRIDGE_ALLOW_LIST }}"
 {{- end }}
+{{- if (index .Values.env.backend "mDNS_ID") }}
+            - name: MDNS_ID
+              value: "{{ index .Values.env.backend "mDNS_ID" }}"
+{{- end }}
 {{- end }}
       volumes:
 {{- if .Values.persistence.backend.enabled }}

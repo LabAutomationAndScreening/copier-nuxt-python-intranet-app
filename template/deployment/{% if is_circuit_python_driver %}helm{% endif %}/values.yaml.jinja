@@ -15,6 +15,7 @@ env:
     FRONTEND_PORT: "3000" # pulumi will override this for cloud deployment
   backend:
     DEVICE_SOURCE_BRIDGE_ALLOW_LIST: "*"  # Comma-separated bridge names/patterns. "*" = allow all, "" = deny all.
+    mDNS_ID: "{% endraw %}{{ repo_name }}{% raw %}" # TODO: once we generate more unique IDs within each container (current code generates the same ID for all containers on the same host), then we should be able to remove this
 
 service:
   frontend:
