@@ -306,11 +306,8 @@ jobs:
         with:
           version: {% endraw %}{{ kubectl_version }}{% raw %}
 
-      - name: Import frontend image into k3d
-        run: k3d image import {% endraw %}{{ frontend_image_name }}{% raw %}:local -c e2e
-
-      - name: Import backend image into k3d
-        run: k3d image import {% endraw %}{{ backend_image_name }}{% raw %}:local -c e2e
+      - name: Import images into k3d
+        run: k3d image import {% endraw %}{{ frontend_image_name }}{% raw %}:local {% endraw %}{% if has_backend %}{{ backend_image_name }}{% raw %}:local{% endraw %}{% endif %}{% raw %} -c e2e
 
       - name: Get runner IP
         run: |
