@@ -251,7 +251,95 @@ jobs:
           skip-installing-ssm-plugin-manager: true
 
       - name: Test
-        run: pnpm --dir=frontend test-compiled{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
+        run: pnpm --dir=frontend test-compiled{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+
+  e2e-test-k3d:
+    name: End-to-end Testing on k3d
+    timeout-minutes: {% endraw %}{{ gha_long_timeout_minutes }}{% raw %}
+    runs-on: "{% endraw %}{{ gha_linux_runner }}{% raw %}"
+    needs:
+      - build-frontend
+      - build-backend
+      - check-skip-duplicate
+    if: needs.check-skip-duplicate.outputs.should-run == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
+
+      - name: Install latest versions of node packages
+        uses: ./.github/actions/install_deps
+        with:
+          node-version: {% endraw %}{{ node_version }}{% raw %}
+
+      - name: Download Backend Artifact
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: ${{ needs.build-backend.outputs.artifact-name }}
+          path: deployment-package-folder
+
+      - name: Download Frontend Artifact
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: {% endraw %}{{ frontend_image_name | replace('/', '-') }}{% raw %}
+          path: deployment-package-folder
+
+      - name: Load docker images
+        run: |
+          ls deployment-package-folder -a
+          # load all images in the folder
+          ls -1 deployment-package-folder/*.tar | xargs --no-run-if-empty -L 1 docker load -i
+
+      - name: Retag loaded images to stable local names
+        run: |
+          docker tag ${{ needs.build-frontend.outputs.full-image-tag }} {% endraw %}{{ frontend_image_name }}{% raw %}:local
+          docker tag ${{ needs.build-backend.outputs.full-image-tag }} {% endraw %}{{ backend_image_name }}{% raw %}:local
+
+      - name: Create k3d cluster
+        uses: AbsaOSS/k3d-action@{% endraw %}{{ gha_absaoss_k3d }}{% raw %}
+        with:
+          cluster-name: e2e
+          args: >-
+            --agents 1
+
+      - name: Setup Helm
+        uses: Azure/setup-helm@{% endraw %}{{ gha_azure_setup_helm }}{% raw %}
+        with:
+          version: {% endraw %}{{ helm_version }}{% raw %}
+
+      - name: Setup kubectl
+        uses: Azure/setup-kubectl@{% endraw %}{{ gha_azure_setup_kubectl }}{% raw %}
+        with:
+          version: {% endraw %}{{ kubectl_version }}{% raw %}
+
+      - name: Import frontend image into k3d
+        run: k3d image import {% endraw %}{{ frontend_image_name }}{% raw %}:local -c e2e
+
+      - name: Import backend image into k3d
+        run: k3d image import {% endraw %}{{ backend_image_name }}{% raw %}:local -c e2e
+
+      - name: Get runner IP
+        run: |
+          RUNNER_IP=$(hostname -I | awk '{print $1}')
+          echo "Runner IP: $RUNNER_IP"
+          echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
+
+      - name: Create app namespace
+        run: kubectl create ns app || true
+
+      - name: Helm install
+        run: helm upgrade --install e2e ./deployment/helm --namespace app --set image.frontend={% endraw %}{{ frontend_image_name }}{% raw %}:local --set image.backend={% endraw %}{{ backend_image_name }}{% raw %}:local --set image.pullPolicy=Never --set env.frontend.BACKEND_HOST=$RUNNER_IP
+
+      - name: Wait for rollout
+        run: |
+          kubectl -n app rollout status deploy/e2e-{% endraw %}{{ repo_name }}{% raw %} --timeout=180s
+          kubectl -n app get pods -o wide
+
+      - name: E2E test
+        run: |
+          NODE=$(kubectl -n app get pods -l app=e2e-{% endraw %}{{ repo_name }}{% raw %} -o jsonpath='{.items[0].spec.nodeName}')
+          NODE_IP=$(kubectl get node $NODE -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}')
+          echo "Pod node: $NODE, node IP: $NODE_IP"
+          curl --fail-with-body http://$NODE_IP:30060/api/healthcheck{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
 
   e2e-test-backend:
     name: End-to-end Testing of the Backend
@@ -458,7 +546,8 @@ jobs:
       - package-images{% endraw %}{% endif %}{% raw %}
       - test-compiled-frontend{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
       - package-firmware{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
-      - e2e-test-backend{% endraw %}{% endif %}{% raw %}
+      - e2e-test-backend{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+      - e2e-test-k3d{% endraw %}{% endif %}{% raw %}
       - e2e-test
       - confirm-on-tagged-copier-template
     permissions:
@@ -479,7 +568,8 @@ jobs:
             [[ ! "${{ needs.package-images.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}
             [[ ! "${{ needs.test-compiled-frontend.result }}" =~ $success_pattern ]] ||{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
             [[ ! "${{ needs.package-firmware.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
-            [[ ! "${{ needs.e2e-test-backend.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}
+            [[ ! "${{ needs.e2e-test-backend.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+            [[ ! "${{ needs.e2e-test-k3d.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}
             [[ ! "${{ needs.e2e-test.result }}" =~ $success_pattern ]] ||
             [[ ! "${{ needs.confirm-on-tagged-copier-template.result }}" =~ $success_pattern ]]; then
             echo "❌ One or more jobs did not finish with skipped or success"
