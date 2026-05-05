@@ -290,11 +290,19 @@ jobs:
           docker tag ${{ needs.build-backend.outputs.full-image-tag }} {% endraw %}{{ backend_image_name }}{% raw %}:local
 
       - name: Create k3d cluster
+        # k3d runs k3s inside Docker containers. NodePort iptables rules only handle traffic
+        # arriving via Docker port publishing (host → container), not inter-container traffic.
+        # --port with @server:0 uses Docker port publishing so localhost:30060/30061 on the
+        # runner reaches the NodePort correctly. We use 0 agents so pods always land on the
+        # server node, making the @server:0 mapping deterministic.
+        # Locally (Rancher Desktop) NodePorts are on localhost directly; none of this is needed.
         uses: AbsaOSS/k3d-action@{% endraw %}{{ gha_absaoss_k3d }}{% raw %}
         with:
           cluster-name: e2e
           args: >-
-            --agents 1
+            --agents 0
+            --port {% endraw %}{{ frontend_nodeport_number }}{% raw %}:{% endraw %}{{ frontend_nodeport_number }}{% raw %}@server:0
+            --port {% endraw %}{{ backend_nodeport_number }}{% raw %}:{% endraw %}{{ backend_nodeport_number }}{% raw %}@server:0
 
       - name: Setup Helm
         uses: Azure/setup-helm@{% endraw %}{{ gha_azure_setup_helm }}{% raw %}
@@ -337,14 +345,11 @@ jobs:
           kubectl -n app rollout status deploy/e2e-{% endraw %}{{ repo_name }}{% raw %} --timeout=180s
           kubectl -n app get pods -o wide
 
-      - name: E2E test # TODO: add more than just smoke test
+      - name: E2E Test # TODO: add more than just smoke test
         run: |
-          # k3d NodePorts bind on the node container's Docker IP, not on localhost.
-          # Locally (Rancher Desktop) NodePorts are on localhost directly; no lookup needed.
-          NODE=$(kubectl -n app get pods -l app=e2e-{% endraw %}{{ repo_name }}{% raw %} -o jsonpath='{.items[0].spec.nodeName}')
-          NODE_IP=$(kubectl get node $NODE -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}')
-          echo "Pod node: $NODE, node IP: $NODE_IP"
-          curl --fail-with-body http://$NODE_IP:30060/api/healthcheck{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
+          curl --fail-with-body http://localhost:{% endraw %}{{ backend_nodeport_number }}{% raw %}/api/healthcheck
+          curl --fail-with-body http://localhost:{% endraw %}{{ frontend_nodeport_number }}{% raw %}/api/healthcheck
+          curl --fail-with-body http://localhost:{% endraw %}{{ frontend_nodeport_number }}{% raw %}/{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
 
   e2e-test-backend:
     name: End-to-end Testing of the Backend
