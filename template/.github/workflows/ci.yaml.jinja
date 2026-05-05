@@ -255,7 +255,7 @@ jobs:
 
   e2e-test-k3d:
     name: End-to-end Testing on k3d
-    timeout-minutes: {% endraw %}{{ gha_long_timeout_minutes }}{% raw %}
+    timeout-minutes: {% endraw %}{{ gha_xlong_timeout_minutes }}{% raw %}
     runs-on: "{% endraw %}{{ gha_linux_runner }}{% raw %}"
     needs:
       - build-frontend
@@ -265,11 +265,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
-
-      - name: Install latest versions of node packages
-        uses: ./.github/actions/install_deps
-        with:
-          node-version: {% endraw %}{{ node_version }}{% raw %}
 
       - name: Download Backend Artifact
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
@@ -335,6 +330,11 @@ jobs:
             --set image.pullPolicy=Never \
             --set env.frontend.BACKEND_HOST=$RUNNER_IP
 
+      - name: Install latest versions of node packages
+        uses: ./.github/actions/install_deps
+        with:
+          node-version: {% endraw %}{{ node_version }}{% raw %}
+
       - name: Wait for rollout
         run: |
           kubectl -n app rollout status deploy/e2e-{% endraw %}{{ repo_name }}{% raw %} --timeout=180s
@@ -351,6 +351,7 @@ jobs:
 
   e2e-test-backend:
     name: End-to-end Testing of the Backend
+    timeout-minutes: {% endraw %}{{ gha_xlong_timeout_minutes }}{% raw %}
     strategy:
       matrix:
         os:
@@ -396,7 +397,7 @@ jobs:
 
   e2e-test:
     name: End-to-end Testing
-    timeout-minutes: {% endraw %}{{ gha_long_timeout_minutes }}{% raw %}
+    timeout-minutes: {% endraw %}{{ gha_xlong_timeout_minutes }}{% raw %}
     strategy:
       matrix:
         os:
