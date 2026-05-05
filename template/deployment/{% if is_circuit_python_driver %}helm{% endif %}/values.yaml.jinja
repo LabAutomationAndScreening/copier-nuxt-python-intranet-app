@@ -2,7 +2,7 @@
 
 hostNetwork:
   enabled: false
-  # generic command for deploying from command line (within the folder holding the Helm chart folder): `helm upgrade --install weight-sensor-driver .\weight-sensor-driver-helm`
+  # generic command for deploying from command line (within the folder holding the Helm chart folder): `helm upgrade --install {% endraw %}{{ repo_name }}{% raw %} .\{% endraw %}{{ repo_name }}{% raw %}-helm`
 
 image:
   frontend: "{% endraw %}{{ frontend_ecr_base_url }}{% raw %}/{% endraw %}{{ frontend_image_name }}{% raw %}:context-80941550"
