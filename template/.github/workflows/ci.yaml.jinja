@@ -324,7 +324,7 @@ jobs:
           echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
 
       - name: Create app namespace
-        run: kubectl create ns app || true
+        run: kubectl create ns app
 
       - name: Helm install
         run: |
