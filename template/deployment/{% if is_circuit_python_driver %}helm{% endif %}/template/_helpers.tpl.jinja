@@ -1,0 +1,13 @@
+{% raw %}{{/*
+Return the chart name.
+*/}}
+{{- define "{% endraw %}{{ repo_name }}{% raw %}.name" -}}
+{% endraw %}{{ repo_name }}{% raw %}
+{{- end }}
+
+{{/*
+Generate a fully qualified name using the release name.
+*/}}
+{{- define "{% endraw %}{{ repo_name }}{% raw %}.fullname" -}}
+{{- printf "%s-%s" .Release.Name (include "{% endraw %}{{ repo_name }}{% raw %}.name" .) | trunc 63 | trimSuffix "-" -}}
+{{- end }}{% endraw %}
