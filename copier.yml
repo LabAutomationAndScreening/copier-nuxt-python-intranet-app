@@ -272,6 +272,18 @@ frontend_uses_zod:
     help: Will the frontend use the zod library for form validation?
     default: false
 
+frontend_nodeport_number:
+    type: int
+    help: What nodeport should the frontend be deployed to in the Helm Chart?
+    when: "{{ not deploy_as_executable and is_circuit_python_driver }}"
+    validator: "{% if frontend_nodeport_number < 30000 or frontend_nodeport_number > 32767 %}NodePort must be in range 30000-32767{% endif %}"
+
+backend_nodeport_number:
+    type: int
+    help: What nodeport should the backend be deployed to in the Helm Chart?
+    when: "{{ not deploy_as_executable and has_backend and is_circuit_python_driver }}"
+    validator: "{% if backend_nodeport_number < 30000 or backend_nodeport_number > 32767 %}NodePort must be in range 30000-32767{% endif %}"
+
 
 
 # Questions managed by upstream template

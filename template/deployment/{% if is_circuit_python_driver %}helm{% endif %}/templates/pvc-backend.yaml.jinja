@@ -1,0 +1,16 @@
+{% raw %}{{- if .Values.persistence.backend.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "{% endraw %}{{ repo_name }}{% raw %}.fullname" . }}-backend-logs
+  labels:
+    app.kubernetes.io/name: {{ include "{% endraw %}{{ repo_name }}{% raw %}.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.backend.accessMode }}
+  storageClassName: {{ .Values.persistence.backend.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.backend.size }}
+{{- end }}{% endraw %}

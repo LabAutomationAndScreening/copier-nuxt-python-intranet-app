@@ -1,0 +1,137 @@
+{% raw %}apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: '{{ include "{% endraw %}{{ repo_name }}{% raw %}.fullname" . }}'
+  labels:
+    app: '{{ include "{% endraw %}{{ repo_name }}{% raw %}.fullname" . }}'
+spec:
+  replicas: {{ .Values.replicaCount }}
+{{- if .Values.hostNetwork.enabled }}
+  # Use Recreate strategy to avoid hostPort conflicts during upgrades
+  strategy:
+    type: Recreate
+{{- end }}
+  selector:
+    matchLabels:
+      app: '{{ include "{% endraw %}{{ repo_name }}{% raw %}.fullname" . }}'
+  template:
+    metadata:
+      labels:
+        app: '{{ include "{% endraw %}{{ repo_name }}{% raw %}.fullname" . }}'
+    spec:
+{{- if .Values.hostNetwork.enabled }}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+{{- end }}
+      {{- if .Values.affinity }}
+      affinity:
+{{ toYaml .Values.affinity | nindent 8 }}
+      {{- else if eq .Values.podAntiAffinityPreset "hard" }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: '{{ include "{% endraw %}{{ repo_name }}{% raw %}.fullname" . }}'
+              topologyKey: kubernetes.io/hostname
+      {{- else if eq .Values.podAntiAffinityPreset "soft" }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: '{{ include "{% endraw %}{{ repo_name }}{% raw %}.fullname" . }}'
+                topologyKey: kubernetes.io/hostname
+      {{- end }}
+      {{- if .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+{{ toYaml .Values.topologySpreadConstraints | nindent 8 }}
+      {{- else if .Values.topologySpreadPreset.enabled }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: '{{ include "{% endraw %}{{ repo_name }}{% raw %}.fullname" . }}'
+        {{- if .Values.topologySpreadPreset.acrossZones }}
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: '{{ include "{% endraw %}{{ repo_name }}{% raw %}.fullname" . }}'
+        {{- end }}
+      {{- end }}
+      containers:
+        - name: frontend
+          image: "{{ .Values.image.frontend }}"
+{{- if .Values.image.pullPolicy }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+{{- end }}
+          ports:
+            - containerPort: {{ .Values.env.frontend.FRONTEND_PORT }}
+              name: frontend-port
+          readinessProbe:
+            httpGet:
+              path: /
+              port: frontend-port
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 1
+            failureThreshold: 20
+          env:
+            - name: FRONTEND_PORT
+              value: "{{ .Values.env.frontend.FRONTEND_PORT }}"
+            - name: BACKEND_HOST
+              value: "{{ if and (not .Values.hostNetwork.enabled) .Values.image.backend }}localhost{{ else }}{{ .Values.env.frontend.BACKEND_HOST }}{{ end }}"
+            - name: BACKEND_PORT
+              value: "{{ .Values.env.frontend.BACKEND_PORT }}"
+        - name: backend
+          image: "{{ .Values.image.backend }}"
+{{- if .Values.image.pullPolicy }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+{{- end }}
+{{- if .Values.persistence.backend.enabled }}
+          volumeMounts:
+            - name: backend-logs
+              mountPath: {{ .Values.persistence.backend.mountPath }}
+{{- end }}
+          ports:
+            - containerPort: {{ .Values.env.frontend.BACKEND_PORT }}
+              name: backend-port
+          readinessProbe:
+            httpGet:
+              path: /api/healthcheck
+              port: backend-port
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 1
+            failureThreshold: 20
+          env:
+            - name: API_PORT
+              value: "{{ .Values.env.frontend.BACKEND_PORT }}"
+            - name: MDNS_REGISTRATION_PORT
+              value: "{{ default .Values.env.frontend.BACKEND_PORT .Values.service.backend.nodePort }}"
+{{- if regexMatch "^[0-9]" .Values.env.frontend.BACKEND_HOST }} # only set this if it starts with a number (i.e. is an IP address)
+            - name: MDNS_REGISTRATION_ADDRESSES
+              value: "{{ .Values.env.frontend.BACKEND_HOST }}"
+{{- end }}
+{{- if hasKey .Values.env "backend" }}
+{{- if hasKey .Values.env.backend "DEVICE_SOURCE_BRIDGE_ALLOW_LIST" }}
+            - name: DEVICE_SOURCE_BRIDGE_ALLOW_LIST
+              value: "{{ .Values.env.backend.DEVICE_SOURCE_BRIDGE_ALLOW_LIST }}"
+{{- end }}
+{{- if (index .Values.env.backend "mDNS_ID") }}
+            - name: MDNS_ID
+              value: "{{ index .Values.env.backend "mDNS_ID" }}"
+{{- end }}
+{{- end }}
+{{- if .Values.persistence.backend.enabled }}
+      volumes:
+        - name: backend-logs
+          persistentVolumeClaim:
+            claimName: {{ include "{% endraw %}{{ repo_name }}{% raw %}.fullname" . }}-backend-logs
+{{- end }}{% endraw %}

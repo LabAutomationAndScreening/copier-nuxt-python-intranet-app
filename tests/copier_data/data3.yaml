@@ -50,3 +50,5 @@ run_backend_e2e_in_ci: true
 auth_to_ecr_for_backend_e2e_in_ci: true
 auth_to_ecr_for_backend_e2e_in_ci_region: us-west-2
 auth_to_ecr_for_backend_e2e_in_ci_role_arn: arn:aws:iam::543215433233:role/CoreInfraBaseAccess
+frontend_nodeport_number: 30988
+backend_nodeport_number: 30985

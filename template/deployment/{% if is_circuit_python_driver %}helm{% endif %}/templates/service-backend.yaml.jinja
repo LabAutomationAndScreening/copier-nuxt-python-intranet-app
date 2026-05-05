@@ -1,0 +1,17 @@
+{% raw %}apiVersion: v1
+kind: Service
+metadata:
+  name: '{{ include "{% endraw %}{{ repo_name }}{% raw %}.fullname" . }}-backend'
+  labels:
+    app: '{{ include "{% endraw %}{{ repo_name }}{% raw %}.name" . }}'
+spec:
+  type: '{{ .Values.service.backend.type }}'
+  ports:
+    - port: {{ required "env.frontend.BACKEND_PORT is required" .Values.env.frontend.BACKEND_PORT | int }}
+      targetPort: backend-port
+      protocol: TCP
+      {{- if .Values.service.backend.nodePort }}
+      nodePort: {{ .Values.service.backend.nodePort }}
+      {{- end }}
+  selector:
+    app: '{{ include "{% endraw %}{{ repo_name }}{% raw %}.fullname" . }}'{% endraw %}

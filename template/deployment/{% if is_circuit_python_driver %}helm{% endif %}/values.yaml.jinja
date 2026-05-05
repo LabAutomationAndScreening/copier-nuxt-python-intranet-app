@@ -1,0 +1,58 @@
+{% raw %}replicaCount: 1 # pulumi may override this for cloud deployment
+
+hostNetwork:
+  enabled: false
+  # generic command for deploying from command line (within the folder holding the Helm chart folder): `helm upgrade --install {% endraw %}{{ repo_name }}{% raw %} .\{% endraw %}{{ repo_name }}{% raw %}-helm`
+
+image:
+  frontend: "{% endraw %}{{ frontend_ecr_base_url }}{% raw %}/{% endraw %}{{ frontend_image_name }}{% raw %}:context-80941550"
+  backend: "{% endraw %}{{ backend_ecr_base_url }}{% raw %}/{% endraw %}{{ backend_image_name }}{% raw %}:context-51ee64c9"
+  pullPolicy: ""  # leave empty to use Kubernetes default; set to Never for local/k3d/k3s images
+
+env:
+  frontend:
+    BACKEND_HOST: "localhost" # if you're running in k3s without host mode, you need to make this an actual IP address, since it's used in MDNS registration # if this is not a statically assigned IP address, and you're running this on Windows, then use the WSL2 interface IP address
+    BACKEND_PORT: "4000" # pulumi will override this for cloud deployment
+    FRONTEND_PORT: "3000" # pulumi will override this for cloud deployment
+  backend:
+    DEVICE_SOURCE_BRIDGE_ALLOW_LIST: "*"  # Comma-separated bridge names/patterns. "*" = allow all, "" = deny all.
+    mDNS_ID: "{% endraw %}{{ repo_name }}{% raw %}" # TODO: once we generate more unique IDs within each container (current code generates the same ID for all containers on the same host), then we should be able to remove this
+
+service:
+  frontend:
+    type: NodePort
+    nodePort: '{% endraw %}{{ frontend_nodeport_number }}{% raw %}' # pulumi will override this for cloud deployment
+  backend:
+    type: NodePort
+    nodePort: '{% endraw %}{{ backend_nodeport_number }}{% raw %}' # pulumi will override this for cloud deployment
+
+
+persistence:
+  # on Windows WSL, the local-path storage class will put files in a path you can access on windows like: \\wsl$\rancher-desktop\var\lib\rancher\k3s\storage\
+  backend:
+    enabled: true # set this to True for Windows Rancher Desktop deployment, Pulumi will override to False for local deployment
+    size: 150Mi # 5 log files at 25 MB each
+    accessMode: ReadWriteOnce
+    storageClass: local-path
+    mountPath: /app/logs
+
+
+
+
+
+
+# Scheduling controls to keep replicas on separate nodes
+podAntiAffinityPreset: ""  # "", "soft", or "hard" # recommended to override to "hard" for cloud deployment
+
+topologySpreadPreset:
+  enabled: false              # add a host-level spread rule   # recommended to override to true for cloud deployment
+  acrossZones: false          # optional second rule across AZs
+
+# Full overrides (take precedence over the presets above)
+affinity: {}
+topologySpreadConstraints: []
+
+# Optional Pod Disruption Budget
+pdb:
+  enabled: false # recommended to override to true for cloud deployment
+  minAvailable: 1{% endraw %}

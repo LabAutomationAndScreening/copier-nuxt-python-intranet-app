@@ -251,7 +251,11 @@ def get_models_with_primitive_array_fields(schema: dict[str, Any]) -> dict[str, 
             if field_type == "array":
                 items = field_schema.get("items", {})
                 item_type = items.get("type")
-                if item_type == "string":
+                item_format = items.get("format")
+                if item_type == "string" and item_format == "date-time":
+                    field_types[field_name] = "list[datetime.datetime]"
+                    has_primitive_array = True
+                elif item_type == "string":
                     field_types[field_name] = "list[str]"
                     has_primitive_array = True
                 elif item_type == "integer":

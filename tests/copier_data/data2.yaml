@@ -52,3 +52,5 @@ auth_to_ecr_for_e2e_in_ci: true
 auth_to_ecr_for_e2e_in_ci_region: us-east-1
 auth_to_ecr_for_e2e_in_ci_role_arn: arn:aws:iam::012321432543:role/MyAccessRole
 run_backend_e2e_in_ci: false
+frontend_nodeport_number: 30120
+backend_nodeport_number: 30125
