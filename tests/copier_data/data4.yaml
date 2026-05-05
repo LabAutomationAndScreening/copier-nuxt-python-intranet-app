@@ -46,3 +46,5 @@ backend_image_name: not-applicable
 auth_to_ecr_for_e2e_in_ci: false
 run_backend_e2e_in_ci: true
 auth_to_ecr_for_backend_e2e_in_ci: false
+frontend_nodeport_number: 30500
+backend_nodeport_number: 30505

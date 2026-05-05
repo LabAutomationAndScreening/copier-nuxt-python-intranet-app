@@ -45,3 +45,5 @@ backend_ecr_push_role_name: wakka-WAKKA
 backend_image_name: cool-project/foobar
 auth_to_ecr_for_e2e_in_ci: false
 run_backend_e2e_in_ci: false
+frontend_nodeport_number: 30060
+backend_nodeport_number: 30061
