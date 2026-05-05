@@ -74,6 +74,14 @@ spec:
           ports:
             - containerPort: {{ .Values.env.frontend.FRONTEND_PORT }}
               name: frontend-port
+          readinessProbe:
+            httpGet:
+              path: /
+              port: frontend-port
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 1
+            failureThreshold: 20
           env:
             - name: FRONTEND_PORT
               value: "{{ .Values.env.frontend.FRONTEND_PORT }}"
@@ -94,6 +102,14 @@ spec:
           ports:
             - containerPort: {{ .Values.env.frontend.BACKEND_PORT }}
               name: backend-port
+          readinessProbe:
+            httpGet:
+              path: /api/healthcheck
+              port: backend-port
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 1
+            failureThreshold: 20
           env:
             - name: API_PORT
               value: "{{ .Values.env.frontend.BACKEND_PORT }}"
