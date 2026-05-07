@@ -361,9 +361,9 @@ jobs:
       - name: E2E Test # TODO: add more than just smoke test
         run: |
           # since there's no gap after the rollout to install node dependencies, sometimes the NodePorts themselves aren't ready yet, so do a few retries
-          curl -s --show-error --fail-with-body --retry 10 --retry-delay 2 --retry-connrefused http://localhost:{% endraw %}{{ backend_nodeport_number }}{% raw %}/api/healthcheck
-          curl -s --show-error --fail-with-body --retry 10 --retry-delay 2 --retry-connrefused http://localhost:{% endraw %}{{ frontend_nodeport_number }}{% raw %}/api/healthcheck
-          curl -s --show-error --fail-with-body --retry 10 --retry-delay 2 --retry-connrefused http://localhost:{% endraw %}{{ frontend_nodeport_number }}{% raw %}/{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
+          curl -s --show-error --fail-with-body --retry 10 --retry-delay 2 --retry-connrefused --retry-all-errors http://localhost:{% endraw %}{{ backend_nodeport_number }}{% raw %}/api/healthcheck
+          curl -s --show-error --fail-with-body --retry 10 --retry-delay 2 --retry-connrefused --retry-all-errors http://localhost:{% endraw %}{{ frontend_nodeport_number }}{% raw %}/api/healthcheck
+          curl -s --show-error --fail-with-body --retry 10 --retry-delay 2 --retry-connrefused --retry-all-errors http://localhost:{% endraw %}{{ frontend_nodeport_number }}{% raw %}/{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
 
   e2e-test-backend:
     name: End-to-end Testing of the Backend
