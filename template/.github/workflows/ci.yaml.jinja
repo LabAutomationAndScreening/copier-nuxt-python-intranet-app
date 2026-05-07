@@ -342,27 +342,28 @@ jobs:
           node-version: {% endraw %}{{ node_version }}{% raw %}
 
       - name: Wait for rollout
+        id: rollout
         run: kubectl -n app rollout status deploy/e2e-{% endraw %}{{ repo_name }}{% raw %} --timeout=180s
 
       - name: Diagnose rollout failure
-        if: failure()
+        if: ${{ failure() && steps.rollout.outcome == 'failure' }}
         run: kubectl -n app get pods -o wide
       - name: Diagnose rollout failure - pod details
-        if: failure()
+        if: ${{ failure() && steps.rollout.outcome == 'failure' }}
         run: kubectl -n app describe pods
       - name: Diagnose rollout failure - events
-        if: failure()
+        if: ${{ failure() && steps.rollout.outcome == 'failure' }}
         run: kubectl -n app get events --sort-by=.lastTimestamp
       - name: Diagnose rollout failure - logs
-        if: failure()
+        if: ${{ failure() && steps.rollout.outcome == 'failure' }}
         run: kubectl -n app logs deploy/e2e-{% endraw %}{{ repo_name }}{% raw %} --all-containers --tail=100 --ignore-errors || true
 
       - name: E2E Test # TODO: add more than just smoke test
         run: |
           # since there's no gap after the rollout to install node dependencies, sometimes the NodePorts themselves aren't ready yet, so do a few retries
-          curl --fail-with-body --retry 10 --retry-delay 2 --retry-all-errors http://localhost:{% endraw %}{{ backend_nodeport_number }}{% raw %}/api/healthcheck
-          curl --fail-with-body --retry 10 --retry-delay 2 --retry-all-errors http://localhost:{% endraw %}{{ frontend_nodeport_number }}{% raw %}/api/healthcheck
-          curl --fail-with-body --retry 10 --retry-delay 2 --retry-all-errors http://localhost:{% endraw %}{{ frontend_nodeport_number }}{% raw %}/{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
+          curl -s --show-error --fail-with-body --retry 10 --retry-delay 2 --retry-connrefused --retry-all-errors http://localhost:{% endraw %}{{ backend_nodeport_number }}{% raw %}/api/healthcheck
+          curl -s --show-error --fail-with-body --retry 10 --retry-delay 2 --retry-connrefused --retry-all-errors http://localhost:{% endraw %}{{ frontend_nodeport_number }}{% raw %}/api/healthcheck
+          curl -s --show-error --fail-with-body --retry 10 --retry-delay 2 --retry-connrefused --retry-all-errors http://localhost:{% endraw %}{{ frontend_nodeport_number }}{% raw %}/{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
 
   e2e-test-backend:
     name: End-to-end Testing of the Backend
