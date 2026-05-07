@@ -336,14 +336,26 @@ jobs:
             --set env.frontend.BACKEND_HOST=$RUNNER_IP
 
       - name: Install latest versions of node packages
+        if: false # skip until we're ready to do real E2E tests that require it, to save time in CI runs for now
         uses: ./.github/actions/install_deps
         with:
           node-version: {% endraw %}{{ node_version }}{% raw %}
 
       - name: Wait for rollout
-        run: |
-          kubectl -n app rollout status deploy/e2e-{% endraw %}{{ repo_name }}{% raw %} --timeout=180s
-          kubectl -n app get pods -o wide
+        run: kubectl -n app rollout status deploy/e2e-{% endraw %}{{ repo_name }}{% raw %} --timeout=180s
+
+      - name: Diagnose rollout failure
+        if: failure()
+        run: kubectl -n app get pods -o wide
+      - name: Diagnose rollout failure - pod details
+        if: failure()
+        run: kubectl -n app describe pods
+      - name: Diagnose rollout failure - events
+        if: failure()
+        run: kubectl -n app get events --sort-by=.lastTimestamp
+      - name: Diagnose rollout failure - logs
+        if: failure()
+        run: kubectl -n app logs deploy/e2e-{% endraw %}{{ repo_name }}{% raw %} --all-containers --tail=100 --ignore-errors || true
 
       - name: E2E Test # TODO: add more than just smoke test
         run: |
