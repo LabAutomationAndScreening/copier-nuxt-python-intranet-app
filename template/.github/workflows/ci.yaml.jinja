@@ -336,6 +336,7 @@ jobs:
             --set env.frontend.BACKEND_HOST=$RUNNER_IP
 
       - name: Install latest versions of node packages
+        if: false # skip until we're ready to do real E2E tests that require it, to save time in CI runs for now
         uses: ./.github/actions/install_deps
         with:
           node-version: {% endraw %}{{ node_version }}{% raw %}
