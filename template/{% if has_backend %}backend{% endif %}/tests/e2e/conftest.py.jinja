@@ -40,7 +40,17 @@ def vcr_config() -> dict[str, JsonValue]:
 
 def pytest_configure(config: pytest.Config):
     """Disable coverage reporting for E2E tests."""
-    config.pluginmanager.set_blocked("_cov")
+    config.pluginmanager.set_blocked("_cov"){% endraw %}{% if is_circuit_python_driver %}{% raw %}
+    config.addinivalue_line(
+        "markers", "live_device: mark test as requiring live device hardware (deselect with '-m \"not live_device\"')"
+    )
+
+    # Validate live device testing options
+    if config.getoption("--run-live-device-tests"):
+        if not config.getoption("--communication-bridge-port"):
+            raise pytest.UsageError("--communication-bridge-port is required when --run-live-device-tests is set")
+        if not config.getoption("--device-serial-port"):
+            raise pytest.UsageError("--device-serial-port is required when --run-live-device-tests is set"){% endraw %}{% endif %}{% raw %}
 
 
 def _no_keepalive_limits() -> Limits:
