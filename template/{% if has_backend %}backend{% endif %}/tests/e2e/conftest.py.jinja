@@ -6,6 +6,7 @@ import pytest
 import pytest_asyncio
 from backend_api import configure_logging
 from httpx import AsyncClient
+from httpx import Limits
 from kiota_abstractions.authentication.anonymous_authentication_provider import AnonymousAuthenticationProvider
 from kiota_http.httpx_request_adapter import HttpxRequestAdapter
 from pydantic import JsonValue
@@ -42,9 +43,15 @@ def pytest_configure(config: pytest.Config):
     config.pluginmanager.set_blocked("_cov")
 
 
+def _no_keepalive_limits() -> Limits:
+    # Uvicorn closes the HTTP/1.1 connection after a 500 response. Disabling keepalive
+    # ensures httpx never reuses a stale socket from a prior failed request.
+    return Limits(max_keepalive_connections=0)
+
+
 @pytest.fixture(scope="session")
 def backend_client_session() -> Generator[BackendClient]:
-    http_client = AsyncClient(base_url=f"http://localhost:{BACKEND_E2E_PORT}")
+    http_client = AsyncClient(base_url=f"http://localhost:{BACKEND_E2E_PORT}", limits=_no_keepalive_limits())
     try:
         request_adapter = HttpxRequestAdapter(AnonymousAuthenticationProvider(), http_client=http_client)
         yield BackendClient(request_adapter)
@@ -54,14 +61,18 @@ def backend_client_session() -> Generator[BackendClient]:
 
 @pytest_asyncio.fixture(scope="module")
 async def backend_client_module() -> AsyncGenerator[BackendClient]:
-    async with AsyncClient(base_url=f"http://localhost:{BACKEND_E2E_PORT}") as http_client:
+    async with AsyncClient(
+        base_url=f"http://localhost:{BACKEND_E2E_PORT}", limits=_no_keepalive_limits()
+    ) as http_client:
         request_adapter = HttpxRequestAdapter(AnonymousAuthenticationProvider(), http_client=http_client)
         yield BackendClient(request_adapter)
 
 
 @pytest_asyncio.fixture
 async def backend_client() -> AsyncGenerator[BackendClient]:
-    async with AsyncClient(base_url=f"http://localhost:{BACKEND_E2E_PORT}") as http_client:
+    async with AsyncClient(
+        base_url=f"http://localhost:{BACKEND_E2E_PORT}", limits=_no_keepalive_limits()
+    ) as http_client:
         request_adapter = HttpxRequestAdapter(AnonymousAuthenticationProvider(), http_client=http_client)
         yield BackendClient(request_adapter)
 
