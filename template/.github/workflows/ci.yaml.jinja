@@ -359,9 +359,10 @@ jobs:
 
       - name: E2E Test # TODO: add more than just smoke test
         run: |
-          curl --fail-with-body http://localhost:{% endraw %}{{ backend_nodeport_number }}{% raw %}/api/healthcheck
-          curl --fail-with-body http://localhost:{% endraw %}{{ frontend_nodeport_number }}{% raw %}/api/healthcheck
-          curl --fail-with-body http://localhost:{% endraw %}{{ frontend_nodeport_number }}{% raw %}/{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
+          # since there's no gap after the rollout to install node dependencies, sometimes the NodePorts themselves aren't ready yet, so do a few retries
+          curl --fail-with-body --retry 10 --retry-delay 2 --retry-all-errors http://localhost:{% endraw %}{{ backend_nodeport_number }}{% raw %}/api/healthcheck
+          curl --fail-with-body --retry 10 --retry-delay 2 --retry-all-errors http://localhost:{% endraw %}{{ frontend_nodeport_number }}{% raw %}/api/healthcheck
+          curl --fail-with-body --retry 10 --retry-delay 2 --retry-all-errors http://localhost:{% endraw %}{{ frontend_nodeport_number }}{% raw %}/{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
 
   e2e-test-backend:
     name: End-to-end Testing of the Backend
