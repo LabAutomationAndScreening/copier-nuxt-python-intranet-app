@@ -314,9 +314,6 @@ jobs:
         with:
           version: {% endraw %}{{ kubectl_version }}{% raw %}
 
-      - name: Import images into k3d
-        run: k3d image import {% endraw %}{{ frontend_image_name }}{% raw %}:local {% endraw %}{% if has_backend %}{{ backend_image_name }}{% raw %}:local{% endraw %}{% endif %}{% raw %} -c e2e
-
       - name: Get runner IP
         run: |
           RUNNER_IP=$(hostname -I | awk '{print $1}')
@@ -325,6 +322,22 @@ jobs:
 
       - name: Create app namespace
         run: kubectl create ns app
+
+      - name: Wait for k3d node ready
+        run: kubectl wait --for=condition=Ready node --all --timeout=60s
+
+      - name: Import images into k3d
+        run: |
+          k3d image import {% endraw %}{{ frontend_image_name }}{% raw %}:local {% endraw %}{% if has_backend %}{{ backend_image_name }}{% raw %}:local{% endraw %}{% endif %}{% raw %} -c e2e
+          # k3d image import exits 0 even when the internal `ctr images import` exec inside the node
+          # fails (e.g. containerd not fully ready after cluster creation). Verify and retry once.
+          if ! docker exec k3d-e2e-server-0 ctr -n k8s.io images ls | grep -Fq -- {% endraw %}{{ frontend_image_name }}{% raw %}:local{% endraw %}{% if has_backend %}{% raw %} || ! docker exec k3d-e2e-server-0 ctr -n k8s.io images ls | grep -Fq -- {% endraw %}{{ backend_image_name }}{% raw %}:local{% endraw %}{% endif %}{% raw %}; then
+            echo "Images not found after first import, retrying..."
+            sleep 2
+            k3d image import {% endraw %}{{ frontend_image_name }}{% raw %}:local {% endraw %}{% if has_backend %}{{ backend_image_name }}{% raw %}:local{% endraw %}{% endif %}{% raw %} -c e2e
+          fi
+          docker exec k3d-e2e-server-0 ctr -n k8s.io images ls | grep -Fq -- {% endraw %}{{ frontend_image_name }}{% raw %}:local{% endraw %}{% if has_backend %}{% raw %}
+          docker exec k3d-e2e-server-0 ctr -n k8s.io images ls | grep -Fq -- {% endraw %}{{ backend_image_name }}{% raw %}:local{% endraw %}{% endif %}{% raw %}
 
       - name: Helm install
         run: |
