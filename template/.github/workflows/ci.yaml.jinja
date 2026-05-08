@@ -314,6 +314,15 @@ jobs:
         with:
           version: {% endraw %}{{ kubectl_version }}{% raw %}
 
+      - name: Get runner IP
+        run: |
+          RUNNER_IP=$(hostname -I | awk '{print $1}')
+          echo "Runner IP: $RUNNER_IP"
+          echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
+
+      - name: Create app namespace
+        run: kubectl create ns app
+
       - name: Wait for k3d node ready
         run: kubectl wait --for=condition=Ready node --all --timeout=60s
 
@@ -329,15 +338,6 @@ jobs:
           fi
           docker exec k3d-e2e-server-0 ctr -n k8s.io images ls | grep {% endraw %}{{ frontend_image_name }}{% raw %}:local{% endraw %}{% if has_backend %}{% raw %}
           docker exec k3d-e2e-server-0 ctr -n k8s.io images ls | grep {% endraw %}{{ backend_image_name }}{% raw %}:local{% endraw %}{% endif %}{% raw %}
-
-      - name: Get runner IP
-        run: |
-          RUNNER_IP=$(hostname -I | awk '{print $1}')
-          echo "Runner IP: $RUNNER_IP"
-          echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
-
-      - name: Create app namespace
-        run: kubectl create ns app
 
       - name: Helm install
         run: |
