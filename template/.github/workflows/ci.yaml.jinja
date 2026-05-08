@@ -331,13 +331,13 @@ jobs:
           k3d image import {% endraw %}{{ frontend_image_name }}{% raw %}:local {% endraw %}{% if has_backend %}{{ backend_image_name }}{% raw %}:local{% endraw %}{% endif %}{% raw %} -c e2e
           # k3d image import exits 0 even when the internal `ctr images import` exec inside the node
           # fails (e.g. containerd not fully ready after cluster creation). Verify and retry once.
-          if ! docker exec k3d-e2e-server-0 ctr -n k8s.io images ls | grep {% endraw %}{{ frontend_image_name }}{% raw %}:local{% endraw %}{% if has_backend %}{% raw %} || ! docker exec k3d-e2e-server-0 ctr -n k8s.io images ls | grep {% endraw %}{{ backend_image_name }}{% raw %}:local{% endraw %}{% endif %}{% raw %}; then
+          if ! docker exec k3d-e2e-server-0 ctr -n k8s.io images ls | grep -Fq -- {% endraw %}{{ frontend_image_name }}{% raw %}:local{% endraw %}{% if has_backend %}{% raw %} || ! docker exec k3d-e2e-server-0 ctr -n k8s.io images ls | grep -Fq -- {% endraw %}{{ backend_image_name }}{% raw %}:local{% endraw %}{% endif %}{% raw %}; then
             echo "Images not found after first import, retrying..."
             sleep 2
             k3d image import {% endraw %}{{ frontend_image_name }}{% raw %}:local {% endraw %}{% if has_backend %}{{ backend_image_name }}{% raw %}:local{% endraw %}{% endif %}{% raw %} -c e2e
           fi
-          docker exec k3d-e2e-server-0 ctr -n k8s.io images ls | grep {% endraw %}{{ frontend_image_name }}{% raw %}:local{% endraw %}{% if has_backend %}{% raw %}
-          docker exec k3d-e2e-server-0 ctr -n k8s.io images ls | grep {% endraw %}{{ backend_image_name }}{% raw %}:local{% endraw %}{% endif %}{% raw %}
+          docker exec k3d-e2e-server-0 ctr -n k8s.io images ls | grep -Fq -- {% endraw %}{{ frontend_image_name }}{% raw %}:local{% endraw %}{% if has_backend %}{% raw %}
+          docker exec k3d-e2e-server-0 ctr -n k8s.io images ls | grep -Fq -- {% endraw %}{{ backend_image_name }}{% raw %}:local{% endraw %}{% endif %}{% raw %}
 
       - name: Helm install
         run: |
