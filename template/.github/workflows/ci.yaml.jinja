@@ -550,8 +550,8 @@ jobs:
         VERSION=$(uv --directory=backend run python -c "from backend_api.firmware.src.code_lib import VERSION; print(VERSION)")
         echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-    - name: Install CircuitPython libraries
-      run: uv --directory=backend run circup --path=./src/backend_api/firmware/src/ install -r ./src/backend_api/firmware/requirements.txt
+    - name: Install firmware dependencies
+      run: uv --directory=backend run python scripts/install_firmware_dependencies.py
 
     - name: Verify CircuitPython libraries installed
       run: uv --directory=backend run circup --path=./src/backend_api/firmware/src/ freeze
