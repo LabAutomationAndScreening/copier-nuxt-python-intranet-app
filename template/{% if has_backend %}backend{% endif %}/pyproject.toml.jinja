@@ -77,5 +77,5 @@ package = true{% endraw %}{% if is_circuit_python_driver %}{% raw %}
 # Remove this section once circup honors per-library pins in requirements.txt directly; the library
 # version pins above stay either way. Bump both the dates here and the library pins together when
 # intentionally moving to a newer bundle.
-"adafruit/Adafruit_CircuitPython_Bundle" = "20260508"
-"adafruit/CircuitPython_Community_Bundle" = "20260414"{% endraw %}{% endif %}{% raw %}{% endraw %}
+"adafruit/Adafruit_CircuitPython_Bundle" = "20260508" # no specific reason for this bundle version, just pinning to ensure no unintended drift during firmware builds (it contains the library versions currently pinned in pyproject.toml)
+"adafruit/CircuitPython_Community_Bundle" = "20260414" # no specific reason for this bundle version, just pinning to ensure no unintended drift during firmware builds (it contains the library versions currently pinned in pyproject.toml){% endraw %}{% endif %}{% raw %}{% endraw %}
