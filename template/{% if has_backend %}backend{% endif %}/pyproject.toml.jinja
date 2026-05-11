@@ -50,8 +50,8 @@ dev = [
     "pyinstaller{% endraw %}{{ pyinstaller_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
     "pytest-reserial{% endraw %}{{ pytest_reserial_version }}{% raw %}",
     "circup>=3.0.1",
-    "adafruit-circuitpython-busdevice{% endraw %}{{ adafruit_circuitpython_busdevice_version }}{% raw %}",
-    "adafruit-circuitpython-register{% endraw %}{{ adafruit_circuitpython_register_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
+    "adafruit-circuitpython-busdevice==5.2.17", # no specific reason for this version, just pinning to ensure no unintended drift during firmware builds
+    "adafruit-circuitpython-register==1.11.3", # no specific reason for this version, just pinning to ensure no unintended drift during firmware builds{% endraw %}{% endif %}{% raw %}
 ]{% endraw %}{% if backend_uses_graphql %}{% raw %}
 
 [tool.ariadne-codegen]
