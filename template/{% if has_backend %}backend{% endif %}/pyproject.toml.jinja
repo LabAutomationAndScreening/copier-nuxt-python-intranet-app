@@ -64,4 +64,18 @@ target_package_path = "tests/e2e/generated/graphql"
 enable_custom_operations = true{% endraw %}{% endif %}{% raw %}
 
 [tool.uv]
-package = true{% endraw %}
+package = true{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+
+[tool.circup.bundle-versions]
+# WORKAROUND for https://github.com/adafruit/circup/issues/258 — circup currently strips `==X`
+# specifiers when reading requirements.txt (circup/command_utils.py: libraries_from_requirements),
+# so `circup install -r` installs whichever library version the active bundle release happens to
+# contain, regardless of the pins we write into requirements.txt. Pinning the bundle release tag
+# here makes that install deterministic: the bundle has exactly one version of each library, so
+# whatever requirements.txt asks for, circup ends up installing the same versions every run, which
+# is what the freeze-vs-requirements check in scripts/install_firmware_dependencies.py relies on.
+# Remove this section once circup honors per-library pins in requirements.txt directly; the library
+# version pins above stay either way. Bump both the dates here and the library pins together when
+# intentionally moving to a newer bundle.
+"adafruit/Adafruit_CircuitPython_Bundle" = "20260508"
+"adafruit/CircuitPython_Community_Bundle" = "20260414"{% endraw %}{% endif %}{% raw %}{% endraw %}
