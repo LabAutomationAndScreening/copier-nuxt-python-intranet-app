@@ -155,6 +155,12 @@ deploy_as_executable:
     default: no
     when: "{{ has_backend and not is_circuit_python_driver }}"
 
+use_upx_for_executable:
+    type: bool
+    help: Should UPX be used to compress the executable? On Windows this can make the compiled program smaller, but increases the risk of being flagged by antivirus software.
+    default: yes
+    when: "{{ deploy_as_executable }}"
+
 install_gcc_in_backend_container_build_phase:
     type: bool
     help: Is GCC required to build any Python dependencies in the backend container?

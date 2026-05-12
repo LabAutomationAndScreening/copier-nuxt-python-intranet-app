@@ -1,0 +1,50 @@
+# Data managed by upstream template
+repo_name: tiny_exe
+repo_org_name: shrunken-labs
+is_open_source: false
+description: Executable without UPX compression
+install_claude_cli: false
+ssh_port_number: 9988
+pull_from_ecr: false
+repo_names_for_codespaces_read_permissions: ''
+use_windows_in_ci: false
+install_aws_ssm_port_forwarding_plugin: true
+configure_vcrpy: false
+configure_python_asyncio: true
+
+node_version: 24.11.1
+
+python_package_registry: PyPI
+aws_identity_center_id: d-9145c20053
+aws_org_home_region: eu-west-1
+aws_production_account_id: 987654321098
+use_staging_environment: false
+aws_region_for_stack: eu-west-1
+
+# Data added based on the specifics of this template
+human_friendly_app_name: Tiny Exe
+has_backend: true
+backend_makes_api_calls: false
+backend_source_uses_kiota: false
+backend_deployed_port_number: 5050
+backend_uses_graphql: false
+deploy_as_executable: true
+use_upx_for_executable: false
+is_circuit_python_driver: false
+has_circuit_python_backend_template_been_instantiated: false
+install_gcc_in_backend_container_build_phase: false
+frontend_uses_graphql: false
+frontend_deployed_port_number: 3500
+frontend_uses_zod: false
+push_to_ecr: false
+create_docker_image_tar_artifact: false
+frontend_ecr_base_url: 987654321098.dkr.ecr.eu-west-1.amazonaws.com
+frontend_ecr_push_role_name: n-a
+frontend_image_name: not/applicable
+backend_ecr_base_url: 987654321098.dkr.ecr.eu-west-1.amazonaws.com
+backend_ecr_push_role_name: n-a
+backend_image_name: not-applicable
+auth_to_ecr_for_e2e_in_ci: false
+run_backend_e2e_in_ci: false
+frontend_nodeport_number: 30600
+backend_nodeport_number: 30605
