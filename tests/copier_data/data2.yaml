@@ -34,6 +34,7 @@ backend_source_uses_kiota: false
 backend_deployed_port_number: 4001
 backend_uses_graphql: false
 deploy_as_executable: false
+use_upx_for_executable: false
 is_circuit_python_driver: false
 has_circuit_python_backend_template_been_instantiated: false
 install_gcc_in_backend_container_build_phase: false
