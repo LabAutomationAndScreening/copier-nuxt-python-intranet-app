@@ -42,7 +42,7 @@ jobs:
       - name: Extract project version
         id: get-version
         run: |
-          VERSION=$(python3 .github/workflows/extract_project_version.py {% endraw %}{% if has_backend %}backend/pyproject.toml{% else %}frontend/package.json{% endif %}{% raw %})
+          VERSION=$(python3 .github/workflows/extract_project_version.py {% endraw %}{% if has_backend %}{% raw %}backend/pyproject.toml{% endraw %}{% else %}{% raw %}frontend/package.json{% endraw %}{% endif %}{% raw %})
           echo "Project version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
       - name: Check version tag does not already exist
