@@ -151,15 +151,27 @@ jobs:
       - name: Prepare release asset ({% endraw %}{{ runner }}{% raw %})
         run: {% endraw %}{% if runner == gha_linux_runner %}mv artifacts/{{ runner }}/app.tar {{ repo_name }}-{{ runner }}-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.{{ ext }}{% else %}(cd artifacts/{{ runner }} && zip -r ../../{{ repo_name }}-{{ runner }}-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.{{ ext }} .){% endif %}
 {% endfor %}{% endif %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
+      - name: Find firmware artifact name
+        id: find-firmware-artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ARTIFACT_NAME=$(gh api "/repos/${{ github.repository }}/actions/runs/${{ needs.guard.outputs.ci-run-id }}/artifacts" --jq '[.artifacts[] | select(.name | startswith("{% endraw %}{{ repo_name.removesuffix('-driver') }}{% raw %}-firmware-v")] | first | .name')
+          if [ -z "$ARTIFACT_NAME" ] || [ "$ARTIFACT_NAME" = "null" ]; then
+            echo "No firmware artifact found in CI run ${{ needs.guard.outputs.ci-run-id }}"
+            exit 1
+          fi
+          echo "Firmware artifact name: $ARTIFACT_NAME"
+          echo "artifact-name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
       - name: Download firmware artifact
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
-          name: {% endraw %}{{ repo_name.removesuffix('-driver') }}{% raw %}-firmware-v${{ needs.guard.outputs.version }}
+          name: ${{ steps.find-firmware-artifact.outputs.artifact-name }}
           path: artifacts/firmware
           run-id: ${{ needs.guard.outputs.ci-run-id }}
           github-token: ${{ github.token }}
       - name: Package firmware for release
-        run: zip -r {% endraw %}{{ repo_name.removesuffix('-driver') }}{% raw %}-firmware-v${{ needs.guard.outputs.version }}.zip artifacts/firmware/
+        run: zip -r ${{ steps.find-firmware-artifact.outputs.artifact-name }}.zip artifacts/firmware/
 {% endraw %}{% endif %}{% raw %}
       - name: Create GitHub Release
         if: ${{ !inputs.dry_run }}
@@ -171,4 +183,4 @@ jobs:
           fail_on_unmatched_files: true
           files: |{% endraw %}{% if deploy_as_executable %}{% for runner in ([gha_linux_runner] + ([gha_windows_runner] if use_windows_in_ci else [])) %}{% set ext = "tar" if runner == gha_linux_runner else "zip" %}
             {{ repo_name }}-{{ runner }}-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.{{ ext }}{% endfor %}{% endif %}{% if has_circuit_python_backend_template_been_instantiated %}
-            {{ repo_name.removesuffix('-driver') }}-firmware-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.zip{% endif %}{% endif %}
+            {% raw %}${{ steps.find-firmware-artifact.outputs.artifact-name }}{% endraw %}.zip{% endif %}{% endif %}
