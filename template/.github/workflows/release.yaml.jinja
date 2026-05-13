@@ -59,4 +59,56 @@ jobs:
             fi
           fi
 
-  {% endraw %}
+{% endraw %}{% if not deploy_as_executable and push_to_ecr %}{% raw %}
+  tag-frontend-image:
+    name: Tag Frontend Image
+    needs:
+      - guard
+    uses: ./.github/workflows/build-docker-image.yaml
+    permissions:
+      contents: write # needed for mutex
+      id-token: write # needed to assume OIDC roles for ECR push
+    with:
+      context: ./frontend
+      build-contexts: repo-root=.
+      additional-hash-paths: pnpm-workspace.yaml pnpm-lock.yaml
+      repository: {% endraw %}{{ frontend_ecr_base_url }}{% raw %}
+      image_name: {% endraw %}{{ frontend_image_name }}{% raw %}
+      push-role-name: {% endraw %}{{ frontend_ecr_push_role_name }}{% raw %}
+      release-tag: ${{ needs.guard.outputs.version }}
+
+{% endraw %}{% if has_backend %}{% raw %}
+  tag-backend-image:
+    name: Tag Backend Image
+    needs:
+      - guard
+    uses: ./.github/workflows/build-docker-image.yaml
+    permissions:
+      contents: write # needed for mutex
+      id-token: write # needed to assume OIDC roles for ECR push
+    with:
+      context: ./backend
+      repository: {% endraw %}{{ backend_ecr_base_url }}{% raw %}
+      image_name: {% endraw %}{{ backend_image_name }}{% raw %}
+      push-role-name: {% endraw %}{{ backend_ecr_push_role_name }}{% raw %}
+      release-tag: ${{ needs.guard.outputs.version }}
+
+{% endraw %}{% endif %}{% endif %}{% raw %}
+  release:
+    name: Create GitHub Release
+    runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
+    timeout-minutes: {% endraw %}{{ gha_short_timeout_minutes }}{% raw %}
+    if: ${{ !inputs.dry_run }}
+    needs:
+      - guard{% endraw %}{% if not deploy_as_executable and push_to_ecr %}{% raw %}
+      - tag-frontend-image{% endraw %}{% if has_backend %}{% raw %}
+      - tag-backend-image{% endraw %}{% endif %}{% endif %}{% raw %}
+    permissions:
+      contents: write # needed to create GitHub releases
+    steps:
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@{% endraw %}{{ gha_action_gh_release }}{% raw %}
+        with:
+          tag_name: v${{ needs.guard.outputs.version }}
+          name: {% endraw %}{{ repo_name }}{% raw %} v${{ needs.guard.outputs.version }}
+          generate_release_notes: true{% endraw %}
