@@ -1,0 +1,186 @@
+{% raw %}name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (test the workflow, skip actual release)"
+        type: boolean
+        default: false
+
+env:
+  PYTHONUNBUFFERED: True
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
+    timeout-minutes: {% endraw %}{{ gha_short_timeout_minutes }}{% raw %}
+    permissions:
+      contents: read # needed for checkout and git ls-remote
+      actions: read # needed to query CI workflow runs
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      ci-run-id: ${{ steps.get-ci-run-id.outputs.ci-run-id }}
+      docker-image-tag: ${{ steps.set-docker-image-tag.outputs.docker-image-tag }} # empty on dry run to skip ECR tag push
+    steps:
+      - name: Fail if real release is not on main
+        if: ${{ !inputs.dry_run && github.ref != 'refs/heads/main' }}
+        run: |
+          echo "Real releases must run from main. Current ref: ${{ github.ref }}"
+          exit 1
+      - name: Get CI run ID for this commit
+        id: get-ci-run-id
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ALL_RUNS=$(gh api "/repos/${{ github.repository }}/actions/workflows/ci.yaml/runs?head_sha=${{ github.sha }}")
+          echo "All ci.yaml runs for ${{ github.sha }}:"
+          echo "$ALL_RUNS" | jq '[.workflow_runs[] | {id, status, conclusion, created_at}]'
+          LATEST_RUN=$(echo "$ALL_RUNS" | jq '.workflow_runs | first')
+          RUN_ID=$(echo "$LATEST_RUN" | jq -r '.id')
+          STATUS=$(echo "$LATEST_RUN" | jq -r '.status')
+          CONCLUSION=$(echo "$LATEST_RUN" | jq -r '.conclusion')
+          echo "Most recent ci.yaml run: id=$RUN_ID status=$STATUS conclusion=$CONCLUSION"
+          if [ "$STATUS" != "completed" ] || [ "$CONCLUSION" != "success" ]; then
+            echo "Most recent ci.yaml run has not completed successfully. Wait for CI to pass before releasing."
+            exit 1
+          fi
+          echo "ci-run-id=$RUN_ID" >> $GITHUB_OUTPUT
+      - name: Verify workflow-summary passed in CI run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          JOBS=$(gh api "/repos/${{ github.repository }}/actions/runs/${{ steps.get-ci-run-id.outputs.ci-run-id }}/jobs")
+          echo "Jobs in CI run ${{ steps.get-ci-run-id.outputs.ci-run-id }}:"
+          echo "$JOBS" | jq '[.jobs[] | {name, conclusion}]'
+          CONCLUSION=$(echo "$JOBS" | jq -r '.jobs[] | select(.name == "workflow-summary") | .conclusion')
+          echo "workflow-summary conclusion: $CONCLUSION"
+          if [ "$CONCLUSION" != "success" ] && [ "${{ inputs.dry_run }}" != "true" ]; then
+            echo "workflow-summary did not succeed. Wait for CI to pass before releasing."
+            exit 1
+          fi
+      - name: Checkout code
+        uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
+      - name: Extract project version
+        id: get-version
+        run: |
+          VERSION=$(python3 .github/workflows/extract_project_version.py {% endraw %}{% if has_backend %}{% raw %}backend/pyproject.toml{% endraw %}{% else %}{% raw %}frontend/package.json{% endraw %}{% endif %}{% raw %})
+          echo "Project version: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      - name: Check version tag does not already exist
+        run: |
+          VERSION="${{ steps.get-version.outputs.version }}"
+          if python3 .github/workflows/git_tag.py --version "$VERSION" --confirm-tag-not-present; then
+            echo "Tag v$VERSION does not exist yet."
+          else
+            if [ "${{ inputs.dry_run }}" = "true" ]; then
+              echo "Tag v$VERSION already exists (dry run, continuing)."
+            else
+              echo "Tag v$VERSION already exists. Bump the version before releasing."
+              exit 1
+            fi
+          fi
+      - name: Set Docker image tag
+        id: set-docker-image-tag
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "docker-image-tag=" >> $GITHUB_OUTPUT
+          else
+            echo "docker-image-tag=${{ steps.get-version.outputs.version }}" >> $GITHUB_OUTPUT
+          fi
+
+{% endraw %}{% if not deploy_as_executable and push_to_ecr %}{% raw %}
+  tag-frontend-image:
+    name: Tag Frontend Image
+    needs:
+      - guard
+    uses: ./.github/workflows/build-docker-image.yaml
+    permissions:
+      contents: write # needed for mutex
+      id-token: write # needed to assume OIDC roles for ECR push
+    with:
+      context: ./frontend
+      build-contexts: repo-root=.
+      additional-hash-paths: pnpm-workspace.yaml pnpm-lock.yaml
+      repository: {% endraw %}{{ frontend_ecr_base_url }}{% raw %}
+      image_name: {% endraw %}{{ frontend_image_name }}{% raw %}
+      push-role-name: {% endraw %}{{ frontend_ecr_push_role_name }}{% raw %}
+      release-tag: ${{ needs.guard.outputs.docker-image-tag }}
+
+{% endraw %}{% if has_backend %}{% raw %}
+  tag-backend-image:
+    name: Tag Backend Image
+    needs:
+      - guard
+    uses: ./.github/workflows/build-docker-image.yaml
+    permissions:
+      contents: write # needed for mutex
+      id-token: write # needed to assume OIDC roles for ECR push
+    with:
+      context: ./backend
+      repository: {% endraw %}{{ backend_ecr_base_url }}{% raw %}
+      image_name: {% endraw %}{{ backend_image_name }}{% raw %}
+      push-role-name: {% endraw %}{{ backend_ecr_push_role_name }}{% raw %}
+      release-tag: ${{ needs.guard.outputs.docker-image-tag }}
+
+{% endraw %}{% endif %}{% endif %}{% raw %}
+  release:
+    name: Create GitHub Release
+    runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
+    timeout-minutes: {% endraw %}{{ gha_short_timeout_minutes }}{% raw %}
+    needs:
+      - guard{% endraw %}{% if not deploy_as_executable and push_to_ecr %}{% raw %}
+      - tag-frontend-image{% endraw %}{% if has_backend %}{% raw %}
+      - tag-backend-image{% endraw %}{% endif %}{% endif %}{% raw %}
+    permissions:
+      contents: write # needed to create GitHub releases
+      actions: read # needed to download artifacts from CI runs
+    steps:{% endraw %}{% if deploy_as_executable %}{% raw %}
+{% endraw %}{% set os_runners = [gha_linux_runner] + ([gha_windows_runner] if use_windows_in_ci else []) %}{% for runner in os_runners %}{% set ext = "tar" if runner == gha_linux_runner else "zip" %}{% raw %}
+      - name: Download executable artifact ({% endraw %}{{ runner }}{% raw %})
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: built-{% endraw %}{{ repo_name }}-{{ runner }}{% raw %}
+          path: artifacts/{% endraw %}{{ runner }}{% raw %}
+          run-id: ${{ needs.guard.outputs.ci-run-id }}
+          github-token: ${{ github.token }}
+      - name: Prepare release asset ({% endraw %}{{ runner }}{% raw %})
+        run: {% endraw %}{% if runner == gha_linux_runner %}mv artifacts/{{ runner }}/app.tar {{ repo_name }}-{{ runner }}-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.{{ ext }}{% else %}(cd artifacts/{{ runner }} && zip -r ../../{{ repo_name }}-{{ runner }}-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.{{ ext }} .){% endif %}
+{% endfor %}{% endif %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
+      - name: Find firmware artifact name
+        id: find-firmware-artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ARTIFACT_NAME=$(gh api "/repos/${{ github.repository }}/actions/runs/${{ needs.guard.outputs.ci-run-id }}/artifacts" --jq '[.artifacts[] | select(.name | startswith("{% endraw %}{{ repo_name.removesuffix('-driver') }}{% raw %}-firmware-v"))] | first | .name')
+          if [ -z "$ARTIFACT_NAME" ] || [ "$ARTIFACT_NAME" = "null" ]; then
+            echo "No firmware artifact found in CI run ${{ needs.guard.outputs.ci-run-id }}"
+            exit 1
+          fi
+          echo "Firmware artifact name: $ARTIFACT_NAME"
+          echo "artifact-name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
+      - name: Download firmware artifact
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: ${{ steps.find-firmware-artifact.outputs.artifact-name }}
+          path: artifacts/firmware
+          run-id: ${{ needs.guard.outputs.ci-run-id }}
+          github-token: ${{ github.token }}
+      - name: Package firmware for release
+        run: zip -r ${{ steps.find-firmware-artifact.outputs.artifact-name }}.zip artifacts/firmware/
+{% endraw %}{% endif %}{% raw %}
+      - name: Create GitHub Release
+        if: ${{ !inputs.dry_run }}
+        uses: softprops/action-gh-release@{% endraw %}{{ gha_action_gh_release }}{% raw %}
+        with:
+          tag_name: v${{ needs.guard.outputs.version }}
+          name: {% endraw %}{{ repo_name }}{% raw %} v${{ needs.guard.outputs.version }}
+          generate_release_notes: true{% endraw %}{% if deploy_as_executable or has_circuit_python_backend_template_been_instantiated %}{% raw %}
+          fail_on_unmatched_files: true
+          files: |{% endraw %}{% if deploy_as_executable %}{% for runner in ([gha_linux_runner] + ([gha_windows_runner] if use_windows_in_ci else [])) %}{% set ext = "tar" if runner == gha_linux_runner else "zip" %}
+            {{ repo_name }}-{{ runner }}-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.{{ ext }}{% endfor %}{% endif %}{% if has_circuit_python_backend_template_been_instantiated %}
+            {% raw %}${{ steps.find-firmware-artifact.outputs.artifact-name }}{% endraw %}.zip{% endif %}{% endif %}

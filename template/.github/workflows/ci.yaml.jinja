@@ -66,6 +66,8 @@ jobs:
 
       - name: Install latest versions of packages
         uses: ./.github/actions/install_deps
+        env:
+          SKIP_PLAYWRIGHT_INSTALL: "1"
         with:
           node-version: {% endraw %}{{ node_version }}{% raw %}
           skip-installing-ssm-plugin-manager: true
@@ -144,6 +146,8 @@ jobs:
 
       - name: Install latest versions of node packages
         uses: ./.github/actions/install_deps
+        env:
+          SKIP_PLAYWRIGHT_INSTALL: "1"
         with:
           node-version: {% endraw %}{{ node_version }}{% raw %}
           skip-installing-ssm-plugin-manager: true
