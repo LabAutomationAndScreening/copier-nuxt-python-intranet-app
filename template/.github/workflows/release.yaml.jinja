@@ -21,7 +21,6 @@ jobs:
     timeout-minutes: {% endraw %}{{ gha_short_timeout_minutes }}{% raw %}
     permissions:
       contents: read # needed for checkout and git ls-remote
-      statuses: read # needed to read required-check commit status
       actions: read # needed to query CI workflow runs
     outputs:
       version: ${{ steps.get-version.outputs.version }}
@@ -41,9 +40,13 @@ jobs:
           ALL_RUNS=$(gh api "/repos/${{ github.repository }}/actions/workflows/ci.yaml/runs?head_sha=${{ github.sha }}")
           echo "All ci.yaml runs for ${{ github.sha }}:"
           echo "$ALL_RUNS" | jq '[.workflow_runs[] | {id, status, conclusion, created_at}]'
-          RUN_ID=$(echo "$ALL_RUNS" | jq -r '[.workflow_runs[] | select(.status == "completed" and .conclusion == "success")] | first | .id // empty')
-          if [ -z "$RUN_ID" ]; then
-            echo "No successful ci.yaml run found for ${{ github.sha }}. Wait for CI to complete before releasing."
+          LATEST_RUN=$(echo "$ALL_RUNS" | jq '.workflow_runs | first')
+          RUN_ID=$(echo "$LATEST_RUN" | jq -r '.id')
+          STATUS=$(echo "$LATEST_RUN" | jq -r '.status')
+          CONCLUSION=$(echo "$LATEST_RUN" | jq -r '.conclusion')
+          echo "Most recent ci.yaml run: id=$RUN_ID status=$STATUS conclusion=$CONCLUSION"
+          if [ "$STATUS" != "completed" ] || [ "$CONCLUSION" != "success" ]; then
+            echo "Most recent ci.yaml run has not completed successfully. Wait for CI to pass before releasing."
             exit 1
           fi
           echo "ci-run-id=$RUN_ID" >> $GITHUB_OUTPUT
