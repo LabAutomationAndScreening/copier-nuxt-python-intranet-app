@@ -156,7 +156,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ARTIFACT_NAME=$(gh api "/repos/${{ github.repository }}/actions/runs/${{ needs.guard.outputs.ci-run-id }}/artifacts" --jq '[.artifacts[] | select(.name | startswith("{% endraw %}{{ repo_name.removesuffix('-driver') }}{% raw %}-firmware-v")] | first | .name')
+          ARTIFACT_NAME=$(gh api "/repos/${{ github.repository }}/actions/runs/${{ needs.guard.outputs.ci-run-id }}/artifacts" --jq '[.artifacts[] | select(.name | startswith("{% endraw %}{{ repo_name.removesuffix('-driver') }}{% raw %}-firmware-v"))] | first | .name')
           if [ -z "$ARTIFACT_NAME" ] || [ "$ARTIFACT_NAME" = "null" ]; then
             echo "No firmware artifact found in CI run ${{ needs.guard.outputs.ci-run-id }}"
             exit 1
