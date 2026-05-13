@@ -131,7 +131,7 @@ jobs:
           run-id: ${{ needs.guard.outputs.ci-run-id }}
           github-token: ${{ github.token }}
       - name: Prepare release asset ({% endraw %}{{ runner }}{% raw %})
-        run: {% endraw %}{% if runner == gha_linux_runner %}mv artifacts/{{ runner }}/app.tar {{ repo_name }}-{{ runner }}.{{ ext }}{% else %}(cd artifacts/{{ runner }} && zip -r ../../{{ repo_name }}-{{ runner }}.{{ ext }} .){% endif %}
+        run: {% endraw %}{% if runner == gha_linux_runner %}mv artifacts/{{ runner }}/app.tar {{ repo_name }}-{{ runner }}-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.{{ ext }}{% else %}(cd artifacts/{{ runner }} && zip -r ../../{{ repo_name }}-{{ runner }}-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.{{ ext }} .){% endif %}
 {% endfor %}{% endif %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
       - name: Download firmware artifact
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
@@ -141,7 +141,7 @@ jobs:
           run-id: ${{ needs.guard.outputs.ci-run-id }}
           github-token: ${{ github.token }}
       - name: Package firmware for release
-        run: zip -r {% endraw %}{{ repo_name.removesuffix('-driver') }}{% raw %}-firmware.zip artifacts/firmware/
+        run: zip -r {% endraw %}{{ repo_name.removesuffix('-driver') }}{% raw %}-firmware-v${{ needs.guard.outputs.version }}.zip artifacts/firmware/
 {% endraw %}{% endif %}{% raw %}
       - name: Create GitHub Release
         if: ${{ !inputs.dry_run }}
@@ -151,5 +151,5 @@ jobs:
           name: {% endraw %}{{ repo_name }}{% raw %} v${{ needs.guard.outputs.version }}
           generate_release_notes: true{% endraw %}{% if deploy_as_executable or has_circuit_python_backend_template_been_instantiated %}
           files: |{% if deploy_as_executable %}{% for runner in ([gha_linux_runner] + ([gha_windows_runner] if use_windows_in_ci else [])) %}{% set ext = "tar" if runner == gha_linux_runner else "zip" %}
-            {{ repo_name }}-{{ runner }}.{{ ext }}{% endfor %}{% endif %}{% if has_circuit_python_backend_template_been_instantiated %}
-            {{ repo_name.removesuffix('-driver') }}-firmware.zip{% endif %}{% endif %}
+            {{ repo_name }}-{{ runner }}-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.{{ ext }}{% endfor %}{% endif %}{% if has_circuit_python_backend_template_been_instantiated %}
+            {{ repo_name.removesuffix('-driver') }}-firmware-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.zip{% endif %}{% endif %}
