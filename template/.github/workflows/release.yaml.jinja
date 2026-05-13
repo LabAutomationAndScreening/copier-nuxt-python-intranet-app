@@ -19,8 +19,10 @@ jobs:
     permissions:
       contents: read # needed for checkout and git ls-remote
       statuses: read # needed to read required-check commit status
+      actions: read # needed to query CI workflow runs
     outputs:
       version: ${{ steps.get-version.outputs.version }}
+      ci-run-id: ${{ steps.get-ci-run-id.outputs.ci-run-id }}
     steps:
       - name: Fail if real release is not on main
         if: ${{ !inputs.dry_run && github.ref != 'refs/heads/main' }}
@@ -45,6 +47,13 @@ jobs:
           VERSION=$(python3 .github/workflows/extract_project_version.py {% endraw %}{% if has_backend %}{% raw %}backend/pyproject.toml{% endraw %}{% else %}{% raw %}frontend/package.json{% endraw %}{% endif %}{% raw %})
           echo "Project version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+      - name: Get CI run ID for this commit
+        id: get-ci-run-id
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN_ID=$(gh api "/repos/${{ github.repository }}/actions/workflows/ci.yaml/runs?head_sha=${{ github.sha }}&status=success" --jq '.workflow_runs[0].id')
+          echo "ci-run-id=$RUN_ID" >> $GITHUB_OUTPUT
       - name: Check version tag does not already exist
         run: |
           VERSION="${{ steps.get-version.outputs.version }}"
@@ -98,17 +107,32 @@ jobs:
     name: Create GitHub Release
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     timeout-minutes: {% endraw %}{{ gha_short_timeout_minutes }}{% raw %}
-    if: ${{ !inputs.dry_run }}
     needs:
       - guard{% endraw %}{% if not deploy_as_executable and push_to_ecr %}{% raw %}
       - tag-frontend-image{% endraw %}{% if has_backend %}{% raw %}
       - tag-backend-image{% endraw %}{% endif %}{% endif %}{% raw %}
     permissions:
       contents: write # needed to create GitHub releases
-    steps:
+      actions: read # needed to download artifacts from CI runs
+    steps:{% endraw %}{% if deploy_as_executable %}{% raw %}
+{% endraw %}{% set os_runners = [gha_linux_runner] + ([gha_windows_runner] if use_windows_in_ci else []) %}{% for runner in os_runners %}{% set ext = "tar" if runner == gha_linux_runner else "zip" %}{% raw %}
+      - name: Download executable artifact ({% endraw %}{{ runner }}{% raw %})
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: built-{% endraw %}{{ repo_name }}-{{ runner }}{% raw %}
+          path: artifacts/{% endraw %}{{ runner }}{% raw %}
+          run-id: ${{ needs.guard.outputs.ci-run-id }}
+          github-token: ${{ github.token }}
+      - name: Prepare release asset ({% endraw %}{{ runner }}{% raw %})
+        run: {% endraw %}{% if runner == gha_linux_runner %}mv artifacts/{{ runner }}/app.tar {{ repo_name }}-{{ runner }}.{{ ext }}{% else %}(cd artifacts/{{ runner }} && zip -r ../../{{ repo_name }}-{{ runner }}.{{ ext }} .){% endif %}
+{% endfor %}{% endif %}{% raw %}
       - name: Create GitHub Release
+        if: ${{ !inputs.dry_run }}
         uses: softprops/action-gh-release@{% endraw %}{{ gha_action_gh_release }}{% raw %}
         with:
           tag_name: v${{ needs.guard.outputs.version }}
           name: {% endraw %}{{ repo_name }}{% raw %} v${{ needs.guard.outputs.version }}
-          generate_release_notes: true{% endraw %}
+          generate_release_notes: true{% endraw %}{% if deploy_as_executable %}
+          files: |
+{% for runner in ([gha_linux_runner] + ([gha_windows_runner] if use_windows_in_ci else [])) %}{% set ext = "tar" if runner == gha_linux_runner else "zip" %}            {{ repo_name }}-{{ runner }}.{{ ext }}
+{% endfor %}{% endif %}
