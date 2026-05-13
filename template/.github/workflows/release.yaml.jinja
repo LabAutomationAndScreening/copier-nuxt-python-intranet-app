@@ -33,17 +33,31 @@ jobs:
         run: |
           echo "Real releases must run from main. Current ref: ${{ github.ref }}"
           exit 1
-      - name: Check required-check CI status for this commit
+      - name: Get CI run ID for this commit
+        id: get-ci-run-id
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          STATUSES=$(gh api "/repos/${{ github.repository }}/commits/${{ github.sha }}/statuses")
-          echo "All statuses for ${{ github.sha }}:"
-          echo "$STATUSES" | jq .
-          STATUS=$(echo "$STATUSES" | jq -r '[.[] | select(.context == "required-check")] | first | .state // "not found"')
-          echo "required-check status: $STATUS"
-          if [ "$STATUS" != "success" ] && [ "${{ inputs.dry_run }}" != "true" ]; then
-            echo "Wait for CI to pass before releasing."
+          ALL_RUNS=$(gh api "/repos/${{ github.repository }}/actions/workflows/ci.yaml/runs?head_sha=${{ github.sha }}")
+          echo "All ci.yaml runs for ${{ github.sha }}:"
+          echo "$ALL_RUNS" | jq '[.workflow_runs[] | {id, status, conclusion, created_at}]'
+          RUN_ID=$(echo "$ALL_RUNS" | jq -r '[.workflow_runs[] | select(.status == "completed" and .conclusion == "success")] | first | .id // empty')
+          if [ -z "$RUN_ID" ]; then
+            echo "No successful ci.yaml run found for ${{ github.sha }}. Wait for CI to complete before releasing."
+            exit 1
+          fi
+          echo "ci-run-id=$RUN_ID" >> $GITHUB_OUTPUT
+      - name: Verify workflow-summary passed in CI run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          JOBS=$(gh api "/repos/${{ github.repository }}/actions/runs/${{ steps.get-ci-run-id.outputs.ci-run-id }}/jobs")
+          echo "Jobs in CI run ${{ steps.get-ci-run-id.outputs.ci-run-id }}:"
+          echo "$JOBS" | jq '[.jobs[] | {name, conclusion}]'
+          CONCLUSION=$(echo "$JOBS" | jq -r '.jobs[] | select(.name == "workflow-summary") | .conclusion')
+          echo "workflow-summary conclusion: $CONCLUSION"
+          if [ "$CONCLUSION" != "success" ] && [ "${{ inputs.dry_run }}" != "true" ]; then
+            echo "workflow-summary did not succeed. Wait for CI to pass before releasing."
             exit 1
           fi
       - name: Checkout code
@@ -54,17 +68,6 @@ jobs:
           VERSION=$(python3 .github/workflows/extract_project_version.py {% endraw %}{% if has_backend %}{% raw %}backend/pyproject.toml{% endraw %}{% else %}{% raw %}frontend/package.json{% endraw %}{% endif %}{% raw %})
           echo "Project version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-      - name: Get CI run ID for this commit
-        id: get-ci-run-id
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          RUN_ID=$(gh api "/repos/${{ github.repository }}/actions/workflows/ci.yaml/runs?head_sha=${{ github.sha }}&status=success" --jq '.workflow_runs[0].id')
-          if [ "$RUN_ID" = "null" ] || [ -z "$RUN_ID" ]; then
-            echo "No successful CI run found for ${{ github.sha }}. Wait for CI to complete before releasing."
-            exit 1
-          fi
-          echo "ci-run-id=$RUN_ID" >> $GITHUB_OUTPUT
       - name: Check version tag does not already exist
         run: |
           VERSION="${{ steps.get-version.outputs.version }}"
