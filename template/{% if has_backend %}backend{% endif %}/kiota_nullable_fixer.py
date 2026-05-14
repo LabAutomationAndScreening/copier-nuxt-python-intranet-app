@@ -1,9 +1,11 @@
 """Fix Kiota's incorrect nullable handling for anyOf string or null fields.
 
-Kiota generates complex "composed types" for simple anyOf: [simple_type, null] schemas.
-This script simplifies them back to Optional[str], Optional[bool], Optional[int], Optional[float], or Optional[datetime].
+Kiota generates complex "composed types" for simple anyOf: [simple_type, null] schemas. This script simplifies them back to Optional[str],
+Optional[bool], Optional[int], Optional[float], or Optional[datetime].
 
-Open github issue: https://github.com/microsoft/kiota/issues/6869 (which just generally makes it challenging to use the composed types)
+Open github issue:
+https://github.com/microsoft/kiota/issues/6869
+(which just generally makes it challenging to use the composed types)
 """
 
 import argparse
