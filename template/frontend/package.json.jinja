@@ -1,5 +1,6 @@
 {% raw %}{
-  "name": "nuxt-app",
+  "name": "nuxt-app",{% endraw %}{% if not has_backend %}{% raw %}
+  "version": "0.1.0",{% endraw %}{% endif %}{% raw %}
   "private": true,
   "type": "module",
   "packageManager": "pnpm@{% endraw %}{{ pnpm_version }}{% raw %}",
