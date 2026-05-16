@@ -51,17 +51,16 @@
     "@nuxt/schema": "{% endraw %}{{ nuxt_version }}{% raw %}",
     "@nuxt/test-utils": "{% endraw %}{{ nuxt_test_utils_version }}{% raw %}",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
     "@nuxtjs/apollo": "{% endraw %}{{ nuxt_apollo_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
-    "@nuxtjs/eslint-config-typescript": "^12.1.0",
     "@playwright/test": "{% endraw %}{{ playwright_version }}{% raw %}",
     "@types/node": "^{% endraw %}{{ node_version.split('.')[0] }}{% raw %}",
-    "@vitest/coverage-istanbul": "{% endraw %}{{ vitest_version }}{% raw %}",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
+    "@vitest/coverage-istanbul": "{% endraw %}{{ vitest_version }}{% raw %}",
+    "@vitest/eslint-plugin": "{% endraw %}{{ vitest_eslint_plugin_version }}{% raw %}",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
     "@vue/apollo-composable": "^4.2.2",{% endraw %}{% endif %}{% raw %}
     "@vue/devtools-api": "{% endraw %}{{ vue_devtools_api_version }}{% raw %}",
     "@vue/test-utils": "{% endraw %}{{ vue_test_utils_version }}{% raw %}",
     "autoprefixer": "^10.5.0",
     "dotenv-cli": "{% endraw %}{{ dotenv_cli_version }}{% raw %}",
-    "eslint": "{% endraw %}{{ eslint_version }}{% raw %}",
-    "eslint-plugin-vitest": "^0.5.4",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
+    "eslint": "{% endraw %}{{ eslint_version }}{% raw %}",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
     "graphql": "^16.14.0",
     "graphql-tag": "^2.12.6",{% endraw %}{% endif %}{% raw %}
     "happy-dom": "{% endraw %}{{ happy_dom_version }}{% raw %}",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
