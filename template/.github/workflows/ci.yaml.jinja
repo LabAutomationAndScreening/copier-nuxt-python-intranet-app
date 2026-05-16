@@ -235,8 +235,8 @@ jobs:
           if-no-files-found: error{% endraw %}{% endif %}{% raw %}{% endraw %}{% endif %}{% raw %}
 
 
-  test-compiled-frontend:
-    name: Test the compiled Frontend
+  test-compiled-frontend-dev:
+    name: Test the compiled Frontend for pnpm dev mode
     timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     needs:
@@ -255,7 +255,7 @@ jobs:
           skip-installing-ssm-plugin-manager: true
 
       - name: Test
-        run: pnpm --dir=frontend test-compiled{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+        run: pnpm --dir=frontend test-compiled:dev{% endraw %}{% if is_circuit_python_driver %}{% raw %}
 
   e2e-test-k3d:
     name: End-to-end Testing on k3d
@@ -586,7 +586,7 @@ jobs:
       - unit-test-backend
       - build-backend{% endraw %}{% endif %}{% raw %}{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
       - package-images{% endraw %}{% endif %}{% raw %}
-      - test-compiled-frontend{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
+      - test-compiled-frontend-dev{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
       - package-firmware{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
       - e2e-test-backend{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
       - e2e-test-k3d{% endraw %}{% endif %}{% raw %}
@@ -608,7 +608,7 @@ jobs:
             [[ ! "${{ needs.unit-test-backend.result }}" =~ $success_pattern ]] ||
             [[ ! "${{ needs.build-backend.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
             [[ ! "${{ needs.package-images.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}
-            [[ ! "${{ needs.test-compiled-frontend.result }}" =~ $success_pattern ]] ||{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
+            [[ ! "${{ needs.test-compiled-frontend-dev.result }}" =~ $success_pattern ]] ||{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
             [[ ! "${{ needs.package-firmware.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
             [[ ! "${{ needs.e2e-test-backend.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
             [[ ! "${{ needs.e2e-test-k3d.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}
