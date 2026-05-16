@@ -255,7 +255,7 @@ jobs:
           skip-installing-ssm-plugin-manager: true
 
       - name: Test
-        run: pnpm --dir=frontend test-compiled:dev{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+        run: pnpm --dir=frontend test-compiled-dev{% endraw %}{% if is_circuit_python_driver %}{% raw %}
 
   e2e-test-k3d:
     name: End-to-end Testing on k3d
