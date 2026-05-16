@@ -86,7 +86,7 @@ const e2eProject = {
     setupFiles: [fakerSetupPath, appSetupPath],
     globalSetup: globalSetupPath,
     testTimeout: 15000,
-    fileParallelism: false,
+    fileParallelism: false, // TODO: consider if we want to only disable it for some files in the E2E test suite
   },
 };
 
