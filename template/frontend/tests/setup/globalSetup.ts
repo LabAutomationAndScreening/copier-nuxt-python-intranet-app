@@ -47,10 +47,18 @@ if (isBuiltBackendE2E) {
 export const BASE_URL = `http://127.0.0.1:${isBuiltBackendE2E ? availablePort : DEPLOYED_FRONTEND_PORT_NUMBER}`;
 const executableHealthCheckUrl = `http://127.0.0.1:${availablePort}/api/healthcheck`;
 
-async function waitForHttpHealthcheck({ url, maxAttempts = 10 }: { url: string; maxAttempts?: number }): Promise<void> {
+async function waitForHttpHealthcheck({
+  url,
+  maxAttempts = 10,
+  requestTimeoutMs = 5000,
+}: {
+  url: string;
+  maxAttempts?: number;
+  requestTimeoutMs?: number;
+}): Promise<void> {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const res = await fetch(url);
+      const res = await fetch(url, { signal: AbortSignal.timeout(requestTimeoutMs) });
       if (res.ok) {
         return;
       }
