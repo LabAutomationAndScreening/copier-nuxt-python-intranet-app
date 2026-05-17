@@ -1,5 +1,5 @@
 # Changes here will be overwritten by Copier
-_commit: v0.0.122-22-g9d80143
+_commit: v0.0.122-24-g64dbd0b
 _src_path: gh:LabAutomationAndScreening/copier-base-template.git
 description: A web app that is hosted within a local intranet. Nuxt frontend, python
     backend, docker-compose
@@ -16,8 +16,8 @@ template_might_want_to_install_aws_ssm_port_forwarding_plugin: true
 template_might_want_to_use_python_asyncio: true
 template_might_want_to_use_vcrpy: true
 template_publishes_releases: true
-template_uses_javascript: true
 template_uses_pulumi: false
 template_uses_python: true
+template_uses_typescript: true
 template_uses_vuejs: true
 
