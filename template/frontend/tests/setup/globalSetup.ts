@@ -5,7 +5,7 @@ import path from "path";
 import type { Browser } from "playwright";
 import { chromium } from "playwright";
 import type { TestProject } from "vitest/node";
-import { APP_NAME, DEPLOYED_BACKEND_PORT_NUMBER, DEPLOYED_FRONTEND_PORT_NUMBER } from "~~/tests/setup/constants";
+import { APP_NAME, DEPLOYED_BACKEND_PORT_NUMBER, DEPLOYED_FRONTEND_PORT_NUMBER } from "./constants";
 
 function getRandomOpenPort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -45,9 +45,49 @@ if (isBuiltBackendE2E) {
   }
 }
 export const BASE_URL = `http://127.0.0.1:${isBuiltBackendE2E ? availablePort : DEPLOYED_FRONTEND_PORT_NUMBER}`;
-const healthCheckUrl = `http://127.0.0.1:${
-  isBuiltBackendE2E ? availablePort.toString() + "/api/healthcheck" : DEPLOYED_FRONTEND_PORT_NUMBER
-}`; // TODO: if there is a backend, check that too, even if it's a docker-compose situation
+const executableHealthCheckUrl = `http://127.0.0.1:${availablePort}/api/healthcheck`;
+
+async function waitForHttpHealthcheck({ url, maxAttempts = 10 }: { url: string; maxAttempts?: number }): Promise<void> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        return;
+      }
+    } catch {
+      // ignore errors // TODO: make this more specific (e.g., only ignore network errors)
+    }
+    console.log(`Waiting for ${url} to become available... Attempt ${attempt}`);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  throw new Error(`Timeout waiting for ${url}`);
+}
+
+async function waitForDockerComposeHealthy({
+  maxAttempts = 30,
+  retryDelayMs = 2000,
+}: { maxAttempts?: number; retryDelayMs?: number } = {}): Promise<void> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const stdout = execSync("docker compose --file=../docker-compose.yaml ps --format json", {
+        encoding: "utf-8",
+        timeout: 10000,
+      });
+      const lines = stdout.split("\n").filter((line) => line.trim().length > 0);
+      const services = lines.map((line) => JSON.parse(line) as { Service: string; Health: string });
+      const statuses = Object.fromEntries(services.map((s) => [s.Service, s.Health || "(no healthcheck)"]));
+      console.log(`Attempt ${attempt}/${maxAttempts}: container health:`, statuses);
+      // services without a healthcheck report Health as "" — treat those as ready
+      if (services.length > 0 && services.every((s) => s.Health === "healthy" || s.Health === "")) {
+        return;
+      }
+    } catch (error) {
+      console.log(`Attempt ${attempt}/${maxAttempts}: error querying container health:`, error);
+    }
+    await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+  }
+  throw new Error(`docker-compose containers failed to become healthy after ${maxAttempts} attempts`);
+}
 
 export async function setup(project: TestProject) {
   project.provide("baseUrl", BASE_URL);
@@ -84,24 +124,10 @@ export async function setup(project: TestProject) {
       );
     }
     browser = await chromium.launch(); // headless by default
-    // Wait for /api/healthcheck to become available
-    const maxAttempts = 10;
-    let attempts = 0;
-    while (attempts < maxAttempts) {
-      try {
-        const res = await fetch(healthCheckUrl);
-        if (res.ok) {
-          break;
-        }
-      } catch {
-        // ignore errors // TODO: make this more specific (e.g., only ignore network errors)
-      }
-      attempts++;
-      console.log(`Waiting for ${healthCheckUrl} to become available... Attempt ${attempts}`);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-    if (attempts === maxAttempts) {
-      throw new Error(`Timeout waiting for ${healthCheckUrl}`);
+    if (isDockerE2E) {
+      await waitForDockerComposeHealthy();
+    } else if (isBuiltBackendE2E) {
+      await waitForHttpHealthcheck({ url: executableHealthCheckUrl });
     }
   }
 }
