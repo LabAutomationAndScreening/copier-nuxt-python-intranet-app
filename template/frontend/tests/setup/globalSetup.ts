@@ -71,6 +71,28 @@ async function waitForHttpHealthcheck({
   throw new Error(`Timeout waiting for ${url}`);
 }
 
+interface ComposePsService {
+  Service: string;
+  Health: string;
+  State: string;
+}
+
+function isComposePsService(value: unknown): value is ComposePsService {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  if (!("Service" in value) || typeof value.Service !== "string") {
+    return false;
+  }
+  if (!("Health" in value) || typeof value.Health !== "string") {
+    return false;
+  }
+  if (!("State" in value) || typeof value.State !== "string") {
+    return false;
+  }
+  return true;
+}
+
 async function waitForDockerComposeHealthy({
   maxAttempts = 30,
   retryDelayMs = 2000,
@@ -82,11 +104,21 @@ async function waitForDockerComposeHealthy({
         timeout: 10000,
       });
       const lines = stdout.split("\n").filter((line) => line.trim().length > 0);
-      const services = lines.map((line) => JSON.parse(line) as { Service: string; Health: string });
-      const statuses = Object.fromEntries(services.map((s) => [s.Service, s.Health || "(no healthcheck)"]));
+      const services: ComposePsService[] = [];
+      for (const line of lines) {
+        const parsed: unknown = JSON.parse(line);
+        if (!isComposePsService(parsed)) {
+          throw new Error(`Unexpected docker compose ps entry shape: ${line}`);
+        }
+        services.push(parsed);
+      }
+      const statuses = Object.fromEntries(
+        services.map((s) => [s.Service, `${s.State}/${s.Health || "(no healthcheck)"}`]),
+      );
       console.log(`Attempt ${attempt}/${maxAttempts}: container health:`, statuses);
-      // services without a healthcheck report Health as "" — treat those as ready
-      if (services.length > 0 && services.every((s) => s.Health === "healthy" || s.Health === "")) {
+      // services without a healthcheck report Health as "" — treat those as ready when running
+      const allReady = services.every((s) => s.State === "running" && (s.Health === "healthy" || s.Health === ""));
+      if (services.length > 0 && allReady) {
         return;
       }
     } catch (error) {
