@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 
 import { defineVitestProject } from "@nuxt/test-utils/config";
-import { defineConfig } from "vitest/config";
+import { defineConfig, type TestProjectInlineConfiguration } from "vitest/config";
 
 const fakerSeed = Number(process.env.TEST_FAKER_SEED) || Math.floor(Math.random() * 1e9); // to use this, you'll need to create a setup.ts file and add it to the vitest `setupFiles` config
 
@@ -34,7 +34,7 @@ const bunTestStubPath = fileURLToPath(new URL("./tests/setup/bun-test-stub.ts", 
 // node-environment project with it triggers the vite-node + `--conditions=node,import,default`
 // path that breaks dual-export CJS deps inside @vue/compiler-sfc.
 const compiledProject = {
-  extends: true as const,
+  extends: true,
   define: sharedDefine,
   // @nuxt/test-utils v4 has an internal cross-runtime helper that dynamically imports "bun:test".
   // In the compiled test environment Vite tries to pre-bundle it and fails with "Cannot bundle
@@ -62,10 +62,10 @@ const compiledProject = {
     // chunks, so the dev pipeline needs a longer per-test budget than the prod one.
     testTimeout: process.env.NUXT_TEST_DEV === "1" ? 60000 : 15000,
   },
-};
+} satisfies TestProjectInlineConfiguration;
 
 const e2eProject = {
-  extends: true as const,
+  extends: true,
   // the e2e project intentionally bypasses defineVitestProject so that environment stays at "node"
   // (Playwright drives a real browser, so the in-process Nuxt env is unwanted overhead and would
   // interfere with how globalSetup brings up docker-compose). The trade-off is that Nuxt's own vite
@@ -88,7 +88,7 @@ const e2eProject = {
     testTimeout: 15000,
     fileParallelism: false, // TODO: consider if we want to only disable it for some files in the E2E test suite
   },
-};
+} satisfies TestProjectInlineConfiguration;
 
 export default defineConfig({
   define: sharedDefine,
@@ -113,7 +113,6 @@ export default defineConfig({
         "**/tests/**",
         "**/generated/graphql.ts",
         "**/generated/open-api/**",
-        "**/utils/selectors.ts", // this is tested in other repo (and should become a library)
       ],
     },
   },
