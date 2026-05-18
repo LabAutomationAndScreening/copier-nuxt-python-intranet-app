@@ -276,7 +276,8 @@ frontend_deployed_port_number:
 frontend_uses_zod:
     type: bool
     help: Will the frontend use the zod library for form validation?
-    default: false
+    default: "{{ is_circuit_python_driver }}"
+    when: "{{ not is_circuit_python_driver }}"
 
 frontend_nodeport_number:
     type: int
