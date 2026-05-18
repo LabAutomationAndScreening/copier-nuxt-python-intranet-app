@@ -107,13 +107,7 @@ export default defineConfig({
         "100": true,
       },
       include: ["app/**/*.{ts,vue}"],
-      exclude: [
-        // vitest matches `include` patterns with `contains: true` against the absolute file path, so
-        // test helpers under `tests/**` get picked up unless explicitly excluded here
-        "**/tests/**",
-        "**/generated/graphql.ts",
-        "**/generated/open-api/**",
-      ],
+      exclude: ["**/generated/graphql.ts", "**/generated/open-api/**"],
     },
   },
 });
