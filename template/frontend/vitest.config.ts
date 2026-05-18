@@ -107,7 +107,7 @@ export default defineConfig({
         "100": true,
       },
       include: ["app/**/*.{ts,vue}"],
-      exclude: ["**/generated/graphql.ts", "**/generated/open-api/**"],
+      exclude: ["**/generated/**"],
     },
   },
 });
