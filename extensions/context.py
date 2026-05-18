@@ -55,7 +55,7 @@ class ContextUpdater(ContextHook):
         context["python_faker_version"] = ">=40.18.0"
 
         context["default_node_version"] = "24.11.1"
-        context["nuxt_ui_version"] = "^4.6.0"
+        context["nuxt_ui_version"] = "^4.7.1"
         context["nuxt_version"] = "^4.4.5"
         context["nuxt_icon_version"] = "^2.2.1"
         context["typescript_version"] = "^5.9.3"
@@ -80,7 +80,7 @@ class ContextUpdater(ContextHook):
         context["iconify_vue_version"] = "^5.0.0"
         context["iconify_json_lucide_version"] = "^1.2.71"
         context["nuxt_fonts_version"] = "^0.14.0"
-        context["nuxtjs_color_mode_version"] = "^3.5.2"
+        context["nuxtjs_color_mode_version"] = "^4.0.0"
         context["vue_test_utils_version"] = "^2.4.6"
         context["nuxt_test_utils_version"] = "^4.0.3"
         context["vue_eslint_parser_version"] = "^10.4.0"
