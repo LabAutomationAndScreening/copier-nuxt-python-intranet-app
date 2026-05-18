@@ -1,21 +1,104 @@
-import { defineVitestConfig } from "@nuxt/test-utils/config";
-import { coverageConfigDefaults } from "vitest/config";
+import { fileURLToPath } from "node:url";
+
+import { defineVitestProject } from "@nuxt/test-utils/config";
+import { defineConfig, type TestProjectInlineConfiguration } from "vitest/config";
 
 const fakerSeed = Number(process.env.TEST_FAKER_SEED) || Math.floor(Math.random() * 1e9); // to use this, you'll need to create a setup.ts file and add it to the vitest `setupFiles` config
-const isE2E = process.env.USE_DOCKER_COMPOSE_FOR_VITEST_E2E || process.env.USE_BUILT_BACKEND_FOR_VITEST_E2E;
 
-export default defineVitestConfig({
-  define: {
-    __TEST_FAKER_SEED__: JSON.stringify(fakerSeed),
+const sharedDefine = {
+  __TEST_FAKER_SEED__: JSON.stringify(fakerSeed),
+};
+const frontendDir = fileURLToPath(new URL(".", import.meta.url));
+const appDir = fileURLToPath(new URL("./app", import.meta.url));
+const fakerSetupPath = fileURLToPath(new URL("./tests/setup/faker.ts", import.meta.url));
+const appSetupPath = fileURLToPath(new URL("./tests/setup/app.ts", import.meta.url));
+const globalSetupPath = fileURLToPath(new URL("./tests/setup/globalSetup.ts", import.meta.url));
+
+const unitProject = await defineVitestProject({
+  define: sharedDefine,
+  test: {
+    name: "unit",
+    include: ["tests/unit/**/*.spec.ts"],
+    setupFiles: [fakerSetupPath],
+  },
+});
+
+const bunTestStubPath = fileURLToPath(new URL("./tests/setup/bun-test-stub.ts", import.meta.url));
+
+// The compiled-suite spec uses `@nuxt/test-utils/e2e` helpers (`setup()`, `createPage()`)
+// which spawn their own Nuxt build/dev subprocess and drive a real browser. The vitest
+// environment for this project therefore stays at "node" — there is no in-process Nuxt
+// runtime to attach. Per https://github.com/nuxt/nuxt/issues/34645#issuecomment-4109134809
+// (danielroe), `defineVitestProject` from `@nuxt/test-utils/config` is intended only for
+// projects where `environment: "nuxt"` runs nuxt client code in-process; wrapping a
+// node-environment project with it triggers the vite-node + `--conditions=node,import,default`
+// path that breaks dual-export CJS deps inside @vue/compiler-sfc.
+const compiledProject = {
+  extends: true,
+  define: sharedDefine,
+  // @nuxt/test-utils v4 has an internal cross-runtime helper that dynamically imports "bun:test".
+  // In the compiled test environment Vite tries to pre-bundle it and fails with "Cannot bundle
+  // built-in module 'bun:test'". Aliasing to a local stub lets Vite resolve the import; the
+  // Bun-runtime branch never runs under Node so the stub is never invoked.
+  // Tracked upstream: https://github.com/nuxt/test-utils/issues/1490
+  resolve: {
+    alias: {
+      "bun:test": bunTestStubPath,
+      // The compiled spec imports `@nuxt/test-utils/e2e` helpers; those resolve nuxt's
+      // `~`/`~~`/`@`/`@@` aliases internally. The vitest spec itself does not need the
+      // aliases (no `~`-prefixed imports in tests/compiled), but adding them here matches
+      // the e2e project so any future helper imports work without surprise.
+      "~~": frontendDir,
+      "@@": frontendDir,
+      "~": appDir,
+      "@": appDir,
+    },
   },
   test: {
-    fileParallelism: !isE2E, // Disable parallelism for E2E tests // TODO: consider when we start making better use of "workspaces" if we want to only disable it for some files in the E2E test suite
+    name: "compiled",
+    include: ["tests/compiled/**/*.spec.ts"],
+    setupFiles: [fakerSetupPath],
+    // Dev mode cold-compiles modules on first page hit; production build serves prebuilt
+    // chunks, so the dev pipeline needs a longer per-test budget than the prod one.
+    testTimeout: process.env.NUXT_TEST_DEV === "1" ? 60000 : 15000,
+  },
+} satisfies TestProjectInlineConfiguration;
+
+const e2eProject = {
+  extends: true,
+  // the e2e project intentionally bypasses defineVitestProject so that environment stays at "node"
+  // (Playwright drives a real browser, so the in-process Nuxt env is unwanted overhead and would
+  // interfere with how globalSetup brings up docker-compose). The trade-off is that Nuxt's own vite
+  // plugin chain — which normally resolves the `~`/`~~`/`@`/`@@` path aliases — is not in this
+  // project's chain, so the aliases have to be declared explicitly here for the e2e spec imports
+  // (e.g. `import { url } from "~~/tests/e2e/helpers/playwright"`) to resolve.
+  resolve: {
+    alias: {
+      "~~": frontendDir,
+      "@@": frontendDir,
+      "~": appDir,
+      "@": appDir,
+    },
+  },
+  test: {
+    name: "e2e",
+    include: ["tests/e2e/**/*.spec.ts"],
+    setupFiles: [fakerSetupPath, appSetupPath],
+    globalSetup: globalSetupPath,
+    testTimeout: 15000,
+    fileParallelism: false, // TODO: consider if we want to only disable it for some files in the E2E test suite
+  },
+} satisfies TestProjectInlineConfiguration;
+
+export default defineConfig({
+  define: sharedDefine,
+  test: {
     sequence: {
       shuffle: true,
       seed: fakerSeed,
     },
-    include: ["tests/**/*.spec.ts"],
     root: ".",
+    projects: [unitProject, compiledProject, e2eProject],
     coverage: {
       provider: "istanbul",
       reporter: ["text", "json", "html"],
@@ -23,16 +106,8 @@ export default defineVitestConfig({
       thresholds: {
         "100": true,
       },
-      exclude: [
-        "**/scripts/postinstall.mjs",
-        "**/generated/graphql.ts",
-        "**/codegen.ts",
-        "**/generated/open-api",
-        "**/nuxt.config.ts",
-        ...coverageConfigDefaults.exclude,
-      ],
+      include: ["app/**/*.{ts,vue}"],
+      exclude: ["**/generated/**"],
     },
-    setupFiles: ["./tests/setup/faker.ts", "./tests/setup/app.ts"],
-    globalSetup: "./tests/setup/globalSetup.ts",
   },
 });

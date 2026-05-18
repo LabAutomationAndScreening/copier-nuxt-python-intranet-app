@@ -82,7 +82,8 @@ jobs:
           name: frontend-test-coverage
           path: frontend/.coverage
           if-no-files-found: error
-          include-hidden-files: true{% endraw %}{% if has_backend %}{% raw %}
+          include-hidden-files: true
+          retention-days: 5{% endraw %}{% if has_backend %}{% raw %}
 
   unit-test-backend:
     name: Unit Test Backend
@@ -116,7 +117,8 @@ jobs:
         with:
           name: backend-test-coverage-${{ matrix.os }}
           path: backend/coverage-report-pytest
-          if-no-files-found: error{% endraw %}{% endif %}{% raw %}
+          if-no-files-found: error
+          retention-days: 5{% endraw %}{% endif %}{% raw %}
 
   build-frontend:
     needs:
@@ -161,6 +163,7 @@ jobs:
           name: frontend-static-assets
           path: frontend/.output/public/**/*
           if-no-files-found: error
+          retention-days: 5
 
 {% endraw %}{% endif %}{% raw %}
 
@@ -226,17 +229,19 @@ jobs:
           name: built-{% endraw %}{{ repo_name }}{% raw %}-${{ matrix.os }}
           path: backend/dist/{% endraw %}{{ repo_name }}{% raw %}/**/*
           if-no-files-found: error
+          retention-days: 5
       - name: Upload application artifact (Linux)
         if: runner.os == 'Linux'
         uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
         with:
           name: built-{% endraw %}{{ repo_name }}{% raw %}-${{ matrix.os }}
           path: app.tar
-          if-no-files-found: error{% endraw %}{% endif %}{% raw %}{% endraw %}{% endif %}{% raw %}
+          if-no-files-found: error
+          retention-days: 5{% endraw %}{% endif %}{% raw %}{% endraw %}{% endif %}{% raw %}
 
 
-  test-compiled-frontend:
-    name: Test the compiled Frontend
+  test-compiled-frontend-dev:
+    name: Test the compiled Frontend for pnpm dev mode
     timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     needs:
@@ -255,7 +260,7 @@ jobs:
           skip-installing-ssm-plugin-manager: true
 
       - name: Test
-        run: pnpm --dir=frontend test-compiled{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+        run: pnpm --dir=frontend test-compiled-dev{% endraw %}{% if is_circuit_python_driver %}{% raw %}
 
   e2e-test-k3d:
     name: End-to-end Testing on k3d
@@ -527,7 +532,8 @@ jobs:
       with:
         name: {% endraw %}{{ repo_name }}{% raw %}-deployment-package
         path: deployment-package-folder/**/*
-        if-no-files-found: error{% endraw %}{% endif %}{% raw %}{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
+        if-no-files-found: error
+        retention-days: 5{% endraw %}{% endif %}{% raw %}{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
 
   package-firmware:
     name: Package Firmware
@@ -568,7 +574,8 @@ jobs:
       with:
         name: {% endraw %}{{ repo_name.removesuffix('-driver') }}{% raw %}-firmware-v${{ steps.get-version.outputs.version }}
         path: ./backend/src/backend_api/firmware/src/**/*
-        if-no-files-found: error{% endraw %}{% endif %}{% raw %}
+        if-no-files-found: error
+        retention-days: 5{% endraw %}{% endif %}{% raw %}
 
   confirm-on-tagged-copier-template:
     if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
@@ -586,7 +593,7 @@ jobs:
       - unit-test-backend
       - build-backend{% endraw %}{% endif %}{% raw %}{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
       - package-images{% endraw %}{% endif %}{% raw %}
-      - test-compiled-frontend{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
+      - test-compiled-frontend-dev{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
       - package-firmware{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
       - e2e-test-backend{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
       - e2e-test-k3d{% endraw %}{% endif %}{% raw %}
@@ -608,7 +615,7 @@ jobs:
             [[ ! "${{ needs.unit-test-backend.result }}" =~ $success_pattern ]] ||
             [[ ! "${{ needs.build-backend.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
             [[ ! "${{ needs.package-images.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}
-            [[ ! "${{ needs.test-compiled-frontend.result }}" =~ $success_pattern ]] ||{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
+            [[ ! "${{ needs.test-compiled-frontend-dev.result }}" =~ $success_pattern ]] ||{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
             [[ ! "${{ needs.package-firmware.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
             [[ ! "${{ needs.e2e-test-backend.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
             [[ ! "${{ needs.e2e-test-k3d.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}

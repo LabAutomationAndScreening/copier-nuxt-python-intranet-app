@@ -5,7 +5,7 @@ import path from "path";
 import type { Browser } from "playwright";
 import { chromium } from "playwright";
 import type { TestProject } from "vitest/node";
-import { APP_NAME, DEPLOYED_BACKEND_PORT_NUMBER, DEPLOYED_FRONTEND_PORT_NUMBER } from "~~/tests/setup/constants";
+import { APP_NAME, DEPLOYED_BACKEND_PORT_NUMBER, DEPLOYED_FRONTEND_PORT_NUMBER } from "./constants";
 
 function getRandomOpenPort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -45,9 +45,89 @@ if (isBuiltBackendE2E) {
   }
 }
 export const BASE_URL = `http://127.0.0.1:${isBuiltBackendE2E ? availablePort : DEPLOYED_FRONTEND_PORT_NUMBER}`;
-const healthCheckUrl = `http://127.0.0.1:${
-  isBuiltBackendE2E ? availablePort.toString() + "/api/healthcheck" : DEPLOYED_FRONTEND_PORT_NUMBER
-}`; // TODO: if there is a backend, check that too, even if it's a docker-compose situation
+const executableHealthCheckUrl = `http://127.0.0.1:${availablePort}/api/healthcheck`;
+
+async function waitForHttpHealthcheck({
+  url,
+  maxAttempts = 10,
+  requestTimeoutMs = 5000,
+}: {
+  url: string;
+  maxAttempts?: number;
+  requestTimeoutMs?: number;
+}): Promise<void> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(requestTimeoutMs) });
+      if (res.ok) {
+        return;
+      }
+    } catch {
+      // ignore errors // TODO: make this more specific (e.g., only ignore network errors)
+    }
+    console.log(`Waiting for ${url} to become available... Attempt ${attempt}`);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  throw new Error(`Timeout waiting for ${url}`);
+}
+
+interface ComposePsService {
+  Service: string;
+  Health: string;
+  State: string;
+}
+
+function isComposePsService(value: unknown): value is ComposePsService {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  if (!("Service" in value) || typeof value.Service !== "string") {
+    return false;
+  }
+  if (!("Health" in value) || typeof value.Health !== "string") {
+    return false;
+  }
+  if (!("State" in value) || typeof value.State !== "string") {
+    return false;
+  }
+  return true;
+}
+
+async function waitForDockerComposeHealthy({
+  maxAttempts = 30,
+  retryDelayMs = 2000,
+}: { maxAttempts?: number; retryDelayMs?: number } = {}): Promise<void> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const stdout = execSync("docker compose --file=../docker-compose.yaml ps --format json", {
+        encoding: "utf-8",
+        timeout: 10000,
+      });
+      const lines = stdout.split("\n").filter((line) => line.trim().length > 0);
+      const services: ComposePsService[] = [];
+      for (const line of lines) {
+        const parsed: unknown = JSON.parse(line);
+        if (!isComposePsService(parsed)) {
+          throw new Error(`Unexpected docker compose ps entry shape: ${line}`);
+        }
+        services.push(parsed);
+      }
+      const statuses = Object.fromEntries(
+        services.map((s) => [s.Service, `${s.State}/${s.Health || "(no healthcheck)"}`]),
+      );
+      console.log(`Attempt ${attempt}/${maxAttempts}: container health:`, statuses);
+      // services without a healthcheck report Health as "" — treat those as ready when running
+      const allReady = services.every((s) => s.State === "running" && (s.Health === "healthy" || s.Health === ""));
+      if (services.length > 0 && allReady) {
+        return;
+      }
+    } catch (error) {
+      console.log(`Attempt ${attempt}/${maxAttempts}: error querying container health:`, error);
+    }
+    await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+  }
+  throw new Error(`docker-compose containers failed to become healthy after ${maxAttempts} attempts`);
+}
 
 export async function setup(project: TestProject) {
   project.provide("baseUrl", BASE_URL);
@@ -84,24 +164,10 @@ export async function setup(project: TestProject) {
       );
     }
     browser = await chromium.launch(); // headless by default
-    // Wait for /api/healthcheck to become available
-    const maxAttempts = 10;
-    let attempts = 0;
-    while (attempts < maxAttempts) {
-      try {
-        const res = await fetch(healthCheckUrl);
-        if (res.ok) {
-          break;
-        }
-      } catch {
-        // ignore errors // TODO: make this more specific (e.g., only ignore network errors)
-      }
-      attempts++;
-      console.log(`Waiting for ${healthCheckUrl} to become available... Attempt ${attempts}`);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-    if (attempts === maxAttempts) {
-      throw new Error(`Timeout waiting for ${healthCheckUrl}`);
+    if (isDockerE2E) {
+      await waitForDockerComposeHealthy();
+    } else if (isBuiltBackendE2E) {
+      await waitForHttpHealthcheck({ url: executableHealthCheckUrl });
     }
   }
 }

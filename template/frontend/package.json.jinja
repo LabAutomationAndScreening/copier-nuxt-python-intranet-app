@@ -6,7 +6,7 @@
   "packageManager": "pnpm@{% endraw %}{{ pnpm_version }}{% raw %}",
   "scripts": {
     "type-check": "vue-tsc --noEmit",
-    "lint": "eslint . --fix --ext .vue,.ts,.js",
+    "lint": "eslint . --fix",
     "build": "nuxt build",
     "comment-about-dev-no-fork": "sometimes it seems needed, other times it seems to work with it...more info https://github.com/nuxt/cli/issues/181",
     "dev": "nuxt dev --no-fork",{% endraw %}{% if has_backend %}{% raw %}
@@ -14,11 +14,13 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "node ./scripts/postinstall.mjs",
-    "test-unit": "vitest run --exclude=\"tests/e2e/**\" --exclude=\"tests/compiled/**\" --coverage",
-    "test-unit:watch": "vitest --exclude=\"tests/e2e/**\" --exclude=\"tests/compiled/**\"",
-    "test-compiled": "dotenv -v NUXT_DISABLE_OPTIMIZE_DEPS=1 -- vitest run --exclude=\"tests/e2e/**\" --exclude=\"tests/unit/**\" --test-timeout=15000",
-    "test-e2e": "{% endraw %}{% if not deploy_as_executable %}{% raw %}[ \"${CI}\" = \"true\" ] || docker compose --file=../docker-compose.yaml build && dotenv -v USE_DOCKER_COMPOSE_FOR_VITEST_E2E=1{% endraw %}{% else %}{% raw %}dotenv -v USE_BUILT_BACKEND_FOR_VITEST_E2E=1{% endraw %}{% endif %}{% raw %} -- vitest run --exclude=\"tests/unit/**\" --exclude=\"tests/compiled/**\" --test-timeout=15000",
-    "test-compiled:watch": "dotenv -v NUXT_DISABLE_OPTIMIZE_DEPS=1 -- vitest --exclude=\"tests/e2e/**\" --exclude=\"tests/unit/**\" --test-timeout=15000"{% endraw %}{% if frontend_uses_graphql %}{% raw %},
+    "test-unit": "vitest run --project=unit --coverage",
+    "test-unit:watch": "vitest --project=unit",
+    "test-compiled": "dotenv -v NUXT_DISABLE_OPTIMIZE_DEPS=1 -- vitest run --project=compiled",
+    "test-compiled-dev": "dotenv -v NUXT_DISABLE_OPTIMIZE_DEPS=1 -v NUXT_TEST_DEV=1 -- vitest run --project=compiled",
+    "test-e2e": "{% endraw %}{% if not deploy_as_executable %}{% raw %}[ \"${CI}\" = \"true\" ] || docker compose --file=../docker-compose.yaml build && dotenv -v USE_DOCKER_COMPOSE_FOR_VITEST_E2E=1{% endraw %}{% else %}{% raw %}dotenv -v USE_BUILT_BACKEND_FOR_VITEST_E2E=1{% endraw %}{% endif %}{% raw %} -- vitest run --project=e2e",
+    "test-compiled:watch": "dotenv -v NUXT_DISABLE_OPTIMIZE_DEPS=1 -- vitest --project=compiled",
+    "test-compiled-dev:watch": "dotenv -v NUXT_DISABLE_OPTIMIZE_DEPS=1 -v NUXT_TEST_DEV=1 -- vitest --project=compiled"{% endraw %}{% if frontend_uses_graphql %}{% raw %},
     "codegen": "graphql-codegen --config codegen.ts"{% endraw %}{% endif %}{% raw %}
   },
   "dependencies": {
@@ -45,28 +47,31 @@
     "@graphql-codegen/typescript-vue-apollo": "^5.0.0",
     "@graphql-tools/mock": "^9.0.22",
     "@graphql-tools/schema": "^10.0.23",{% endraw %}{% endif %}{% raw %}
+    "@microsoft/kiota-serialization-form": "{% endraw %}{{ node_kiota_bundle_version }}{% raw %}",
+    "@microsoft/kiota-serialization-json": "{% endraw %}{{ node_kiota_bundle_version }}{% raw %}",
+    "@microsoft/kiota-serialization-multipart": "{% endraw %}{{ node_kiota_bundle_version }}{% raw %}",
+    "@microsoft/kiota-serialization-text": "{% endraw %}{{ node_kiota_bundle_version }}{% raw %}",
     "@nuxt/eslint": "{% endraw %}{{ nuxt_eslint_version }}{% raw %}",
     "@nuxt/schema": "{% endraw %}{{ nuxt_version }}{% raw %}",
     "@nuxt/test-utils": "{% endraw %}{{ nuxt_test_utils_version }}{% raw %}",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
     "@nuxtjs/apollo": "{% endraw %}{{ nuxt_apollo_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
-    "@nuxtjs/eslint-config-typescript": "^12.1.0",
     "@playwright/test": "{% endraw %}{{ playwright_version }}{% raw %}",
     "@types/node": "^{% endraw %}{{ node_version.split('.')[0] }}{% raw %}",
-    "@vitest/coverage-istanbul": "{% endraw %}{{ vitest_version }}{% raw %}",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
+    "@vitest/coverage-istanbul": "{% endraw %}{{ vitest_version }}{% raw %}",
+    "@vitest/eslint-plugin": "{% endraw %}{{ vitest_eslint_plugin_version }}{% raw %}",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
     "@vue/apollo-composable": "^4.2.2",{% endraw %}{% endif %}{% raw %}
     "@vue/devtools-api": "{% endraw %}{{ vue_devtools_api_version }}{% raw %}",
     "@vue/test-utils": "{% endraw %}{{ vue_test_utils_version }}{% raw %}",
     "autoprefixer": "^10.5.0",
     "dotenv-cli": "{% endraw %}{{ dotenv_cli_version }}{% raw %}",
-    "eslint": "{% endraw %}{{ eslint_version }}{% raw %}",
-    "eslint-plugin-vitest": "^0.5.4",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
-    "graphql": "^16.12.0",
+    "eslint": "{% endraw %}{{ eslint_version }}{% raw %}",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
+    "graphql": "^16.14.0",
     "graphql-tag": "^2.12.6",{% endraw %}{% endif %}{% raw %}
     "happy-dom": "{% endraw %}{{ happy_dom_version }}{% raw %}",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
     "mock-apollo-client": "^1.4.0",{% endraw %}{% endif %}{% raw %}
     "playwright": "{% endraw %}{{ playwright_version }}{% raw %}",
     "playwright-core": "{% endraw %}{{ playwright_version }}{% raw %}",
-    "postcss": "^8.5.3",
+    "postcss": "^8.5.14",
     "tailwindcss": "{% endraw %}{{ tailwindcss_version }}{% raw %}",
     "typescript": "{% endraw %}{{ typescript_version }}{% raw %}",
     "vitest": "{% endraw %}{{ vitest_version }}{% raw %}",
