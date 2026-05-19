@@ -86,7 +86,7 @@ class ContextUpdater(ContextHook):
         context["vue_eslint_parser_version"] = "^10.4.0"
         context["happy_dom_version"] = "^20.9.0"
         context["node_kiota_bundle_version"] = "1.0.0-preview.100"
-        context["labsync_nuxt_common_version"] = "^0.0.5"
+        context["labsync_nuxt_common_version"] = "^0.1.0"
         context["tanstack_vue_table_version"] = "^8.21.3"
 
         context["gha_checkout"] = "v6.0.2"
