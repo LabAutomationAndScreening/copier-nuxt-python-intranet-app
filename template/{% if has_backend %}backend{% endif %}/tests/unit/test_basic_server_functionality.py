@@ -65,15 +65,16 @@ def test_When_shutdown_route_called__Then_system_exit(mocker: MockerFixture):
 
 def test_openapi_schema(snapshot_json: SnapshotAssertion, mocker: MockerFixture):
     client = TestClient(app)
+    app.openapi_schema = None  # reset cache populated by other tests
     spied_get_openapi = mocker.spy(fast_api_exception_handlers, "get_openapi")
 
-    response = client.get("/openapi.json")
+    response = client.get("/api/openapi.json")
 
     assert response.status_code == codes.OK
     assert response.json() == snapshot_json
     assert spied_get_openapi.call_count == 1
 
-    re_response = client.get("/openapi.json")
+    re_response = client.get("/api/openapi.json")
     assert re_response.status_code == codes.OK
     assert re_response.text == response.text
     assert spied_get_openapi.call_count == 1  # still 1, not reinvoked
