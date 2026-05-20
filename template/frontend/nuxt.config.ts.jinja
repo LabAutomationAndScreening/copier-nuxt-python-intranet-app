@@ -13,7 +13,8 @@ export default defineNuxtConfig({
   // the conditional modules added in by the template make it complicated to format consistently...at least with only 3 'always included' modules
   // prettier-ignore
   modules: [
-    "@nuxt/ui"{% endraw %}{% if frontend_uses_graphql %}{% raw %},
+    {% endraw %}{% if is_circuit_python_driver %}{% raw %}"@lab-sync/nuxt-common",
+    {% endraw %}{% endif %}{% raw %}"@nuxt/ui"{% endraw %}{% if frontend_uses_graphql %}{% raw %},
     "@nuxtjs/apollo"{% endraw %}{% endif %}{% raw %},
     ["@nuxt/eslint", { devOnly: true }],
     ["@nuxt/test-utils/module", { devOnly: true }],
