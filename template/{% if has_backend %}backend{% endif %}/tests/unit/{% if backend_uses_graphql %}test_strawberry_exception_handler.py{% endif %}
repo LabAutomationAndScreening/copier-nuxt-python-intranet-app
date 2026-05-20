@@ -31,7 +31,7 @@ class Query:
         return _run_other_logic(value)
 
 
-schema = strawberry.Schema(query=Query, extensions=[AddErrorTrace()])
+schema = strawberry.Schema(query=Query, extensions=[AddErrorTrace])
 
 GQL = """query ($value: String!) {
                 doSomething(value: $value)
