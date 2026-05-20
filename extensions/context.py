@@ -13,7 +13,7 @@ class ContextUpdater(ContextHook):
         self, context: dict[Any, Any]
     ) -> dict[Any, Any]:
         context["uv_version"] = "0.11.14"
-        context["pnpm_version"] = "11.1.2"
+        context["pnpm_version"] = "11.1.3"
         context["npm_version"] = "11.13.0"
         context["nvm_version"] = "0.40.4"
         context["pre_commit_version"] = "4.5.1"
@@ -21,8 +21,8 @@ class ContextUpdater(ContextHook):
         context["pytest_version"] = ">=9.0.3"
         context["pytest_randomly_version"] = ">=4.1.0"
         context["pytest_cov_version"] = ">=7.1.0"
-        context["ty_version"] = ">=0.0.34"
-        context["copier_version"] = "==9.15.0"
+        context["ty_version"] = ">=0.0.37"
+        context["copier_version"] = "==9.15.1"
         context["copier_template_extensions_version"] = "==0.3.3"
         context["sphinx_version"] = "9.0.4"
         context["pulumi_version"] = ">=3.234.0"
@@ -39,11 +39,11 @@ class ContextUpdater(ContextHook):
         context["strawberry_graphql_version"] = ">=0.298.0"
         context["fastapi_version"] = ">=0.136.1"
         context["fastapi_offline_version"] = ">=1.7.4"
-        context["uvicorn_version"] = ">=0.46.0"
+        context["uvicorn_version"] = ">=0.47.0"
         context["lab_auto_pulumi_version"] = ">=0.2.0"
         context["ariadne_codegen_version"] = ">=0.18.0"
         context["pytest_mock_version"] = ">=3.15.1"
-        context["uuid_utils_version"] = ">=0.14.0"
+        context["uuid_utils_version"] = ">=0.16.0"
         context["syrupy_version"] = ">=5.2.0"
         context["structlog_version"] = ">=25.5.0"
         context["httpx_version"] = ">=0.28.1"
@@ -61,7 +61,7 @@ class ContextUpdater(ContextHook):
         context["typescript_version"] = "^5.9.3"
         context["playwright_version"] = "^1.60.0"
         context["vue_version"] = "^3.5.30"
-        context["vue_tsc_version"] = "^3.2.4"
+        context["vue_tsc_version"] = "^3.3.0"
         context["vue_devtools_api_version"] = "^8.1.0"
         context["vue_router_version"] = "^5.0.3"
         context["dotenv_cli_version"] = "^11.0.0"
@@ -120,7 +120,7 @@ class ContextUpdater(ContextHook):
 
         context["debian_release_name"] = "trixie"
         context["alpine_image_version"] = "3.23"
-        context["nginx_image_version"] = "1.29.4"
+        context["nginx_image_version"] = "1.30.1"
 
         context["kiota_cli_version"] = "1.31.1"
 
