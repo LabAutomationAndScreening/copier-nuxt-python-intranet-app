@@ -161,6 +161,12 @@ use_upx_for_executable:
     default: yes
     when: "{{ deploy_as_executable }}"
 
+install_as_windows_service:
+    type: bool
+    help: Should this application be installable as a Windows service?
+    default: "{{ deploy_as_executable and use_windows_in_ci }}"
+    when: "{{ deploy_as_executable and use_windows_in_ci }}"
+
 install_gcc_in_backend_container_build_phase:
     type: bool
     help: Is GCC required to build any Python dependencies in the backend container?
