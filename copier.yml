@@ -62,6 +62,11 @@ node_version:
     help: What version of NodeJS is used for development?
     default: "{{ default_node_version }}"
 
+pnpm_minimum_release_age_exclude:
+    type: str
+    help: "Comma-delimited list of package name patterns to exclude from pnpm's minimumReleaseAge constraint (leave empty for none)"
+    default: ""
+
 
 install_aws_ssm_port_forwarding_plugin:
     type: bool
@@ -333,6 +338,27 @@ _tasks:
                 chmod +x "$script"
             fi
         done
+  - command: |
+        if [ -f pnpm-workspace.yaml ]; then
+            IFS=',' read -r -a _mrae_parts <<< '{{ pnpm_minimum_release_age_exclude }}'
+            if ! grep -q '^minimumReleaseAgeExclude:' pnpm-workspace.yaml; then
+                printf '\nminimumReleaseAgeExclude:\n' >> pnpm-workspace.yaml
+                for _mrae_part in "${_mrae_parts[@]}"; do
+                    _mrae_pat="${_mrae_part#"${_mrae_part%%[![:space:]]*}"}"
+                    _mrae_pat="${_mrae_pat%"${_mrae_pat##*[![:space:]]}"}"
+                    [ -n "$_mrae_pat" ] && printf '  - %s\n' "$_mrae_pat" >> pnpm-workspace.yaml
+                done
+            else
+                for _mrae_part in "${_mrae_parts[@]}"; do
+                    _mrae_pat="${_mrae_part#"${_mrae_part%%[![:space:]]*}"}"
+                    _mrae_pat="${_mrae_pat%"${_mrae_pat##*[![:space:]]}"}"
+                    if [ -n "$_mrae_pat" ] && ! grep -qF "  - ${_mrae_pat}" pnpm-workspace.yaml; then
+                        sed -i "/^minimumReleaseAgeExclude:/a\\  - ${_mrae_pat}" pnpm-workspace.yaml
+                    fi
+                done
+            fi
+        fi
+    when: "{{ pnpm_minimum_release_age_exclude }}"
   - command: |
         if [ -f ruff.toml ]; then
             echo "Updating ruff target-version from python_version..."

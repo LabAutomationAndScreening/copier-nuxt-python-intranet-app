@@ -13,6 +13,8 @@ configure_vcrpy: false
 configure_python_asyncio: false
 
 node_version: 24.11.1
+pnpm_minimum_release_age_exclude: 'somelib, another-pkg'
+
 
 python_package_registry: AWS CodeArtifact
 aws_central_infrastructure_account_id: 012321432543
