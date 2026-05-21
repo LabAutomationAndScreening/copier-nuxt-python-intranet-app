@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 def _parse_patterns(raw: str) -> list[str]:
-    return [p.strip() for p in raw.split(",") if p.strip()]
+    return [p.strip().strip('"').strip("'") for p in raw.split(",") if p.strip()]
 
 
 def _pattern_present(lines: list[str], pattern: str) -> bool:
@@ -28,33 +28,21 @@ def ensure_minimum_release_age_exclude(*, workspace_path: Path, patterns: list[s
 
     lines = text.splitlines(keepends=True)
     missing = [p for p in patterns if not _pattern_present(lines, p)]
-
     if not missing:
         return
-
     for i, line in enumerate(lines):
         if re.match(r"^minimumReleaseAgeExclude:", line):
             for j, pattern in enumerate(missing):
                 lines.insert(i + 1 + j, f'  - "{pattern}"\n')
             break
-
     _ = workspace_path.write_text("".join(lines), encoding="utf-8")
     print(f"Added {len(missing)} missing pattern(s): {', '.join(missing)}")  # noqa: T201 -- copier task output must reach the user
 
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    _ = parser.add_argument(
-        "--patterns",
-        required=True,
-        help="Comma-delimited list of package name patterns to ensure are present.",
-    )
-    _ = parser.add_argument(
-        "--target-file",
-        default="pnpm-workspace.yaml",
-        dest="target_file",
-        help="Path to the pnpm-workspace.yaml file (default: pnpm-workspace.yaml).",
-    )
+    _ = parser.add_argument("--patterns", required=True)
+    _ = parser.add_argument("--target-file", default="pnpm-workspace.yaml", dest="target_file")
     return parser.parse_args()
 
 
