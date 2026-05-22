@@ -72,6 +72,7 @@ repos:
               .*tests/.*/__snapshots__/.*|
               .devcontainer/devcontainer-lock.json|
               .*\.copier-answers\.yml(\.jinja(-base)?)?|
+              .*vitest.config.ts\.jinja|
               .*\.xml|
               .*\.svg|
               .*/vendor_files/.*|
