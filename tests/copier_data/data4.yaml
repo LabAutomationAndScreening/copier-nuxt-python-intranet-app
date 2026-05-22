@@ -13,6 +13,7 @@ configure_vcrpy: true
 configure_python_asyncio: false
 
 node_version: 22.13.0
+pnpm_minimum_release_age_exclude: ''
 
 python_package_registry: PyPI
 aws_identity_center_id: d-9145c20053

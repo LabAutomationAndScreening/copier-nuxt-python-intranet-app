@@ -13,6 +13,7 @@ configure_vcrpy: false
 configure_python_asyncio: true
 
 node_version: 22.13.0
+pnpm_minimum_release_age_exclude: 'ooga-chaka,@blarg/*'
 
 python_package_registry: PyPI
 aws_identity_center_id: d-9145c20053
