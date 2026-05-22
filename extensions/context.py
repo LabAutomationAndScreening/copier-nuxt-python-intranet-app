@@ -88,6 +88,7 @@ class ContextUpdater(ContextHook):
         context["node_kiota_bundle_version"] = "1.0.0-preview.100"
         context["labsync_nuxt_common_version"] = "^0.1.0"
         context["tanstack_vue_table_version"] = "^8.21.3"
+        context["unplugin_auto_import_version"] = "^21.0.0"
 
         context["gha_checkout"] = "v6.0.2"
         context["gha_setup_python"] = "v6.2.0"

@@ -2,7 +2,8 @@ import { fileURLToPath } from "node:url";
 
 import { defineVitestProject } from "@nuxt/test-utils/config";
 import { defineConfig, type TestProjectInlineConfiguration } from "vitest/config";
-
+{% if is_circuit_python_driver %}import AutoImport from "unplugin-auto-import/vite";
+{% endif %}
 const fakerSeed = Number(process.env.TEST_FAKER_SEED) || Math.floor(Math.random() * 1e9); // to use this, you'll need to create a setup.ts file and add it to the vitest `setupFiles` config
 
 const sharedDefine = {
@@ -80,6 +81,24 @@ const e2eProject = {
       "@": appDir,
     },
   },
+{% if is_circuit_python_driver %}
+  // Nuxt auto-imports (like `useKiotaClient`) are injected at build time by Nuxt's vite plugin
+  // chain, which is absent here. This plugin replicates that injection for the e2e test context
+  // so composables that rely on auto-imports (e.g. useBackendClient → useKiotaClient) resolve.
+  plugins: [
+    AutoImport({
+      imports: [
+        {
+          "@lab-sync/nuxt-common": [
+            "useKiotaClient",
+            "_resetKiotaClientForTests",
+          ],
+        },
+      ],
+      dts: false, // type-checking runs separately via pre-commit; no .d.ts needed here
+    }),
+  ],
+{% endif %}
   test: {
     name: "e2e",
     include: ["tests/e2e/**/*.spec.ts"],

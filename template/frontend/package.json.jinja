@@ -75,7 +75,8 @@
     "playwright-core": "{% endraw %}{{ playwright_version }}{% raw %}",
     "postcss": "^8.5.14",
     "tailwindcss": "{% endraw %}{{ tailwindcss_version }}{% raw %}",
-    "typescript": "{% endraw %}{{ typescript_version }}{% raw %}",
+    "typescript": "{% endraw %}{{ typescript_version }}{% raw %}",{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+    "unplugin-auto-import": "{% endraw %}{{ unplugin_auto_import_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
     "vitest": "{% endraw %}{{ vitest_version }}{% raw %}",
     "vue-eslint-parser": "{% endraw %}{{ vue_eslint_parser_version }}{% raw %}",
     "vue-tsc": "{% endraw %}{{ vue_tsc_version }}{% raw %}"
