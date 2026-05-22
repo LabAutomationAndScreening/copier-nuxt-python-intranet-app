@@ -115,6 +115,8 @@ spec:
               value: "{{ .Values.env.frontend.BACKEND_PORT }}"
             - name: MDNS_REGISTRATION_PORT
               value: "{{ default .Values.env.frontend.BACKEND_PORT .Values.service.backend.nodePort }}"
+            - name: MDNS_REGISTRATION_FRONTEND_PORT
+              value: "{{ default .Values.env.frontend.FRONTEND_PORT .Values.service.frontend.nodePort }}"
 {{- if regexMatch "^[0-9]" .Values.env.frontend.BACKEND_HOST }} # only set this if it starts with a number (i.e. is an IP address)
             - name: MDNS_REGISTRATION_ADDRESSES
               value: "{{ .Values.env.frontend.BACKEND_HOST }}"

@@ -62,6 +62,11 @@ node_version:
     help: What version of NodeJS is used for development?
     default: "{{ default_node_version }}"
 
+pnpm_minimum_release_age_exclude:
+    type: str
+    help: "Comma-delimited list of package name patterns to exclude from pnpm's minimumReleaseAge constraint (leave empty for none)"
+    default: ""
+
 
 install_aws_ssm_port_forwarding_plugin:
     type: bool
@@ -160,6 +165,12 @@ use_upx_for_executable:
     help: Should UPX be used to compress the executable? On Windows this can make the compiled program smaller, but increases the risk of being flagged by antivirus software.
     default: yes
     when: "{{ deploy_as_executable }}"
+
+install_as_windows_service:
+    type: bool
+    help: Should this application be installable as a Windows service?
+    default: "{{ deploy_as_executable and use_windows_in_ci }}"
+    when: "{{ deploy_as_executable and use_windows_in_ci }}"
 
 install_gcc_in_backend_container_build_phase:
     type: bool
@@ -327,6 +338,10 @@ _tasks:
                 chmod +x "$script"
             fi
         done
+  - command: |
+        export PNPM_PATTERNS='{{ pnpm_minimum_release_age_exclude }}'
+        python3 '{{ _copier_conf.src_path }}/src/copier_tasks/ensure_pnpm_minimum_release_age_exclude.py' --patterns "$PNPM_PATTERNS"
+    when: "{{ pnpm_minimum_release_age_exclude }}"
   - command: |
         if [ -f ruff.toml ]; then
             echo "Updating ruff target-version from python_version..."

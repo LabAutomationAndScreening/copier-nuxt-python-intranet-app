@@ -13,6 +13,8 @@ configure_vcrpy: true
 configure_python_asyncio: true
 
 node_version: 24.11.1
+pnpm_minimum_release_age_exclude: ''
+
 
 python_package_registry: PyPI
 aws_identity_center_id: d-9145c20053
@@ -30,6 +32,7 @@ backend_deployed_port_number: 8080
 backend_uses_graphql: true
 deploy_as_executable: false
 use_upx_for_executable: false
+install_as_windows_service: false
 is_circuit_python_driver: true
 has_circuit_python_backend_template_been_instantiated: false
 install_gcc_in_backend_container_build_phase: true

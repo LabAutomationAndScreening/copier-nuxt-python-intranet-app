@@ -5,8 +5,8 @@ from unittest import mock{% endraw %}{% endif %}{% raw %}
 import pytest
 from backend_api import configure_logging
 from backend_api.app_def import app{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
-from backend_api.common.mdns import DEVICE_SOURCE_BRIDGE_ALLOW_LIST_ENV_VAR_NAME
-from backend_api.common.rfc_servers_jinja import reset_servers_container{% endraw %}{% endif %}{% raw %}
+from backend_api.common import DEVICE_SOURCE_BRIDGE_ALLOW_LIST_ENV_VAR_NAME
+from backend_api.common import reset_servers_container{% endraw %}{% endif %}{% raw %}
 from fastapi import FastAPI
 
 {% endraw %}{% if configure_python_asyncio %}{% raw %}from .asyncio_fixtures import fail_on_background_task_errors  # noqa: F401 # this is an autouse fixture

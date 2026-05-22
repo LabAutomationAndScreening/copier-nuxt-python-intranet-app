@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 from typing import override
 {% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
+from backend_api.lib import parse_port
 from fastapi import FastAPI{% endraw %}{% endif %}{% raw %}
 from fastapi import Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -46,7 +47,7 @@ async def lifespan(app: FastAPI):
         except AttributeError:
             port = 4000  # when not invoking from the entrypoint, port may not have been set, so fall back to default dev port
         assert isinstance(port, int), f"Expected port to be int, but got {port} of type {type(port)}"
-        mdns_port = int(os.getenv(MDNS_REGISTRATION_PORT_ENV_VAR_NAME, port))
+        mdns_port = {% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}parse_port(env_var_name=MDNS_REGISTRATION_PORT_ENV_VAR_NAME, default=port) # TODO: make parse_port library so can use everywhere{% endraw %}{% else %}{% raw %}int(os.getenv(MDNS_REGISTRATION_PORT_ENV_VAR_NAME, port)){% endraw %}{% endif %}{% raw %}
         await register_driver(azc=azc, port=mdns_port)
         app.state.zc_browser = SimpleBrowser(azc)
         app.state.simulator_config_builder = build_simulator_config
@@ -80,6 +81,7 @@ try:
         favicon_url="favicon.ico",
         version=VERSION,
         docs_url="/api-docs",
+        openapi_url="/api/openapi.json",
         static_url="/static/swagger",{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
         lifespan=lifespan,{% endraw %}{% endif %}{% raw %}
     )
