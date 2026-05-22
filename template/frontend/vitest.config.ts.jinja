@@ -4,6 +4,7 @@ import { defineVitestProject } from "@nuxt/test-utils/config";
 {% if is_circuit_python_driver %}import AutoImport from "unplugin-auto-import/vite";
 {% endif %}
 import { defineConfig, type TestProjectInlineConfiguration } from "vitest/config";
+
 const fakerSeed = Number(process.env.TEST_FAKER_SEED) || Math.floor(Math.random() * 1e9); // to use this, you'll need to create a setup.ts file and add it to the vitest `setupFiles` config
 
 const sharedDefine = {
