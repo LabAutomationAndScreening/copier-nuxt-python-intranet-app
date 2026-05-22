@@ -26,7 +26,7 @@ if (isE2E) {
     });
 
     onTestFailed(async () => {
-      const screenshotDir = path.resolve("./test-results");
+      const screenshotDir = path.resolve("./test-screenshots");
       fs.mkdirSync(screenshotDir, { recursive: true });
       const safeName = ctx.task.name.replace(/[^\w-]/g, "_");
       const screenshotPath = path.join(screenshotDir, `${safeName}.png`);
