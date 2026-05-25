@@ -62,11 +62,6 @@ node_version:
     help: What version of NodeJS is used for development?
     default: "{{ default_node_version }}"
 
-pnpm_minimum_release_age_exclude:
-    type: str
-    help: "Comma-delimited list of package name patterns to exclude from pnpm's minimumReleaseAge constraint (leave empty for none)"
-    default: ""
-
 
 install_aws_ssm_port_forwarding_plugin:
     type: bool
@@ -315,6 +310,10 @@ repo_names_for_codespaces_read_permissions:
         {%- else -%}
 
         {%- endif %}
+pnpm_minimum_release_age_exclude:
+    type: str
+    help: "Comma-delimited list of package name patterns to exclude from pnpm's minimumReleaseAge constraint (leave empty for none)"
+    default: ""
 
 _skip_if_exists:
     - backend/src/static/favicon.ico # TODO: figure out if there's another way to stop the template from overriding a changed icon

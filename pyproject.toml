@@ -17,3 +17,8 @@ dependencies = [
     "copier==9.15.1",
     "copier-template-extensions==0.3.3"
 ]
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple/"
+exclude-newer = "1 day"
