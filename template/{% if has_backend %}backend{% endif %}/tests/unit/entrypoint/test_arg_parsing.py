@@ -51,7 +51,7 @@ class TestCliArgParsing:
         with tempfile.TemporaryDirectory() as temp_dir:
             expected_log_folder = temp_dir
 
-        self._run_entrypoint([f"--log-folder={expected_log_folder}"])
+            self._run_entrypoint([f"--log-folder={expected_log_folder}"])
 
         self.spied_configure_logging.assert_called_once_with(
             log_filename_prefix=str(Path(expected_log_folder) / f"{APP_NAME}-"),
