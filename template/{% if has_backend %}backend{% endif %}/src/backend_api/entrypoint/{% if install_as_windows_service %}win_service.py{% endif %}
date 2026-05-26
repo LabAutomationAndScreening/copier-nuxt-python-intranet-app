@@ -122,8 +122,12 @@ def dispatch_windows_service(argv: Sequence[str]) -> int:
         install_args = list(argv[1:])
         runtime_args: list[str] = []
 
-    service_subcommand = argv[1] if len(argv) > 1 else ""
-    if service_subcommand in _SERVICE_MANAGEMENT_COMMANDS:
+    # Scan rather than hardcoding argv[1]: pywin32 uses POSIX getopt and expects options before the
+    # subcommand (e.g. `service --startup auto install -- ...`), so the subcommand isn't always at
+    # index 1. If no _SERVICE_MANAGEMENT_COMMANDS token is present, SCM started us via ImagePath
+    # (sys.argv = [exe, "service", "--port=N", ...]) — go to the SCM dispatch branch.
+    service_subcommand = next((a for a in install_args if a in _SERVICE_MANAGEMENT_COMMANDS), None)
+    if service_subcommand is not None:
         if service_subcommand == "install":
             # pywin32 reads _exe_args_ at install time and bakes the suffix into the ImagePath
             # registry value itself — no post-install registry patching needed.

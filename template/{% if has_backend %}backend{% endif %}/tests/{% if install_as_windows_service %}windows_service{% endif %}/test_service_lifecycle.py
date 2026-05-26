@@ -194,6 +194,37 @@ class TestServiceWorkerCrash:
         )
 
 
+def test_When_install_with_startup_option_before_subcommand__Then_service_registered_with_auto_start(tmp_path: Path):
+    # pywin32 uses POSIX getopt, which requires options BEFORE the subcommand
+    # (e.g. `service --startup auto install`). Our wrapper must forward this layout intact rather
+    # than hardcoding argv[1] as the subcommand.
+    port = get_random_open_port()
+    log_folder = tmp_path / "service-logs"
+    log_folder.mkdir()
+    try:
+        _ = _run_app(
+            "service",
+            "--startup",
+            "auto",
+            "install",
+            "--",
+            "--port",
+            str(port),
+            "--host",
+            "0.0.0.0",  # noqa: S104 # match e2e pattern
+            "--log-folder",
+            str(log_folder),
+        )
+
+        result = _run_sc("qc", APP_NAME, check=True)
+
+        output = result.stdout.decode()
+        # sc qc reports `START_TYPE         : 2   AUTO_START` for auto-start services
+        assert "AUTO_START" in output, f"service not registered with AUTO_START;\nsc qc output:\n{output}"
+    finally:
+        _uninstall_service()
+
+
 @pytest.mark.timeout(120)
 def test_Given_service_stopped_cleanly__When_scm_query_called__Then_exit_code_is_zero(
     installed_service: InstalledService,
