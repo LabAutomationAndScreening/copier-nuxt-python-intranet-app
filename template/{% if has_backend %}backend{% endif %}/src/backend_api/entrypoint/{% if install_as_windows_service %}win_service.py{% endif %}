@@ -1,0 +1,140 @@
+import argparse
+import os
+import subprocess
+import sys
+import tempfile
+import threading
+import traceback
+from collections.abc import Sequence
+from pathlib import Path
+
+import servicemanager  # pyright: ignore[reportMissingModuleSource] # pywin32 has no stubs; only importable on Windows
+import win32service  # pyright: ignore[reportMissingModuleSource] # pywin32 has no stubs; only importable on Windows
+import win32serviceutil  # pyright: ignore[reportMissingModuleSource] # pywin32 has no stubs; only importable on Windows
+import winerror  # pyright: ignore[reportMissingModuleSource] # pywin32 has no stubs; only importable on Windows
+
+from .. import app_runner
+from ..jinja_constants import APP_NAME
+from ..jinja_constants import HUMAN_FRIENDLY_APP_NAME
+from .parser import parser
+
+CRASH_DUMP_FILENAME = "service-crash.log"
+_SERVICE_MANAGEMENT_COMMANDS = frozenset({"install", "start", "stop", "remove", "debug"})
+
+
+def _resolve_crash_dump_path(service_argv: Sequence[str]) -> Path:
+    """Pick a writable dir for the crash dump.
+
+    Preference order: --log-folder from service_argv (already writable, captured by CI artifact),
+    then the system temp dir (LocalSystem-writable fallback for production installs in
+    Program Files where the exe dir is read-only).
+    """
+    try:
+        args, _ = parser.parse_known_args(service_argv)
+        log_folder = args.log_folder
+        assert log_folder is None or isinstance(log_folder, str)
+    except (argparse.ArgumentError, SystemExit):
+        log_folder = None
+    if log_folder is not None:
+        return Path(log_folder) / CRASH_DUMP_FILENAME
+    return Path(tempfile.gettempdir()) / f"{APP_NAME}-{CRASH_DUMP_FILENAME}"
+
+
+class AppService(win32serviceutil.ServiceFramework):
+    _svc_name_ = APP_NAME
+    _svc_display_name_ = HUMAN_FRIENDLY_APP_NAME
+    _exe_args_ = ""  # set by dispatch_windows_service before install; pywin32 reads this to build ImagePath
+
+    def __init__(self, args: tuple[str, ...]) -> None:
+        super().__init__(args)
+        self._stop_event = threading.Event()
+        self._worker: threading.Thread | None = None
+
+    def SvcStop(self) -> None:  # noqa: N802 # pywin32 mandates this exact method name
+        self.ReportServiceStatus(win32service.SERVICE_STOP_PENDING)  # pyright: ignore[reportUnknownMemberType]
+        self._stop_event.set()
+        if self._worker is not None:
+            self._worker.join(timeout=30)
+            if self._worker.is_alive():
+                servicemanager.LogErrorMsg(f"{APP_NAME}: worker did not stop within 30s; SCM will force-terminate")
+
+    def SvcDoRun(self) -> None:  # noqa: N802 # pywin32 mandates this exact method name
+        # TODO: stop reading sys.argv here — couples runtime to global argv layout and the magic [2:] offset.
+        # pywin32 passes the command-line args to __init__ via the `args` tuple (args[0] = service name,
+        # args[1:] = runtime args), so capture them in __init__ and read self._service_argv here instead.
+        # Non-breaking refactor: ImagePath format and installed services unaffected. Also fixes the
+        # `service debug` foreground path, which currently feeds "debug" into argparse and crashes.
+        service_argv = sys.argv[2:]  # sys.argv[0] = exe path, sys.argv[1] = 'service', sys.argv[2:] = runtime args
+        # SCM runs the service from C:\Windows\System32; daemon-thread exceptions die silently,
+        # so capture any worker crash to a writable file and to the Windows Event Log.
+        crash_dump_path = _resolve_crash_dump_path(service_argv)
+        crashed = False
+
+        def _run() -> None:
+            nonlocal crashed
+            try:
+                # SCM detaches stdio: sys.stdout/sys.stderr are None. uvicorn's DefaultFormatter
+                # calls sys.stdout.isatty() during __init__ and crashes. Redirect to devnull;
+                # the file logger configured via --log-folder still captures all log output.
+                sys.stdout = Path(os.devnull).open("w", encoding="utf-8")  # noqa: SIM115 # service-lifetime handle; closing would break later writes
+                sys.stderr = Path(os.devnull).open("w", encoding="utf-8")  # noqa: SIM115 # service-lifetime handle; closing would break later writes
+                cli_args = parser.parse_args(service_argv)
+                _ = app_runner.start_app(cli_args, stop_event=self._stop_event)
+            except BaseException:  # noqa: BLE001 # service-of-last-resort: must also catch SystemExit from argparse (--version/--help/parse errors) so the failure surfaces to SCM + crash dump instead of silently exiting
+                crashed = True
+                tb = traceback.format_exc()
+                servicemanager.LogErrorMsg(f"{APP_NAME}: worker crashed\n{tb}")
+                try:
+                    _ = crash_dump_path.write_text(tb, encoding="utf-8")
+                except OSError as write_err:
+                    servicemanager.LogErrorMsg(
+                        f"{APP_NAME}: failed to write crash dump to {crash_dump_path}: {write_err}"
+                    )
+                self._stop_event.set()
+                # don't re-raise: daemon-thread exceptions die silently anyway, and SvcDoRun
+                # reports the non-zero status to SCM below after the worker exits.
+
+        self._worker = threading.Thread(target=_run, daemon=True)
+        self._worker.start()
+        self._worker.join()
+
+        if crashed:
+            # ERROR_SERVICE_SPECIFIC_ERROR (1066) signals to SCM that the service stopped due to an
+            # app-defined failure; SCM then exposes svcExitCode for the specific failure code. Non-zero
+            # exit lets `sc failure` recovery actions fire and lets monitoring distinguish a worker
+            # crash from a clean admin stop. Without this, pywin32 reports SERVICE_STOPPED with
+            # win32ExitCode=0, indistinguishable from a normal shutdown.
+            self.ReportServiceStatus(  # pyright: ignore[reportUnknownMemberType] # pywin32 has no stubs so ServiceFramework methods are untyped
+                win32service.SERVICE_STOPPED,
+                win32ExitCode=winerror.ERROR_SERVICE_SPECIFIC_ERROR,
+                svcExitCode=1,
+            )
+
+
+def dispatch_windows_service(argv: Sequence[str]) -> int:
+    # Split at `--`: pre-separator args go to HandleCommandLine (pywin32 SCM management);
+    # post-separator args are baked into the service ImagePath so SCM passes them to SvcDoRun at start.
+    if "--" in argv:
+        sep_idx = argv.index("--")
+        install_args = list(argv[1:sep_idx])
+        runtime_args = list(argv[sep_idx + 1 :])
+    else:
+        install_args = list(argv[1:])
+        runtime_args: list[str] = []
+
+    # Scan rather than hardcoding argv[1]: pywin32 uses POSIX getopt and expects options before the
+    # subcommand (e.g. `service --startup auto install -- ...`), so the subcommand isn't always at
+    # index 1. If no _SERVICE_MANAGEMENT_COMMANDS token is present, SCM started us via ImagePath
+    # (sys.argv = [exe, "service", "--port=N", ...]) — go to the SCM dispatch branch.
+    service_subcommand = next((a for a in install_args if a in _SERVICE_MANAGEMENT_COMMANDS), None)
+    if service_subcommand is not None:
+        if service_subcommand == "install":
+            # pywin32 reads _exe_args_ at install time and bakes the suffix into the ImagePath
+            # registry value itself — no post-install registry patching needed.
+            AppService._exe_args_ = subprocess.list2cmdline(["service", *runtime_args])
+        win32serviceutil.HandleCommandLine(AppService, argv=[sys.argv[0], *install_args])  # pyright: ignore[reportUnknownMemberType]
+    else:
+        servicemanager.Initialize()
+        servicemanager.PrepareToHostSingle(AppService)
+        servicemanager.StartServiceCtrlDispatcher()  # pyright: ignore[reportUnknownMemberType]
+    return 0

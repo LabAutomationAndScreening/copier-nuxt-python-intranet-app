@@ -431,7 +431,58 @@ jobs:
         run: docker tag ${{ needs.build-backend.outputs.full-image-tag }} {% endraw %}{{ backend_image_name }}{% raw %}:local
 
       - name: E2E test
-        run: uv --directory=backend run pytest tests/e2e --durations=5{% endraw %}{% endif %}{% raw %}
+        run: uv --directory=backend run pytest tests/e2e --durations=5{% endraw %}{% endif %}{% raw %}{% endraw %}{% if install_as_windows_service %}{% raw %}
+
+  e2e-test-windows-service:
+    name: Windows Service Smoke Tests
+    timeout-minutes: {% endraw %}{{ gha_long_timeout_minutes }}{% raw %}
+    runs-on: {% endraw %}{{ gha_windows_runner }}{% raw %}
+    needs:
+      - build-backend
+      - check-skip-duplicate
+    if: needs.check-skip-duplicate.outputs.should-run == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
+
+      - name: Install latest versions of python packages
+        uses: ./.github/actions/install_deps
+        with:
+          python-version: {% endraw %}{{ python_version }}{% raw %}
+          skip-installing-ssm-plugin-manager: true
+
+      - name: Download Built executable
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: built-{% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}
+          path: backend/dist/{% endraw %}{{ repo_name }}{% raw %}
+
+      - name: Windows service smoke tests
+        run: uv --directory=backend run pytest tests/windows_service --durations=5 --basetemp=dist/pytest-tmp
+
+      - name: Dump service crash logs on failure
+        if: ${{ failure() }}
+        shell: pwsh
+        run: |
+          $dumps = Get-ChildItem -Path "backend/dist/pytest-tmp" -Recurse -Filter "service-crash.log" -ErrorAction SilentlyContinue
+          if ($dumps.Count -eq 0) {
+            Write-Host "No service-crash.log files found under backend/dist/pytest-tmp"
+          } else {
+            foreach ($dump in $dumps) {
+              Write-Host "=== $($dump.FullName) ==="
+              Get-Content $dump.FullName
+            }
+          }
+
+      - name: Upload service logs on failure
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
+        with:
+          name: windows-service-logs
+          path: backend/dist/pytest-tmp/**/service-logs/**
+          if-no-files-found: warn
+          retention-days: 5{% endraw %}{% endif %}{% raw %}
+
 
   e2e-test:
     name: End-to-end Testing
@@ -596,7 +647,8 @@ jobs:
       - test-compiled-frontend-dev{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
       - package-firmware{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
       - e2e-test-backend{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
-      - e2e-test-k3d{% endraw %}{% endif %}{% raw %}
+      - e2e-test-k3d{% endraw %}{% endif %}{% raw %}{% endraw %}{% if install_as_windows_service %}{% raw %}
+      - e2e-test-windows-service{% endraw %}{% endif %}{% raw %}
       - e2e-test
       - confirm-on-tagged-copier-template
     permissions:
@@ -618,7 +670,8 @@ jobs:
             [[ ! "${{ needs.test-compiled-frontend-dev.result }}" =~ $success_pattern ]] ||{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
             [[ ! "${{ needs.package-firmware.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
             [[ ! "${{ needs.e2e-test-backend.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
-            [[ ! "${{ needs.e2e-test-k3d.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}
+            [[ ! "${{ needs.e2e-test-k3d.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}{% endraw %}{% if install_as_windows_service %}{% raw %}
+            [[ ! "${{ needs.e2e-test-windows-service.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}
             [[ ! "${{ needs.e2e-test.result }}" =~ $success_pattern ]] ||
             [[ ! "${{ needs.confirm-on-tagged-copier-template.result }}" =~ $success_pattern ]]; then
             echo "❌ One or more jobs did not finish with skipped or success"
