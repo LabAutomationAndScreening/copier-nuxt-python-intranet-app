@@ -1,6 +1,6 @@
 {% raw %}import argparse
-import logging
-import sys
+import logging{% endraw %}{% if install_as_windows_service %}{% raw %}
+import sys{% endraw %}{% endif %}{% raw %}
 import threading
 from collections.abc import Sequence
 
