@@ -8,6 +8,7 @@ from pytest_mock import MockerFixture
 
 from .fixtures import GENERIC_REQUIRED_CLI_ARGS
 from .fixtures import restore_logging_levels  # noqa: F401 # autouse fixture imported for side effect
+from .fixtures import restore_signal_handlers  # noqa: F401 # autouse fixture imported for side effect
 
 
 def test_Given_invalid_cli_args__Then_exit_code_is_2():
