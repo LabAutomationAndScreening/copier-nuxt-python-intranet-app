@@ -1,0 +1,35 @@
+{% raw %}import argparse
+import logging
+import sys
+import threading
+from collections.abc import Sequence
+
+from .. import app_runner
+from .parser import parser
+
+logger = logging.getLogger(__name__)
+
+
+def entrypoint(argv: Sequence[str], *, stop_event: threading.Event | None = None) -> int:
+    try:
+        launched_by_uvicorn = len(argv) > 0 and argv[0] == "src.entrypoint:app"
+        if launched_by_uvicorn:
+            app_runner.app_specific_setup()
+            return 0{% endraw %}{% if install_as_windows_service %}{% raw %}
+        if len(argv) > 0 and argv[0] == "service":
+            if sys.platform != "win32":  # pragma: no cover — win32 path tested in Windows CI
+                print("Windows service management is only supported on Windows", file=sys.stderr)  # noqa: T201 # intentional user-facing output
+                return 2
+            # lazy: win_service.py imports pywin32 + winreg, Windows-only (covered in Windows CI)
+            from . import win_service  # noqa: PLC0415  # pyright: ignore[reportUnreachable]  # pragma: no cover
+
+            return win_service.dispatch_windows_service(argv)  # pragma: no cover{% endraw %}{% endif %}{% raw %}
+        try:
+            cli_args = parser.parse_args(argv)
+        except argparse.ArgumentError:
+            logger.exception("Error parsing command line arguments")
+            return 2  # this is the exit code that is normally returned when exit_on_error=True for argparse
+        return app_runner.start_app(cli_args, stop_event=stop_event)
+    except Exception:
+        logger.exception("An unhandled exception occurred")
+        raise{% endraw %}
