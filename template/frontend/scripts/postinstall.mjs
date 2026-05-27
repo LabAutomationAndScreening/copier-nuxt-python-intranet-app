@@ -18,5 +18,5 @@ const run = (...args) => {
 run("exec", "nuxt", "prepare");
 
 if (shouldInstallPlaywright) {
-  run("exec", "playwright-core", "install", "--with-deps", "--only-shell", "chromium-headless-shell");
+  run("exec", "playwright-core", "install", "--with-deps", "chromium");
 }
