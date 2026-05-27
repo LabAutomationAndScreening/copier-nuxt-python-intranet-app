@@ -4,7 +4,7 @@ import { FetchRequestAdapter } from "@microsoft/kiota-http-fetchlibrary";
 import { test as base } from "@playwright/test";
 
 import { type BackendClient, createBackendClient } from "~/generated/open-api/backend/backendClient";
-import { DEPLOYED_BACKEND_PORT_NUMBER } from "../setup/constants";
+import { backendBaseUrl } from "./ports";
 
 // Mirrors tests/setup/faker.ts (used by the vitest unit/compiled projects). Seed once per worker so a
 // failing run can be reproduced with TEST_FAKER_SEED=<logged value>. Playwright runs files in a stable
@@ -16,7 +16,7 @@ const fakerSeed = Number(process.env.TEST_FAKER_SEED) || Math.floor(Math.random(
 // useKiotaClient constructs internally.
 function buildBackendClient(): BackendClient {
   const adapter = new FetchRequestAdapter(new AnonymousAuthenticationProvider());
-  adapter.baseUrl = `http://127.0.0.1:${DEPLOYED_BACKEND_PORT_NUMBER}`;
+  adapter.baseUrl = backendBaseUrl();
   return createBackendClient(adapter);
 }
 

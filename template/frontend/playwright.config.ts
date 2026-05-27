@@ -2,9 +2,14 @@ import { fileURLToPath } from "node:url";
 
 import { defineConfig, devices } from "@playwright/test";
 
-import { DEPLOYED_FRONTEND_PORT_NUMBER } from "./tests/setup/constants";
+import { ensureBuiltBackendPort, frontendBaseUrl } from "./tests/e2e/ports";
 
 const e2eDir = fileURLToPath(new URL("./tests/e2e", import.meta.url));
+
+// The built-backend executable serves frontend + API on one randomly-chosen port. Resolve it here, in
+// the main process, before referencing frontendBaseUrl() — worker processes inherit the env and re-read
+// the same value. No-op in docker-compose mode (fixed ports).
+await ensureBuiltBackendPort();
 
 // The E2E runner: behavioral specs (*.spec.ts) and visual-regression specs (*.vrt.spec.ts) run here
 // against the docker-compose stack brought up by globalSetup. Playwright (not Vitest) gives web-first
@@ -23,7 +28,7 @@ export default defineConfig({
   globalSetup: fileURLToPath(new URL("./tests/e2e/global-setup.ts", import.meta.url)),
   globalTeardown: fileURLToPath(new URL("./tests/e2e/global-teardown.ts", import.meta.url)),
   use: {
-    baseURL: `http://127.0.0.1:${DEPLOYED_FRONTEND_PORT_NUMBER}`,
+    baseURL: frontendBaseUrl(),
     trace: "retain-on-failure",
   },
   expect: {
