@@ -7,26 +7,26 @@ type ColorScheme = "light" | "dark";
 // drives it programmatically — no UI toggle needed. Each scheme writes its own baseline (the scheme
 // is appended to the filename). Override `colorSchemes` (e.g. ["light"]) to limit it.
 //
-// The footer year (`new Date().getFullYear()`) and the logo are masked by default. Playwright masks
+// The copyright year (`new Date().getFullYear()`) and the company logo are masked by default. Playwright masks
 // are z-unaware — they paint a flat rect at the element's bounding box over the final image — so
 // anything stacked above (e.g. a slideover/popover over the logo) gets covered; pass
-// `maskLogo: false` / `maskFooterYear: false` for those tests. Pass `mask` to add further regions.
+// `maskLogo: false` / `maskCopyrightYear: false` for those tests. Pass `mask` to add further regions.
 export async function expectFullPageScreenshot(
   page: Page,
   name: string,
   {
     mask = [],
     maskLogo = true,
-    maskFooterYear = true,
+    maskCopyrightYear = true,
     colorSchemes = ["light", "dark"],
-  }: { mask?: Locator[]; maskLogo?: boolean; maskFooterYear?: boolean; colorSchemes?: ColorScheme[] } = {},
+  }: { mask?: Locator[]; maskLogo?: boolean; maskCopyrightYear?: boolean; colorSchemes?: ColorScheme[] } = {},
 ): Promise<void> {
   for (const colorScheme of colorSchemes) {
     await page.emulateMedia({ colorScheme });
     await expectFullPageScreenshotInCurrentColorMode(page, name.replace(/\.png$/, `-${colorScheme}.png`), {
       mask,
       maskLogo,
-      maskFooterYear,
+      maskCopyrightYear,
     });
   }
 }
@@ -40,13 +40,13 @@ export async function expectFullPageScreenshotInCurrentColorMode(
   {
     mask = [],
     maskLogo = true,
-    maskFooterYear = true,
-  }: { mask?: Locator[]; maskLogo?: boolean; maskFooterYear?: boolean } = {},
+    maskCopyrightYear = true,
+  }: { mask?: Locator[]; maskLogo?: boolean; maskCopyrightYear?: boolean } = {},
 ): Promise<void> {
   const defaultMasks: Locator[] = [];
-  if (maskFooterYear) {
-    // Repo needs to implement its own masking of the footer year. Example below:
-    // defaultMasks.push(page.getByTestId(forComponent({ selector: layout.footerYear })));
+  if (maskCopyrightYear) {
+    // Repo needs to implement its own masking of the copyright year. Example below:
+    // defaultMasks.push(page.getByTestId(forComponent({ selector: layout.copyrightYear })));
   }
   if (maskLogo) {
     // Repo needs to implement its own masking of the company logo on the page. Example below:
