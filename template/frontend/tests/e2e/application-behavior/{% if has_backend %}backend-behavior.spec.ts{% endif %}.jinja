@@ -1,13 +1,13 @@
 {% raw %}import { expect, test } from "~~/tests/e2e/fixtures";
 
 test.describe("API documentation", () => {
-  test("When accessing Swagger from the frontend, Then loads correctly", async () => {
+  test("When accessing Swagger from the frontend, Then loads correctly", async ({ page }) => {
     await page.goto("/api-docs");
 
     // arbitrary text that only appears after the page has loaded correctly
     await expect(page.getByText("/api/healthcheck")).toBeVisible();
   });{% endraw %}{% if frontend_uses_graphql %}{% raw %}
-  test("When accessing GraphiQL from the frontend, Then loads correctly", async () => {
+  test("When accessing GraphiQL from the frontend, Then loads correctly", async ({ page }) => {
     await page.goto("/api/graphql");
 
     // arbitrary text that only appears after the page has loaded correctly
