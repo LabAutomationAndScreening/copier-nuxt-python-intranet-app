@@ -11,9 +11,9 @@ await ensureBuiltBackendPort();
 
 export default defineConfig({
   testDir: e2eDir,
-  // Baselines are committed. The {platform} token means a baseline recorded on linux CI will not
-  // silently match a developer's macOS run — font hinting/antialiasing differ per OS, so a mismatch
-  // there is surfaced rather than hidden. Regenerate per-platform with `--update-snapshots`.
+  // The {platform} token means a baseline recorded on linux CI will not silently match a developer's
+  // macOS run — font hinting/antialiasing differ per OS, so a mismatch is surfaced rather than hidden.
+  // Regenerate per-platform with `--update-snapshots`.
   snapshotPathTemplate: "{testDir}/__screenshots__/{testFilePath}/{arg}-{platform}{ext}",
   fullyParallel: false, // shared docker-compose backend state across specs
   forbidOnly: process.env.CI === "true",
