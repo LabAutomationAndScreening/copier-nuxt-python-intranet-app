@@ -9,9 +9,6 @@ const e2eDir = fileURLToPath(new URL("./tests/e2e", import.meta.url));
 // the same value. No-op in docker-compose mode (fixed ports).
 await ensureBuiltBackendPort();
 
-// The E2E runner: behavioral specs (*.spec.ts) and visual-regression specs (*.vrt.spec.ts) run here
-// against the docker-compose stack brought up by globalSetup. Playwright (not Vitest) gives web-first
-// auto-retrying assertions, toHaveScreenshot baselines + masking, retries, traces, and reports.
 export default defineConfig({
   testDir: e2eDir,
   // Baselines are committed. The {platform} token means a baseline recorded on linux CI will not
