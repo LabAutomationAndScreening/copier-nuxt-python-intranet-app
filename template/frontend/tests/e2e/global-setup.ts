@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { APP_NAME, DEPLOYED_BACKEND_PORT_NUMBER } from "../setup/constants";
 import { backendBaseUrl, isBuiltBackendE2E, isDockerComposeE2E } from "./ports";
 
-// Brings up the backend the E2E suite runs against, then waits until it is healthy. Runs once before
+// Brings up the app the E2E suite runs against, then waits until it is healthy. Runs once before
 // the Playwright run; global-teardown.ts brings it back down. Two backends are supported, selected by
 // env var (see ports.ts): a single built executable serving frontend + API, or a docker-compose stack.
 
