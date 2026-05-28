@@ -1,7 +1,5 @@
 import { fileURLToPath } from "node:url";
-
 import { defineConfig, devices } from "@playwright/test";
-
 import { ensureBuiltBackendPort, frontendBaseUrl } from "./tests/e2e/ports";
 
 const e2eDir = fileURLToPath(new URL("./tests/e2e", import.meta.url));
