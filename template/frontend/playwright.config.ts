@@ -24,7 +24,7 @@ export default defineConfig({
   globalTeardown: fileURLToPath(new URL("./tests/e2e/global-teardown.ts", import.meta.url)),
   use: {
     baseURL: frontendBaseUrl(),
-    // View a failure's trace.zip with:
+    // View a failure's trace.zip (which will be generated in the `test-results` folder) with:
     //   pnpm exec playwright show-trace --host 0.0.0.0 --port <any-open-port> <path/to/trace.zip>
     // The --host/--port flags are required in the devcontainer so the viewer is reachable via a
     // forwarded port (the default `show-trace` launches a local browser and errors out with no display).
