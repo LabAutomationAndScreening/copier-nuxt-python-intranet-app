@@ -1,8 +1,7 @@
 {% raw %}import { fileURLToPath } from "node:url";
 
 import { defineVitestProject } from "@nuxt/test-utils/config";
-{% endraw %}{% if is_circuit_python_driver %}import AutoImport from "unplugin-auto-import/vite";
-{% endif %}{% raw %}
+
 import { defineConfig, type TestProjectInlineConfiguration } from "vitest/config";
 
 const fakerSeed = Number(process.env.TEST_FAKER_SEED) || Math.floor(Math.random() * 1e9); // to use this, you'll need to create a setup.ts file and add it to the vitest `setupFiles` config
@@ -13,8 +12,6 @@ const sharedDefine = {
 const frontendDir = fileURLToPath(new URL(".", import.meta.url));
 const appDir = fileURLToPath(new URL("./app", import.meta.url));
 const fakerSetupPath = fileURLToPath(new URL("./tests/setup/faker.ts", import.meta.url));
-const appSetupPath = fileURLToPath(new URL("./tests/setup/app.ts", import.meta.url));
-const globalSetupPath = fileURLToPath(new URL("./tests/setup/globalSetup.ts", import.meta.url));
 
 const unitProject = await defineVitestProject({
   define: sharedDefine,
@@ -66,47 +63,6 @@ const compiledProject = {
   },
 } satisfies TestProjectInlineConfiguration;
 
-const e2eProject = {
-  extends: true,
-  // the e2e project intentionally bypasses defineVitestProject so that environment stays at "node"
-  // (Playwright drives a real browser, so the in-process Nuxt env is unwanted overhead and would
-  // interfere with how globalSetup brings up docker-compose). The trade-off is that Nuxt's own vite
-  // plugin chain — which normally resolves the `~`/`~~`/`@`/`@@` path aliases — is not in this
-  // project's chain, so the aliases have to be declared explicitly here for the e2e spec imports
-  // (e.g. `import { url } from "~~/tests/e2e/helpers/playwright"`) to resolve.
-  resolve: {
-    alias: {
-      "~~": frontendDir,
-      "@@": frontendDir,
-      "~": appDir,
-      "@": appDir,
-    },
-  },
-{% endraw %}{% if is_circuit_python_driver %}{% raw %}
-  // Nuxt auto-imports (like `useKiotaClient`) are injected at build time by Nuxt's vite plugin
-  // chain, which is absent here. This plugin replicates that injection for the e2e test context
-  // so composables that rely on auto-imports (e.g. useBackendClient → useKiotaClient) resolve.
-  plugins: [
-    AutoImport({
-      imports: [
-        {
-          "@lab-sync/nuxt-common": ["useKiotaClient", "_resetKiotaClientForTests"],
-        },
-      ],
-      dts: false, // type-checking runs separately via pre-commit; no .d.ts needed here
-    }),
-  ],
-{% endraw %}{% endif %}{% raw %}
-  test: {
-    name: "e2e",
-    include: ["tests/e2e/**/*.spec.ts"],
-    setupFiles: [fakerSetupPath, appSetupPath],
-    globalSetup: globalSetupPath,
-    testTimeout: 15000,
-    fileParallelism: false, // TODO: consider if we want to only disable it for some files in the E2E test suite
-  },
-} satisfies TestProjectInlineConfiguration;
-
 export default defineConfig({
   define: sharedDefine,
   test: {
@@ -115,7 +71,7 @@ export default defineConfig({
       seed: fakerSeed,
     },
     root: ".",
-    projects: [unitProject, compiledProject, e2eProject],
+    projects: [unitProject, compiledProject],
     coverage: {
       provider: "istanbul",
       reporter: ["text", "json", "html"],

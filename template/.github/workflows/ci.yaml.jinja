@@ -548,6 +548,17 @@ jobs:
       - name: E2E test
         run: pnpm --dir=frontend test-e2e
 
+      - name: Upload Playwright report on failure
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
+        with:
+          name: playwright-report-${{ matrix.os }}
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+          if-no-files-found: error
+          retention-days: 5
+
 {% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}  package-images:
     name: Package Images
     timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}

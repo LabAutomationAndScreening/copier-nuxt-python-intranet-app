@@ -74,7 +74,7 @@ def wait_for_service_to_be_healthy(*, max_retries: int = 15, retry_delay: int = 
                 check=True,
                 capture_output=True,
                 text=True,
-                timeout=10,
+                timeout=20,
             )
 
             if not result.stdout.strip():

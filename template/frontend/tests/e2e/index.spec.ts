@@ -1,15 +1,9 @@
-import { describe, expect, test } from "vitest";
-import { url } from "~~/tests/e2e/helpers/playwright";
-import { getPage } from "~~/tests/setup/app";
+import { expect, test } from "~~/tests/e2e/fixtures";
 
-describe("Index page", async () => {
-  test("Page displays Hello World", async () => {
-    expect.assertions(1);
-    const page = getPage();
-    await page.goto(url("/"));
+test.describe("Index page", () => {
+  test("Page displays Hello World", async ({ page }) => {
+    await page.goto("/");
 
-    const text = await page.textContent("div");
-
-    expect(text).toContain("Hello World");
+    await expect(page.getByText("Hello World")).toBeVisible();
   });
 });

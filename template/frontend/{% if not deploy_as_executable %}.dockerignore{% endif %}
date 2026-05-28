@@ -28,9 +28,11 @@ codegen.ts
 eslint.config.mjs
 
 # Exclude test files
-tests
+tests/
+test-results/
 .coverage
 vitest.config.ts
+playwright.config.ts
 
 # Exclude Docker-related files if needed
 Dockerfile*
