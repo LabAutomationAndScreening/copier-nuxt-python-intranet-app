@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { pushCopyrightYearMask, pushLogoMask } from "./vrt-masks";
 
 type ColorScheme = "light" | "dark";
 
@@ -45,12 +46,10 @@ export async function expectFullPageScreenshotInCurrentColorMode(
 ): Promise<void> {
   const defaultMasks: Locator[] = [];
   if (maskCopyrightYear) {
-    // Repo needs to implement its own masking of the copyright year. Example below:
-    // defaultMasks.push(page.getByTestId(forComponent({ selector: layout.copyrightYear })));
+    pushCopyrightYearMask({ page, defaultMasks });
   }
   if (maskLogo) {
-    // Repo needs to implement its own masking of the company logo on the page. Example below:
-    // defaultMasks.push(page.getByTestId(forComponent({ selector: layout.logo })));
+    pushLogoMask({ page, defaultMasks });
   }
   await expect(page).toHaveScreenshot(name, {
     fullPage: true,
