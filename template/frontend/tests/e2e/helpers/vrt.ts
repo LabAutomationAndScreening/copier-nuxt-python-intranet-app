@@ -3,6 +3,10 @@ import { pushCopyrightYearMask, pushLogoMask } from "./vrt-masks";
 
 type ColorScheme = "light" | "dark";
 
+function withColorSchemeSuffix(name: string, colorScheme: ColorScheme): string {
+  const baseName = name.endsWith(".png") ? name.slice(0, -4) : name;
+  return `${baseName}-${colorScheme}.png`;
+}
 // Full-page visual snapshot taken in both light and dark mode by default. The app's color mode keys
 // off prefers-color-scheme (@nuxtjs/color-mode preference defaults to "system"), so emulateMedia
 // drives it programmatically — no UI toggle needed. Each scheme writes its own baseline (the scheme
@@ -24,7 +28,7 @@ export async function expectFullPageScreenshot(
 ): Promise<void> {
   for (const colorScheme of colorSchemes) {
     await page.emulateMedia({ colorScheme });
-    await expectFullPageScreenshotInCurrentColorMode(page, name.replace(/\.png$/, `-${colorScheme}.png`), {
+    await expectFullPageScreenshotInCurrentColorMode(page, withColorSchemeSuffix(name, colorScheme), {
       mask,
       maskLogo,
       maskCopyrightYear,
@@ -43,7 +47,7 @@ export async function expectContentPaneScreenshot(
   for (const colorScheme of colorSchemes) {
     await page.emulateMedia({ colorScheme });
     const main = page.locator("#__nuxt > div > * > main");
-    await expect(main).toHaveScreenshot(name.replace(/\.png$/, `-${colorScheme}.png`));
+    await expect(main).toHaveScreenshot(withColorSchemeSuffix(name, colorScheme));
   }
 }
 
