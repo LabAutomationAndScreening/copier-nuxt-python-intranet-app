@@ -10,10 +10,9 @@ import { backendBaseUrl, isBuiltBackendE2E, isDockerComposeE2E } from "./ports";
 // the Playwright run; global-teardown.ts brings it back down. Two backends are supported, selected by
 // env var (see ports.ts): a single built executable serving frontend + API, or a docker-compose stack.
 
-const COMPOSE_FILE = fileURLToPath(new URL("../docker-compose.yaml", import.meta.url));
-
 const executableExtension = process.platform === "win32" ? ".exe" : "";
 const repoRoot = path.resolve(fileURLToPath(new URL("../../../", import.meta.url)));
+const dockerComposeFile = path.resolve(repoRoot, "docker-compose.yaml");
 const executablePath = path.resolve(repoRoot, `./backend/dist/${APP_NAME}/${APP_NAME}${executableExtension}`);
 
 async function waitForHttpHealthcheck({
@@ -67,7 +66,7 @@ async function waitForComposeHealthy({
   retryDelayMs = 2000,
 }: { maxAttempts?: number; retryDelayMs?: number } = {}): Promise<void> {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const stdout = execSync(`docker compose --file="${COMPOSE_FILE}" ps --format json`, {
+    const stdout = execSync(`docker compose --file="${dockerComposeFile}" ps --format json`, {
       encoding: "utf-8",
       timeout: 10000,
     });
@@ -126,7 +125,7 @@ export default async function globalSetup(): Promise<void> {
     console.log("Starting docker-compose...");
     process.env.DEPLOYED_BACKEND_PORT_NUMBER = DEPLOYED_BACKEND_PORT_NUMBER.toString();
     execSync(
-      `docker compose --file="${COMPOSE_FILE}" up --detach --force-recreate --renew-anon-volumes --remove-orphans`,
+      `docker compose --file="${dockerComposeFile}" up --detach --force-recreate --renew-anon-volumes --remove-orphans`,
       {
         stdio: "inherit",
       },

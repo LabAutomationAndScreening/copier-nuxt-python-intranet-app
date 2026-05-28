@@ -6,8 +6,8 @@ import { fileURLToPath } from "node:url";
 import { APP_NAME } from "../setup/constants";
 import { backendBaseUrl, isBuiltBackendE2E, isDockerComposeE2E } from "./ports";
 
-const COMPOSE_FILE = "../docker-compose.yaml";
 const repoRoot = path.resolve(fileURLToPath(new URL("../../../", import.meta.url)));
+const dockerComposeFile = path.resolve(repoRoot, "docker-compose.yaml");
 
 function hasErrorCode(cause: unknown): cause is { code: string } {
   return typeof cause === "object" && cause !== null && "code" in cause && typeof cause.code === "string";
@@ -55,6 +55,6 @@ export default async function globalTeardown(): Promise<void> {
   }
   if (isDockerComposeE2E) {
     console.log("Stopping docker-compose...");
-    execSync(`docker compose --file=${COMPOSE_FILE} down --volumes`, { stdio: "inherit" });
+    execSync(`docker compose --file="${dockerComposeFile}" down --volumes`, { stdio: "inherit" });
   }
 }
