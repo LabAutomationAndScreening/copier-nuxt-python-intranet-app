@@ -39,7 +39,7 @@ export const test = base.extend<{ backendClient: BackendClient }, { seedFaker: v
   },
 });
 
-// Use this in *.vrt.spec.ts files (anything calling toHaveScreenshot). It inherits backendClient and
+// Use this in anything calling toHaveScreenshot. It inherits backendClient and
 // auto-skips on Windows, where we have no easy way to record platform-matching baselines. Behavioral
 // specs keep using `test` so they still run on Windows. The skip is wired as an auto-fixture (rather
 // than `vrtTest.skip()` inside a beforeEach) so the running test's TestInfo is threaded in explicitly —
