@@ -41,11 +41,19 @@ export const test = base.extend<{ backendClient: BackendClient }, { seedFaker: v
 
 // Use this in *.vrt.spec.ts files (anything calling toHaveScreenshot). It inherits backendClient and
 // auto-skips on Windows, where we have no easy way to record platform-matching baselines. Behavioral
-// specs keep using `test` so they still run on Windows. `test.extend({})` makes this a distinct test
-// instance, so the beforeEach skip does not leak into `test`.
-export const vrtTest = test.extend({});
-vrtTest.beforeEach(() => {
-  vrtTest.skip(process.platform === "win32", "VRT baselines are generated on Linux only");
+// specs keep using `test` so they still run on Windows. The skip is wired as an auto-fixture (rather
+// than `vrtTest.skip()` inside a beforeEach) so the running test's TestInfo is threaded in explicitly —
+// the static `test.skip(cond, msg)` form was a no-op for tests defined on an extended test instance.
+// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- `void` is Playwright's idiom for an auto-run fixture that provides no value
+export const vrtTest = test.extend<{ skipOnWindows: void }>({
+  skipOnWindows: [
+    // eslint-disable-next-line no-empty-pattern -- Playwright requires the first fixture arg to be object-destructured; `{}` is the zero-dependency form
+    async ({}, use, testInfo) => {
+      testInfo.skip(process.platform === "win32", "VRT baselines are generated on Linux only");
+      await use();
+    },
+    { auto: true },
+  ],
 });
 
 export { expect } from "@playwright/test";
