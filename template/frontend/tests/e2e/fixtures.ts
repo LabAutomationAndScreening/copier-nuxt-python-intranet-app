@@ -9,7 +9,8 @@ import { backendBaseUrl } from "./ports";
 // Mirrors tests/setup/faker.ts (used by the vitest unit/compiled projects). Seed once per worker so a
 // failing run can be reproduced with TEST_FAKER_SEED=<logged value>. Playwright runs files in a stable
 // order (no vitest-style shuffle), so seed + order reproduce the sequence.
-const fakerSeed = Number(process.env.TEST_FAKER_SEED) || Math.floor(Math.random() * 1e9);
+const parsedSeed = Number(process.env.TEST_FAKER_SEED);
+const fakerSeed = Number.isNaN(parsedSeed) ? Math.floor(Math.random() * 1e9) : parsedSeed;
 
 // Build the kiota client directly (rather than via nuxt-common's useKiotaClient) with an explicit
 // baseUrl — keeps this test harness free of a nuxt-common dependency. This is the same adapter
