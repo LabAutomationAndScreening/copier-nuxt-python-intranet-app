@@ -32,6 +32,21 @@ export async function expectFullPageScreenshot(
   }
 }
 
+// Main-content-only visual snapshot (no navbar/header/footer) taken in both light and dark mode by
+// default. Uses `#__nuxt > div > * > main` — the wildcard third segment avoids coupling to the
+// layout wrapper's utility classes. No masks needed; the main area contains no dynamic chrome.
+export async function expectContentPaneScreenshot(
+  page: Page,
+  name: string,
+  { colorSchemes = ["light", "dark"] }: { colorSchemes?: ColorScheme[] } = {},
+): Promise<void> {
+  for (const colorScheme of colorSchemes) {
+    await page.emulateMedia({ colorScheme });
+    const main = page.locator("#__nuxt > div > * > main");
+    await expect(main).toHaveScreenshot(name.replace(/\.png$/, `-${colorScheme}.png`));
+  }
+}
+
 // A single full-page snapshot in whatever color mode is currently active — does not touch
 // emulateMedia. Use this when the color mode is driven another way (e.g. clicking the color-mode
 // switch), so the snapshot reflects that state rather than a re-emulated one.
