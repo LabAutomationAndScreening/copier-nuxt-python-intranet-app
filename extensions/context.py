@@ -132,4 +132,5 @@ class ContextUpdater(ContextHook):
         # Kludge to be able to help symlinked jinja files in the child and grandchild templates
         context["template_uses_vuejs"] = True
         context["template_uses_typescript"] = True
+        context["template_uses_python"] = True
         return context
