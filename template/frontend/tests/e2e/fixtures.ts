@@ -32,8 +32,7 @@ export const test = base.extend<{ backendClient: BackendClient }, { seedFaker: v
     { scope: "worker", auto: true },
   ],
   // The kiota client is built directly (FetchRequestAdapter + AnonymousAuthenticationProvider with an
-  // explicit baseUrl) rather than via nuxt-common's useBackendClient, which depends on Nuxt auto-import
-  // and determineBaseUrl() — neither available under the Playwright runner.
+  // explicit baseUrl) rather than via nuxt-common's useBackendClient, to keep nuxt-common not as a required dependency (for now).
   // eslint-disable-next-line no-empty-pattern -- Playwright requires the first fixture arg to be object-destructured; `{}` is the zero-dependency form
   backendClient: async ({}, use) => {
     await use(buildBackendClient());
