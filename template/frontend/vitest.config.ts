@@ -12,6 +12,13 @@ const appDir = fileURLToPath(new URL("./app", import.meta.url));
 const fakerSetupPath = fileURLToPath(new URL("./tests/setup/faker.ts", import.meta.url));
 const autoUnmountSetupPath = fileURLToPath(new URL("./tests/setup/auto-unmount.ts", import.meta.url));
 
+const sharedAliases = {
+  "~~": frontendDir,
+  "@@": frontendDir,
+  "~": appDir,
+  "@": appDir,
+};
+
 // Tests against components/pages that rely on Nuxt — auto-imported composables,
 // Nuxt UI components, mountSuspended, etc.
 const unitNuxtProject = await defineVitestProject({
@@ -27,12 +34,7 @@ const unitNuxtProject = await defineVitestProject({
 // or non-Vue code that touches `document`/`window`).
 const unitDomProject = {
   resolve: {
-    alias: {
-      "~~": frontendDir,
-      "@@": frontendDir,
-      "~": appDir,
-      "@": appDir,
-    },
+    alias: sharedAliases,
   },
   test: {
     name: "unit-dom",
@@ -46,12 +48,7 @@ const unitDomProject = {
 // named `.nuxt.spec.ts` or `.dom.spec.ts`.
 const unitNodeProject = {
   resolve: {
-    alias: {
-      "~~": frontendDir,
-      "@@": frontendDir,
-      "~": appDir,
-      "@": appDir,
-    },
+    alias: sharedAliases,
   },
   test: {
     name: "unit-node",
@@ -86,10 +83,7 @@ const compiledProject = {
       // `~`/`~~`/`@`/`@@` aliases internally. The vitest spec itself does not need the
       // aliases (no `~`-prefixed imports in tests/compiled), but adding them here matches
       // the e2e project so any future helper imports work without surprise.
-      "~~": frontendDir,
-      "@@": frontendDir,
-      "~": appDir,
-      "@": appDir,
+      ...sharedAliases,
     },
   },
   test: {
