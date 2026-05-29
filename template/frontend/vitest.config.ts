@@ -1,8 +1,6 @@
-{% raw %}import { fileURLToPath } from "node:url";
-
+import { fileURLToPath } from "node:url";
 import { defineVitestProject } from "@nuxt/test-utils/config";
-
-import { defineConfig, type TestProjectInlineConfiguration } from "vitest/config";
+import { configDefaults, defineConfig, type TestProjectInlineConfiguration } from "vitest/config";
 
 const fakerSeed = Number(process.env.TEST_FAKER_SEED) || Math.floor(Math.random() * 1e9); // to use this, you'll need to create a setup.ts file and add it to the vitest `setupFiles` config
 
@@ -12,15 +10,53 @@ const sharedDefine = {
 const frontendDir = fileURLToPath(new URL(".", import.meta.url));
 const appDir = fileURLToPath(new URL("./app", import.meta.url));
 const fakerSetupPath = fileURLToPath(new URL("./tests/setup/faker.ts", import.meta.url));
+const autoUnmountSetupPath = fileURLToPath(new URL("./tests/setup/auto-unmount.ts", import.meta.url));
 
-const unitProject = await defineVitestProject({
+const sharedAliases = {
+  "~~": frontendDir,
+  "@@": frontendDir,
+  "~": appDir,
+  "@": appDir,
+};
+
+// Tests against components/pages that rely on Nuxt — auto-imported composables,
+// Nuxt UI components, mountSuspended, etc.
+const unitNuxtProject = await defineVitestProject({
   define: sharedDefine,
   test: {
-    name: "unit",
-    include: ["tests/unit/**/*.spec.ts"],
-    setupFiles: [fakerSetupPath],
+    name: "unit-nuxt",
+    include: ["tests/unit/**/*.nuxt.spec.ts"],
+    setupFiles: [fakerSetupPath, autoUnmountSetupPath],
   },
 });
+
+// Tests that need a DOM but no Nuxt runtime (e.g. plain @vue/test-utils mount,
+// or non-Vue code that touches `document`/`window`).
+const unitDomProject = {
+  resolve: {
+    alias: sharedAliases,
+  },
+  test: {
+    name: "unit-dom",
+    environment: "happy-dom",
+    include: ["tests/unit/**/*.dom.spec.ts"],
+    setupFiles: [autoUnmountSetupPath],
+  },
+} satisfies TestProjectInlineConfiguration;
+
+// Pure logic tests — no DOM, no Vue. Fastest env; default unless a spec is
+// named `.nuxt.spec.ts` or `.dom.spec.ts`.
+const unitNodeProject = {
+  resolve: {
+    alias: sharedAliases,
+  },
+  test: {
+    name: "unit-node",
+    environment: "node",
+    include: ["tests/unit/**/*.spec.ts"],
+    exclude: [...configDefaults.exclude, "**/*.nuxt.spec.ts", "**/*.dom.spec.ts"],
+  },
+} satisfies TestProjectInlineConfiguration;
 
 const bunTestStubPath = fileURLToPath(new URL("./tests/setup/bun-test-stub.ts", import.meta.url));
 
@@ -47,10 +83,7 @@ const compiledProject = {
       // `~`/`~~`/`@`/`@@` aliases internally. The vitest spec itself does not need the
       // aliases (no `~`-prefixed imports in tests/compiled), but adding them here matches
       // the e2e project so any future helper imports work without surprise.
-      "~~": frontendDir,
-      "@@": frontendDir,
-      "~": appDir,
-      "@": appDir,
+      ...sharedAliases,
     },
   },
   test: {
@@ -71,7 +104,7 @@ export default defineConfig({
       seed: fakerSeed,
     },
     root: ".",
-    projects: [unitProject, compiledProject],
+    projects: [unitNuxtProject, unitDomProject, unitNodeProject, compiledProject],
     coverage: {
       provider: "istanbul",
       reporter: ["text", "json", "html"],
@@ -83,4 +116,4 @@ export default defineConfig({
       exclude: ["**/generated/**"],
     },
   },
-});{% endraw %}
+});
