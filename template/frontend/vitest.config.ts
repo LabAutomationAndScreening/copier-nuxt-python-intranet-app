@@ -119,18 +119,7 @@ export default defineConfig({
         "100": true,
       },
       include: ["app/**/*.{ts,vue}"],
-      exclude: [
-        "**/generated/**",
-        "**/utils/selectors.ts", // this is tested in other repo (and should become a library)
-        "tests/unit/helpers/accordion.ts", // TODO: break this out into a library
-        "tests/unit/helpers/apollo.ts", // TODO: break this out into a library
-        "tests/unit/helpers/fetch.ts", // TODO: break this out into a library
-        "tests/unit/helpers/table.ts", // TODO: break this out into a library
-        "tests/unit/helpers/typed-element-getters.ts", // TODO: break this out into a library
-        "tests/unit/helpers/nuxt-ui/form-getters.ts", // TODO: break this out into a library
-        "tests/unit/helpers/nuxt-ui/form-setters.ts", // TODO: break this out into a library
-        "tests/unit/helpers/nuxt-ui/stepper.ts", // TODO: break this out into a library
-      ],
+      exclude: ["**/generated/**"],
     },
   },
 });
