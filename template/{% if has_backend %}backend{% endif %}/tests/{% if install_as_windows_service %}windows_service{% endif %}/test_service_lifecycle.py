@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 _SUBCOMMAND_TIMEOUT = 30
 _SC_TIMEOUT = 10
 _STOP_TIMEOUT = 30
-_CRASH_DUMP_POLL_TIMEOUT = 30
+_CRASH_DUMP_POLL_TIMEOUT = 60
 _EXE = str(EXE_FILE_PATH)
 # Mirrors CRASH_DUMP_FILENAME in backend_api.win_service; not imported because win_service.py
 # imports pywin32 at module top-level, which is not installed on Linux dev machines.
@@ -145,7 +145,31 @@ class CrashedService:
     bad_log_level: str
 
 
-@pytest.mark.timeout(90)
+def _log_crash_dump_diagnostics(*, log_folder: Path, start_result: subprocess.CompletedProcess[bytes]) -> None:
+    # When the poll loop times out without seeing the crash dump, the failure mode is invisible:
+    # could be SCM never started the worker, worker started but write hit OSError, or path
+    # resolved elsewhere. Capture state so the next CI failure points at a concrete branch.
+    logger.error("service start returncode=%d", start_result.returncode)
+    logger.error("service start stdout:\n%s", start_result.stdout.decode(errors="replace"))
+    logger.error("service start stderr:\n%s", start_result.stderr.decode(errors="replace"))
+    sc_query = _run_sc("query", APP_NAME)
+    logger.error("sc query returncode=%d output:\n%s", sc_query.returncode, sc_query.stdout.decode(errors="replace"))
+    if log_folder.exists():
+        logger.error("log_folder contents: %s", sorted(p.name for p in log_folder.iterdir()))
+    else:
+        logger.error("log_folder %s does not exist", log_folder)
+    # Pull the most recent Application event log entries for this service; LogErrorMsg from the
+    # win_service crash handler lands here when crash dump file write itself failed.
+    event_log = subprocess.run(
+        ["wevtutil", "qe", "Application", "/c:20", "/rd:true", "/f:text"],  # noqa: S607 # wevtutil is a Windows system binary always available in PATH
+        capture_output=True,
+        timeout=_SC_TIMEOUT,
+        check=False,
+    )
+    logger.error("recent Application event log entries:\n%s", event_log.stdout.decode(errors="replace"))
+
+
+@pytest.mark.timeout(120)
 class TestServiceWorkerCrash:
     @pytest.fixture
     def crashed_service(self, tmp_path: Path):
@@ -159,10 +183,12 @@ class TestServiceWorkerCrash:
         _install_service(port=port, log_folder=log_folder, extra_runtime_args=["--log-level", bad_log_level])
         try:
             # SCM may report start success briefly before the worker thread crashes; ignore returncode.
-            _ = _run_app("service", "start", check=False)
+            start_result = _run_app("service", "start", check=False)
             deadline = time.monotonic() + _CRASH_DUMP_POLL_TIMEOUT
             while time.monotonic() < deadline and not crash_dump_path.exists():
                 time.sleep(0.5)
+            if not crash_dump_path.exists():
+                _log_crash_dump_diagnostics(log_folder=log_folder, start_result=start_result)
             yield CrashedService(crash_dump_path=crash_dump_path, bad_log_level=bad_log_level)
         finally:
             # Remove crash dump before CI artifact upload so passing tests don't litter the upload.
