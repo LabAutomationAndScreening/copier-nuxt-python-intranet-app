@@ -57,10 +57,10 @@ def _install_service(*, port: int, log_folder: Path, extra_runtime_args: Sequenc
         "--",
         "--port",
         str(port),
-        "--host",
-        "0.0.0.0",  # noqa: S104 # match e2e pattern: bind everything until Windows CI networking sorted out
         "--log-folder",
         str(log_folder),
+        "--host",
+        "0.0.0.0",  # noqa: S104 # match e2e pattern: bind everything until Windows CI networking sorted out
         *extra_runtime_args,
     )
 
@@ -236,10 +236,10 @@ def test_When_install_with_startup_option_before_subcommand__Then_service_regist
             "--",
             "--port",
             str(port),
-            "--host",
-            "0.0.0.0",  # noqa: S104 # match e2e pattern
             "--log-folder",
             str(log_folder),
+            "--host",
+            "0.0.0.0",  # noqa: S104 # match e2e pattern
         )
 
         result = _run_sc("qc", APP_NAME, check=True)
