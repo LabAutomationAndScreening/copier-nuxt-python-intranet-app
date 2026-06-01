@@ -3,8 +3,11 @@ import logging
 import os
 import socket
 import subprocess
+import sys
+import threading
 import time
 from pathlib import Path
+from typing import IO
 
 import httpx
 
@@ -15,9 +18,11 @@ from .jinja_constants import ApplicationBootupModes
 
 logger = logging.getLogger(__name__)
 
+IS_WINDOWS = os.name == "nt"
 DEFAULT_COMPOSE_FILE = Path(__file__).parent.parent.parent.parent / "docker-compose.yaml"
 EXE_DIR_PATH = Path(__file__).parent.parent.parent / "dist" / APP_NAME
-EXE_FILE_NAME = APP_NAME + (".exe" if os.name == "nt" else "")
+E2E_BACKEND_LOG_DIR = Path(__file__).parent.parent.parent / "dist" / "e2e-backend-logs"
+EXE_FILE_NAME = APP_NAME + (".exe" if IS_WINDOWS else "")
 EXE_FILE_PATH = EXE_DIR_PATH / EXE_FILE_NAME
 
 
@@ -239,6 +244,7 @@ def start_exe(*, port: int, env: dict[str, str] | None = None) -> subprocess.Pop
         env = (  # by default, pass in any environmental variables configured during the test setup process
             os.environ.copy()
         )
+    E2E_BACKEND_LOG_DIR.mkdir(parents=True, exist_ok=True)
     process = subprocess.Popen(  # noqa: S603 # we trust this input
         [
             str(EXE_FILE_PATH),
@@ -246,11 +252,25 @@ def start_exe(*, port: int, env: dict[str, str] | None = None) -> subprocess.Pop
             str(port),
             "--host",
             "0.0.0.0",  # noqa: S104 # until we get Windows CI fully figured out, we're just binding everything
+            "--log-folder",  # the backend also writes its own structured JSON log here; CI uploads it on failure
+            str(E2E_BACKEND_LOG_DIR),
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         env=env,
     )
+
+    # Both pipes MUST be drained: an unread PIPE fills its OS buffer and blocks the backend (deadlocks readily on
+    # Windows). We mirror each line to our own stream so the backend's output stays visible in the CI job log.
+    def _drain(stream: IO[bytes] | None, *, mirror: IO[str]) -> None:
+        assert stream is not None
+        for raw_line in stream:
+            _ = mirror.write(raw_line.decode("utf-8", errors="replace"))
+            mirror.flush()
+
+    _ = threading.Thread(target=_drain, args=(process.stdout,), kwargs={"mirror": sys.stdout}, daemon=True).start()
+    _ = threading.Thread(target=_drain, args=(process.stderr,), kwargs={"mirror": sys.stderr}, daemon=True).start()
+
     wait_for_backend_to_be_healthy(port=port)
     return process
 
