@@ -36,12 +36,15 @@ export function composeUp({ composeFile, services = [] }: { composeFile: string;
       "--remove-orphans",
       ...services,
     ],
-    { stdio: "inherit" },
+    { stdio: "inherit", timeout: 120000 },
   );
 }
 
 export function composeDown({ composeFile }: { composeFile: string }): void {
-  execFileSync("docker", ["compose", "--file", composeFile, "down", "--volumes"], { stdio: "inherit" });
+  execFileSync("docker", ["compose", "--file", composeFile, "down", "--volumes"], {
+    stdio: "inherit",
+    timeout: 120000,
+  });
 }
 
 export async function waitForComposeHealthy({
