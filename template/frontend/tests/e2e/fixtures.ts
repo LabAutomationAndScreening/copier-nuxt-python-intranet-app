@@ -35,6 +35,7 @@ async function retryingFetch(request: string, init: RequestInit): Promise<Respon
   }
   throw lastError;
 }
+
 // Mirrors tests/setup/faker.ts (used by the vitest unit/compiled projects). Seed once per worker so a
 // failing run can be reproduced with TEST_FAKER_SEED=<logged value>. Playwright runs files in a stable
 // order (no vitest-style shuffle), so seed + order reproduce the sequence.
