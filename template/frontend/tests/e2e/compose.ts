@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 
 interface ComposePsService {
   Service: string;
@@ -23,15 +23,15 @@ function isComposePsService(value: unknown): value is ComposePsService {
 }
 
 export function composeUp({ composeFile, services = [] }: { composeFile: string; services?: string[] }): void {
-  const serviceArgs = services.length > 0 ? ` ${services.join(" ")}` : "";
-  execSync(
-    `docker compose --file="${composeFile}" up --detach --force-recreate --renew-anon-volumes --remove-orphans${serviceArgs}`,
+  execFileSync(
+    "docker",
+    ["compose", "--file", composeFile, "up", "--detach", "--force-recreate", "--renew-anon-volumes", "--remove-orphans", ...services],
     { stdio: "inherit" },
   );
 }
 
 export function composeDown({ composeFile }: { composeFile: string }): void {
-  execSync(`docker compose --file="${composeFile}" down --volumes`, { stdio: "inherit" });
+  execFileSync("docker", ["compose", "--file", composeFile, "down", "--volumes"], { stdio: "inherit" });
 }
 
 export async function waitForComposeHealthy({
@@ -44,7 +44,7 @@ export async function waitForComposeHealthy({
   retryDelayMs?: number;
 }): Promise<void> {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const stdout = execSync(`docker compose --file="${composeFile}" ps --format json`, {
+    const stdout = execFileSync("docker", ["compose", "--file", composeFile, "ps", "--format", "json"], {
       encoding: "utf-8",
       timeout: 10000,
     });
