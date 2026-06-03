@@ -30,7 +30,9 @@ async function retryingFetch(request: string, init: RequestInit): Promise<Respon
         throw error;
       }
       lastError = error;
-      await new Promise((resolve) => setTimeout(resolve, 100 * attempt));
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 100 * attempt));
+      }
     }
   }
   throw lastError;
