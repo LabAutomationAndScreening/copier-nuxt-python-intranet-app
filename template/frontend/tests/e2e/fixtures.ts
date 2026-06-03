@@ -50,8 +50,8 @@ const fakerSeed = Number.isNaN(parsedSeed) ? Math.floor(Math.random() * 1e9) : p
 function buildBackendClient(): BackendClient {
   const adapter = new FetchRequestAdapter(
     new AnonymousAuthenticationProvider(),
-    undefined,
-    undefined,
+    undefined, // parseNodeFactory — use default
+    undefined, // serializationWriterFactory — use default
     new HttpClient(retryingFetch),
   );
   adapter.baseUrl = backendBaseUrl();
