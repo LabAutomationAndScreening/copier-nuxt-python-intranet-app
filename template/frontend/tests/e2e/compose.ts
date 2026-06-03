@@ -25,7 +25,17 @@ function isComposePsService(value: unknown): value is ComposePsService {
 export function composeUp({ composeFile, services = [] }: { composeFile: string; services?: string[] }): void {
   execFileSync(
     "docker",
-    ["compose", "--file", composeFile, "up", "--detach", "--force-recreate", "--renew-anon-volumes", "--remove-orphans", ...services],
+    [
+      "compose",
+      "--file",
+      composeFile,
+      "up",
+      "--detach",
+      "--force-recreate",
+      "--renew-anon-volumes",
+      "--remove-orphans",
+      ...services,
+    ],
     { stdio: "inherit" },
   );
 }
