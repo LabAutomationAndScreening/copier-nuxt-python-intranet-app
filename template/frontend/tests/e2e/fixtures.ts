@@ -1,10 +1,42 @@
 import { faker } from "@faker-js/faker";
 import { AnonymousAuthenticationProvider } from "@microsoft/kiota-abstractions";
-import { FetchRequestAdapter } from "@microsoft/kiota-http-fetchlibrary";
+import { FetchRequestAdapter, HttpClient } from "@microsoft/kiota-http-fetchlibrary";
 import { test as base } from "@playwright/test";
 
 import { type BackendClient, createBackendClient } from "~/generated/open-api/backend/backendClient";
 import { backendBaseUrl } from "./ports";
+
+function hasErrorCode(cause: unknown): cause is { code: string } {
+  return typeof cause === "object" && cause !== null && "code" in cause && typeof cause.code === "string";
+}
+
+// Windows CI resets idle keep-alive sockets the backend has already closed; undici surfaces this as a
+// `fetch failed` / ECONNRESET and does NOT auto-retry non-idempotent requests (e.g. POST /api/git/clone).
+// A long gap with no backend traffic (the git work in createGenericRepo) makes the reset likely, so retry
+// the transport here. The reset happens before the request reaches the server, so re-sending is safe.
+async function retryingFetch(request: string, init: RequestInit): Promise<Response> {
+  const maxAttempts = 4;
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fetch(request, init);
+    } catch (error) {
+      const isConnectionReset =
+        error instanceof TypeError &&
+        "cause" in error &&
+        hasErrorCode(error.cause) &&
+        error.cause.code === "ECONNRESET";
+      if (!isConnectionReset) {
+        throw error;
+      }
+      lastError = error;
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 100 * attempt));
+      }
+    }
+  }
+  throw lastError;
+}
 
 // Mirrors tests/setup/faker.ts (used by the vitest unit/compiled projects). Seed once per worker so a
 // failing run can be reproduced with TEST_FAKER_SEED=<logged value>. Playwright runs files in a stable
@@ -16,7 +48,12 @@ const fakerSeed = Number.isNaN(parsedSeed) ? Math.floor(Math.random() * 1e9) : p
 // baseUrl — keeps this test harness free of a nuxt-common dependency. This is the same adapter
 // useKiotaClient constructs internally.
 function buildBackendClient(): BackendClient {
-  const adapter = new FetchRequestAdapter(new AnonymousAuthenticationProvider());
+  const adapter = new FetchRequestAdapter(
+    new AnonymousAuthenticationProvider(),
+    undefined, // parseNodeFactory — use default
+    undefined, // serializationWriterFactory — use default
+    new HttpClient(retryingFetch),
+  );
   adapter.baseUrl = backendBaseUrl();
   return createBackendClient(adapter);
 }

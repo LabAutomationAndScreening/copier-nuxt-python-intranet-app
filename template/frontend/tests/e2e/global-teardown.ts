@@ -1,9 +1,9 @@
-import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { APP_NAME } from "../setup/constants";
+import { composeDown } from "./compose";
 import { backendBaseUrl, isBuiltBackendE2E, isDockerComposeE2E } from "./ports";
 
 const repoRoot = path.resolve(fileURLToPath(new URL("../../../", import.meta.url)));
@@ -55,6 +55,6 @@ export default async function globalTeardown(): Promise<void> {
   }
   if (isDockerComposeE2E) {
     console.log("Stopping docker-compose...");
-    execSync(`docker compose --file="${dockerComposeFile}" down --volumes`, { stdio: "inherit" });
+    composeDown({ composeFile: dockerComposeFile });
   }
 }
