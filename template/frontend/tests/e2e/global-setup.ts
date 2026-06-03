@@ -1,9 +1,10 @@
-import { execSync, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { APP_NAME, DEPLOYED_BACKEND_PORT_NUMBER } from "../setup/constants";
+import { composeUp, waitForComposeHealthy } from "./compose";
 import { backendBaseUrl, isBuiltBackendE2E, isDockerComposeE2E } from "./ports";
 
 // Brings up the app the E2E suite runs against, then waits until it is healthy. Runs once before
@@ -39,58 +40,6 @@ async function waitForHttpHealthcheck({
   throw new Error(`Timeout waiting for ${url}`);
 }
 
-interface ComposePsService {
-  Service: string;
-  Health: string;
-  State: string;
-}
-
-function isComposePsService(value: unknown): value is ComposePsService {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-  if (!("Service" in value) || typeof value.Service !== "string") {
-    return false;
-  }
-  if (!("Health" in value) || typeof value.Health !== "string") {
-    return false;
-  }
-  if (!("State" in value) || typeof value.State !== "string") {
-    return false;
-  }
-  return true;
-}
-
-async function waitForComposeHealthy({
-  maxAttempts = 30,
-  retryDelayMs = 2000,
-}: { maxAttempts?: number; retryDelayMs?: number } = {}): Promise<void> {
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const stdout = execSync(`docker compose --file="${dockerComposeFile}" ps --format json`, {
-      encoding: "utf-8",
-      timeout: 10000,
-    });
-    const services: ComposePsService[] = [];
-    for (const line of stdout.split("\n")) {
-      if (line.trim().length === 0) {
-        continue;
-      }
-      const parsed: unknown = JSON.parse(line);
-      if (!isComposePsService(parsed)) {
-        throw new Error(`Unexpected docker compose ps entry shape: ${line}`);
-      }
-      services.push(parsed);
-    }
-    // services without a healthcheck report Health as "" — treat those as ready once running
-    const allReady = services.every((s) => s.State === "running" && (s.Health === "healthy" || s.Health === ""));
-    if (services.length > 0 && allReady) {
-      return;
-    }
-    await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
-  }
-  throw new Error(`docker-compose containers failed to become healthy after ${maxAttempts} attempts`);
-}
-
 function startBuiltBackend(): void {
   if (!fs.existsSync(executablePath) || !fs.statSync(executablePath).isFile()) {
     throw new Error(`File not found: ${executablePath}`);
@@ -124,12 +73,7 @@ export default async function globalSetup(): Promise<void> {
   if (isDockerComposeE2E) {
     console.log("Starting docker-compose...");
     process.env.DEPLOYED_BACKEND_PORT_NUMBER = DEPLOYED_BACKEND_PORT_NUMBER.toString();
-    execSync(
-      `docker compose --file="${dockerComposeFile}" up --detach --force-recreate --renew-anon-volumes --remove-orphans`,
-      {
-        stdio: "inherit",
-      },
-    );
-    await waitForComposeHealthy();
+    composeUp({ composeFile: dockerComposeFile });
+    await waitForComposeHealthy({ composeFile: dockerComposeFile });
   }
 }
