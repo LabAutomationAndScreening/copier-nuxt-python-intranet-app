@@ -308,6 +308,7 @@ jobs:
         uses: AbsaOSS/k3d-action@{% endraw %}{{ gha_absaoss_k3d }}{% raw %}
         with:
           cluster-name: e2e
+          k3d-version: {% endraw %}{{ k3d_version }}{% raw %}
           args: >-
             --agents 0
             --port {% endraw %}{{ frontend_nodeport_number }}{% raw %}:{% endraw %}{{ frontend_nodeport_number }}{% raw %}@server:0
