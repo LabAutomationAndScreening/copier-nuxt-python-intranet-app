@@ -1,6 +1,6 @@
 import { faker } from "@faker-js/faker";
 import { AnonymousAuthenticationProvider } from "@microsoft/kiota-abstractions";
-import { FetchRequestAdapter, HttpClient } from "@microsoft/kiota-http-fetchlibrary";
+import { FetchRequestAdapter, KiotaClientFactory } from "@microsoft/kiota-http-fetchlibrary";
 import { test as base } from "@playwright/test";
 
 import { type BackendClient, createBackendClient } from "~/generated/open-api/backend/backendClient";
@@ -52,7 +52,7 @@ function buildBackendClient(): BackendClient {
     new AnonymousAuthenticationProvider(),
     undefined, // parseNodeFactory — use default
     undefined, // serializationWriterFactory — use default
-    new HttpClient(retryingFetch),
+    KiotaClientFactory.create(retryingFetch),
   );
   adapter.baseUrl = backendBaseUrl();
   return createBackendClient(adapter);
