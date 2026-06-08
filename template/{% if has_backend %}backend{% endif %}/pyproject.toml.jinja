@@ -93,7 +93,7 @@ do_not_mutate_patterns = [
     # disable mutations of assert statements (for type narrowing...it often messes with the messages)
     'assert .+',
     'f"Expected .+, got.+\{\(type\(.+\}.+\{.+',
-    # disable mutating exceptions
+    # disable mutating untested exceptions
     'raise NotImplementedError.+',
     'raise AssertionError.+',
 ]{% endraw %}{% if is_circuit_python_driver %}{% raw %}
