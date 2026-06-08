@@ -1,6 +1,5 @@
 project-excludes = [
     # excludes managed by this repository
-    "**/template",
 
     # excludes managed by template
     "**/vendor_files",

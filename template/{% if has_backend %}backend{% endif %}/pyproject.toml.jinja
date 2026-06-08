@@ -40,6 +40,7 @@ dev = [
     "httpx2{% endraw %}{{ httpx2_version }}{% raw %}",
     "pyhumps>=3.8.0",
     "pyright{% endraw %}{{ pyright_version }}{% raw %}",
+    "pyrefly{% endraw %}{{ pyrefly_version }}{% raw %}",
     "ty{% endraw %}{{ ty_version }}{% raw %}",
     "syrupy{% endraw %}{{ syrupy_version }}{% raw %}",
     "pytest{% endraw %}{{ pytest_version }}{% raw %}",
@@ -49,6 +50,7 @@ dev = [
     "pytest-timeout{% endraw %}{{ pytest_timeout_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
     "pytest-asyncio{% endraw %}{{ pytest_asyncio_version }}{% raw %}",{% endraw %}{% if backend_makes_api_calls %}{% raw %}
     "pytest-recording{% endraw %}{{ pytest_recording_version }}{% raw %}",
+    "mutmut{% endraw %}{{ mutmut_version }}{% raw %}",
     "vcrpy{% endraw %}{{ vcrpy_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if deploy_as_executable %}{% raw %}
     "pyinstaller{% endraw %}{{ pyinstaller_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
     "pytest-reserial{% endraw %}{{ pytest_reserial_version }}{% raw %}",
