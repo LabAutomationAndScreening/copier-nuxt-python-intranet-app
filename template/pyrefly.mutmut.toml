@@ -10,4 +10,5 @@ preset = "strict"
 project-includes = ["backend/mutants/src/**"]
 project-excludes = [
     "**/generated/**",
+    "**/fast_api_exception_handlers.py", # this causes problems, and for now is already excluded from mutation testing anyway https://github.com/boxed/mutmut/issues/522
 ]
