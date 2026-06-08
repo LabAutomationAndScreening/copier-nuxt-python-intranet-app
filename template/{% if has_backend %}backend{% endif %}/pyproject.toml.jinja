@@ -40,6 +40,7 @@ dev = [
     "httpx2{% endraw %}{{ httpx2_version }}{% raw %}",
     "pyhumps>=3.8.0",
     "pyright{% endraw %}{{ pyright_version }}{% raw %}",
+    "pyrefly{% endraw %}{{ pyrefly_version }}{% raw %}",
     "ty{% endraw %}{{ ty_version }}{% raw %}",
     "syrupy{% endraw %}{{ syrupy_version }}{% raw %}",
     "pytest{% endraw %}{{ pytest_version }}{% raw %}",
@@ -49,6 +50,7 @@ dev = [
     "pytest-timeout{% endraw %}{{ pytest_timeout_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
     "pytest-asyncio{% endraw %}{{ pytest_asyncio_version }}{% raw %}",{% endraw %}{% if backend_makes_api_calls %}{% raw %}
     "pytest-recording{% endraw %}{{ pytest_recording_version }}{% raw %}",
+    "mutmut{% endraw %}{{ mutmut_version }}{% raw %}",
     "vcrpy{% endraw %}{{ vcrpy_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if deploy_as_executable %}{% raw %}
     "pyinstaller{% endraw %}{{ pyinstaller_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
     "pytest-reserial{% endraw %}{{ pytest_reserial_version }}{% raw %}",
@@ -67,7 +69,34 @@ target_package_path = "tests/e2e/generated/graphql"
 enable_custom_operations = true{% endraw %}{% endif %}{% raw %}
 
 [tool.uv]
-package = true{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+package = true
+
+[tool.mutmut]
+source_paths = [ "src/backend_api/" ]
+pytest_add_cli_args_test_selection = [ "tests/unit/" ]
+pytest_add_cli_args = [ "--no-cov" ]
+also_copy = [ "src/static" ]
+do_not_mutate = [   "*/generated/*" , # do not mutate generated code, this is created by external tooling that has undergone its own testing
+                    "*/logger_config.py", # not thoroughly tested
+                    "*/app_runner.py", # not thoroughly tested
+                    "*/fast_api_exception_handlers.py", # not thoroughly tested
+                    "*/base/lib.py", # not thoroughly tested here, needs to become a library
+ ]
+# mutmut runs this from backend/mutants/. The dedicated config points pyrefly at the generated
+# mutants tree and excludes do_not_mutate files, so every reported type error falls inside a mutant
+# function and mutmut can attribute it. Without it, pyrefly checks the real source from the mutants/
+# cwd and reports errors on non-mutant lines, crashing with "Could not find mutant for type error".
+type_check_command = ['uv', 'run', 'pyrefly', 'check', '--output-format=json', '-c', '../../pyrefly.mutmut.toml']
+do_not_mutate_patterns = [
+    # disable mutations of all logger.info/debug/... statements
+    'logger\.\w+',
+    # disable mutations of assert statements (for type narrowing...it often messes with the messages)
+    'assert .+',
+    'f"Expected .+, got.+\{\(type\(.+\}.+\{.+',
+    # disable mutating untested exceptions
+    'raise NotImplementedError.+',
+    'raise AssertionError.+',
+]{% endraw %}{% if is_circuit_python_driver %}{% raw %}
 
 [tool.circup.bundle-versions]
 # WORKAROUND for https://github.com/adafruit/circup/issues/258 — circup currently strips `==X`
