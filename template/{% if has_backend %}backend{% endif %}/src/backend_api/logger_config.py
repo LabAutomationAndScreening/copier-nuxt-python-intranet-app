@@ -95,8 +95,8 @@ def configure_logging(
         structlog.stdlib.ProcessorFormatter.remove_processors_meta,
         # Force plain_traceback: when `rich` is importable, ConsoleRenderer defaults to
         # RichTracebackFormatter, which pygments-highlights the entire stack and reprs every
-        # frame's locals on each logged exception. That made error-path tests ~18x slower once
-        # rich was pulled in as a transitive dev dependency. plain_traceback keeps it cheap.
+        # frame's locals on each logged exception. That made error-path tests dramatically slower once
+        # rich was pulled in as a transitive dev dependency (structlog v26). plain_traceback keeps it cheap.
         structlog.dev.ConsoleRenderer(colors=True, exception_formatter=structlog.dev.plain_traceback),
     ]
     handlers = ["file"]
