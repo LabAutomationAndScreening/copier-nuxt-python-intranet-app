@@ -15,7 +15,7 @@ dependencies = [
     "uuid-utils{% endraw %}{{ uuid_utils_version }}{% raw %}",{% endraw %}{% if backend_uses_graphql %}{% raw %}
     "strawberry-graphql{% endraw %}{{ strawberry_graphql_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
     "pip-system-certs>=5.3",{% endraw %}{% if install_as_windows_service %}{% raw %}
-    "pywin32>=311; sys_platform == 'win32'",{% endraw %}{% endif %}{% raw %}
+    "pywin32>=312; sys_platform == 'win32'",{% endraw %}{% endif %}{% raw %}
     "pydantic{% endraw %}{{ pydantic_version }}{% raw %}",
     "uvicorn{% endraw %}{{ uvicorn_version }}{% raw %}",
     "structlog{% endraw %}{{ structlog_version }}{% raw %}",{% endraw %}{% if backend_source_uses_kiota %}{% raw %}
