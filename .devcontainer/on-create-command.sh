@@ -19,4 +19,4 @@ npm install -g @beads/bd@0.57.0 # no specific reason for this version, just pinn
 
 pre-commit install --install-hooks
 
-python .devcontainer/manual-setup-deps.py --optionally-check-lock
+python .devcontainer/manual-setup-deps.py --optionally-check-lock --allow-uv-to-install-python
