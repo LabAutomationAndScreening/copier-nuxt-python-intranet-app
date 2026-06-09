@@ -12,8 +12,8 @@ class ContextUpdater(ContextHook):
     def hook(  # noqa: PLR0915 # yes, this is a lot of statements, but it's all just creating the dict
         self, context: dict[Any, Any]
     ) -> dict[Any, Any]:
-        context["uv_version"] = "0.11.17"
-        context["pnpm_version"] = "11.5.0"
+        context["uv_version"] = "0.11.19"
+        context["pnpm_version"] = "11.5.2"
         context["npm_version"] = "11.13.0"
         context["nvm_version"] = "0.40.4"
         context["pre_commit_version"] = "4.5.1"
