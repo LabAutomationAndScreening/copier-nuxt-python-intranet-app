@@ -12,8 +12,8 @@ class ContextUpdater(ContextHook):
     def hook(  # noqa: PLR0915 # yes, this is a lot of statements, but it's all just creating the dict
         self, context: dict[Any, Any]
     ) -> dict[Any, Any]:
-        context["uv_version"] = "0.11.17"
-        context["pnpm_version"] = "11.5.0"
+        context["uv_version"] = "0.11.19"
+        context["pnpm_version"] = "11.5.2"
         context["npm_version"] = "11.13.0"
         context["nvm_version"] = "0.40.4"
         context["pre_commit_version"] = "4.5.1"
@@ -89,7 +89,7 @@ class ContextUpdater(ContextHook):
         context["vue_eslint_parser_version"] = "^10.4.0"
         context["happy_dom_version"] = "^20.10.1"
         context["node_kiota_bundle_version"] = "1.0.0-preview.102"
-        context["labsync_nuxt_common_version"] = "^0.1.1"
+        context["labsync_nuxt_common_version"] = "^0.1.4"
         context["tanstack_vue_table_version"] = "^8.21.3"
         context["unplugin_auto_import_version"] = "^21.0.0"
 

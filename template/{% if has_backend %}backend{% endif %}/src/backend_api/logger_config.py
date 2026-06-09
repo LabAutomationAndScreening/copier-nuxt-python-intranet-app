@@ -93,7 +93,11 @@ def configure_logging(
         *shared_processors,
         structlog.processors.EventRenamer(to="message"),
         structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-        structlog.dev.ConsoleRenderer(colors=True),
+        # Force plain_traceback: when `rich` is importable, ConsoleRenderer defaults to
+        # RichTracebackFormatter, which pygments-highlights the entire stack and reprs every
+        # frame's locals on each logged exception. That made error-path tests dramatically slower once
+        # rich was pulled in as a transitive dev dependency (structlog v26). plain_traceback keeps it cheap.
+        structlog.dev.ConsoleRenderer(colors=True, exception_formatter=structlog.dev.plain_traceback),
     ]
     handlers = ["file"]
     if not suppress_console_logging:  # pragma: no cover # we need to just move this into a library...this repo shouldn't be testing the logging config
