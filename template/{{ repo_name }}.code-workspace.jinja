@@ -27,8 +27,6 @@
         {% endraw %}{% if has_backend %}{% raw %}// Backend (Python / uv)
         // Sets the default interpreter to the virtual environment managed by uv
         "python.defaultInterpreterPath": "${workspaceFolder:backend}/.venv/bin/python",
-        // Disables automatic venv activation — uv manages the environment
-        "python.terminal.activateEnvironment": false,
         // Works for both devcontainer and non-devcontainer users (devcontainer.json hardcodes
         // an absolute /workspaces/ path that breaks outside the container)
         "ruff.configuration": "${workspaceFolder:root}/ruff-non-src.toml",
