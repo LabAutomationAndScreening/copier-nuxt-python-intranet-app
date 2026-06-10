@@ -1,5 +1,4 @@
 import logging
-from collections.abc import Mapping
 from functools import partial
 from typing import Any
 
@@ -62,7 +61,10 @@ class ExceptionHandler:
         for m in app.user_middleware:
             assert isinstance(m.cls, type), f"Expected middleware class to be a type, got {type(m.cls)}"
             if issubclass(m.cls, CORSMiddleware):
-                generator = CORSMiddleware(app, **m.kwargs)
+                generator = CORSMiddleware(
+                    app,
+                    **m.kwargs,  # pyrefly: ignore[bad-argument-type] # pyrefly doesn't like kwargs, but we're just passing them through to Starlette
+                )
             else:
                 continue  # pragma: no cover # not worth testing a longer list right now
 
@@ -149,16 +151,11 @@ def custom_openapi(app: FastAPI) -> dict[str, Any]:
         ProblemDetails.model_json_schema(ref_template="#/components/schemas/{model}"),
     )
 
-    def problem_ref() -> Mapping[str, JsonValue]:
+    def problem_ref() -> dict[str, JsonValue]:
         return {"$ref": "#/components/schemas/ProblemDetails"}
 
-    def problem_content() -> Mapping[str, JsonValue]:
-        return {
-            "application/problem+json": {
-                "schema":  # pyright: ignore[reportReturnType] # I don't understand why Pyright gets upset at things being subsets of JsonValue
-                problem_ref()
-            }
-        }
+    def problem_content() -> dict[str, JsonValue]:
+        return {"application/problem+json": {"schema": problem_ref()}}
 
     paths = oas.get("paths", {})
     for methods in paths.values():

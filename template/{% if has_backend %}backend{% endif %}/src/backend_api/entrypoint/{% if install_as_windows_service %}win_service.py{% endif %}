@@ -8,10 +8,10 @@ import traceback
 from collections.abc import Sequence
 from pathlib import Path
 
-import servicemanager  # pyright: ignore[reportMissingModuleSource] # pywin32 has no stubs; only importable on Windows
-import win32service  # pyright: ignore[reportMissingModuleSource] # pywin32 has no stubs; only importable on Windows
-import win32serviceutil  # pyright: ignore[reportMissingModuleSource] # pywin32 has no stubs; only importable on Windows
-import winerror  # pyright: ignore[reportMissingModuleSource] # pywin32 has no stubs; only importable on Windows
+import servicemanager  # pyright: ignore[reportMissingModuleSource] # pyrefly: ignore[missing-import] # pywin32 has no stubs; only importable on Windows
+import win32service  # pyright: ignore[reportMissingModuleSource] # pyrefly: ignore[missing-import] # pywin32 has no stubs; only importable on Windows
+import win32serviceutil  # pyright: ignore[reportMissingModuleSource] # pyrefly: ignore[missing-import] # pywin32 has no stubs; only importable on Windows
+import winerror  # pyright: ignore[reportMissingModuleSource] # pyrefly: ignore[missing-import] # pywin32 has no stubs; only importable on Windows
 
 from .. import app_runner
 from ..jinja_constants import APP_NAME
