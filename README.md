@@ -34,3 +34,12 @@ To create a new repository using this template:
 ## Updating from the template
 This repository uses a copier template. To pull in the latest updates from the template, use the command:
 `copier update --trust --conflict rej --defaults`
+
+<!--
+============== WARNING ==============================================================================
+File is managed by a copier template. See .copier-managed-files.json for details.
+
+You are welcome to make changes to this file in your repo if they are custom to your project,
+but if the change should be shared with other projects, please backport it to the template repo.
+=====================================================================================================
+-->

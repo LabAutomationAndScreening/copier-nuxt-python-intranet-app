@@ -114,3 +114,12 @@ By contributing, you agree that your contributions will be licensed under the sa
 Thank you for your contribution! 🚀
 
 If you have any questions, feel free to raise an **Issue**. 😊
+
+<!--
+============== WARNING ==============================================================================
+File is managed by a copier template. See .copier-managed-files.json for details.
+
+You are welcome to make changes to this file in your repo if they are custom to your project,
+but if the change should be shared with other projects, please backport it to the template repo.
+=====================================================================================================
+-->

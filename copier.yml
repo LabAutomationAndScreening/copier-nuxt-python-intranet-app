@@ -1,20 +1,11 @@
+# ============== WARNING ==============================================================================
+# File is managed by a copier template. See .copier-managed-files.json for details.
+#
+# You are welcome to make changes to this file in your repo if they are custom to your project,
+# but if the change should be shared with other projects, please backport it to the template repo.
+# =====================================================================================================
 # Questions specific to this template
-has_backend:
-    type: bool
-    help: Does this project have a backend?
-    default: yes
 
-is_circuit_python_driver:
-    type: bool
-    help: Is this backend a CircuitPython device driver?
-    default: no
-    when: "{{ has_backend }}"
-
-has_circuit_python_backend_template_been_instantiated:
-    type: bool
-    help: Has the CircuitPython backend template been instantiated in this repository yet?
-    default: no
-    when: "{{ is_circuit_python_driver }}"
 
 
 
@@ -360,27 +351,10 @@ _tasks:
             echo "ruff.toml not found; skipping Ruff target-version update."
         fi
   - command: |
-      echo "Checking pyrightconfig.json..."
-      if [ -f pyrightconfig.json ]; then
-        if ! grep -q '"extraPaths"' pyrightconfig.json; then
-          sed -i '/"executionEnvironments":/,/^  \]$/ { /^  \]$/ { s/$/,/; a\  "extraPaths": ["backend/src/backend_api/firmware/src"] // circuit python cannot do relative imports, so we need to use absolute imports and tell pyright about them
-        }; }' pyrightconfig.json
-        fi
-      else
-        echo "pyrightconfig.json not found"
-      fi
-    when: "{{ is_circuit_python_driver }}"
-  - command: |
-      echo "Checking for .coveragerc in repo root..."
-      if [ -f .coveragerc ]; then
-        echo "Moving .coveragerc to backend folder..."
-        mkdir -p backend
-        mv .coveragerc backend/.coveragerc
-        echo ".coveragerc moved successfully"
-      else
-        echo ".coveragerc not found in repo root"
-      fi
-    when: "{{ has_backend }}"
+        python3 '{{ _copier_conf.src_path }}/src/copier_tasks/copier_provenance.py' \
+            '{{ _copier_conf.src_path }}/template' \
+            '.' \
+            --template-src '{{ _copier_conf.src_path }}'
 
 # Additional Settings
 _min_copier_version: "9.8"
