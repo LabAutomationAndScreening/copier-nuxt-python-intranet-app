@@ -1,14 +1,14 @@
-{
+{% raw %}{
     "folders": [
         {
             "name": "frontend",
             "path": "frontend"
         },
-        {% if has_backend %}{
+        {% endraw %}{% if has_backend %}{
             "name": "backend",
             "path": "backend"
         },
-        {% endif %}{
+        {% endif %}{% raw %}{
             "name": "root",
             "path": "."
         }
@@ -24,7 +24,7 @@
         // Vitest Explorer needs an explicit pointer in a multi-root workspace
         "vitest.rootConfig": "${workspaceFolder:frontend}/vitest.config.ts",
 
-        {% if has_backend %}// Backend (Python / uv)
+        {% endraw %}{% if has_backend %}{% raw %}// Backend (Python / uv)
         // Sets the default interpreter to the virtual environment managed by uv
         "python.defaultInterpreterPath": "${workspaceFolder:backend}/.venv/bin/python",
         // Disables automatic venv activation — uv manages the environment
@@ -33,11 +33,11 @@
         // an absolute /workspaces/ path that breaks outside the container)
         "ruff.configuration": "${workspaceFolder:root}/ruff-non-src.toml",
 
-        {% endif %}"files.exclude": {
+        {% endraw %}{% endif %}{% raw %}"files.exclude": {
             // Excluding service dirs since they are imported as their own workspace folders
-            "frontend": true{% if has_backend %},
-            "backend": true{% endif %}
+            "frontend": true{% endraw %}{% if has_backend %},
+            "backend": true{% endif %}{% raw %}
 
         }
     }
-}
+}{% endraw %}
