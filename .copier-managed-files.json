@@ -100,6 +100,7 @@
         "tests/copier_data/data2.yaml",
         "tests/unit/copier_tasks/__init__.py",
         "tests/unit/copier_tasks/helpers.py",
+        "tests/unit/copier_tasks/test_copier_provenance.py",
         "tests/unit/copier_tasks/test_ensure_pnpm_minimum_release_age_exclude.py",
         "tests/unit/copier_tasks/test_remove_precommit_hooks.py",
         "ty.toml"
