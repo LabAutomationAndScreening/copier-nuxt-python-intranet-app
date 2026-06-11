@@ -54,7 +54,7 @@ class ContextUpdater(ContextHook):
         context["pytest_asyncio_version"] = ">=1.4.0"
         context["pytest_timeout_version"] = ">=2.4.0"
         context["pytest_reserial_version"] = ">=0.6.1"
-        context["python_faker_version"] = ">=40.21.0"
+        context["python_faker_version"] = ">=40.22.0"
         context["mutmut_version"] = ">=3.6.0"
         context["pyrefly_version"] = ">=1.0.0"
 
