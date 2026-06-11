@@ -393,10 +393,12 @@ _tasks:
             '.' \
             --template-src '{{ _src_path }}'
   - command: |
-        python3 '{{ _copier_conf.src_path }}/src/copier_tasks/copier_provenance.py' \
-            './template' \
-            './template' \
-            --template-src '{{ _src_path }}'
+        if [ -d './template' ]; then
+            python3 '{{ _copier_conf.src_path }}/src/copier_tasks/copier_provenance.py' \
+                './template' \
+                './template' \
+                --template-src '{{ _src_path }}'
+        fi
 
 # Additional Settings
 _min_copier_version: "9.8"
