@@ -351,6 +351,23 @@ _tasks:
             echo "ruff.toml not found; skipping Ruff target-version update."
         fi
   - command: |
+      echo "Checking pyrightconfig.json..."
+      if [ -f pyrightconfig.json ]; then
+        if ! grep -q '"extraPaths"' pyrightconfig.json; then
+          sed -i '/"executionEnvironments":/,/^  \]$/ { /^  \]$/ { s/$/,/; a\  "extraPaths": ["backend/src/backend_api/firmware/src"] // circuit python cannot do relative imports, so we need to use absolute imports and tell pyright about them
+        }; }' pyrightconfig.json
+        fi
+      else
+        echo "pyrightconfig.json not found"
+      fi
+    when: "{{ is_circuit_python_driver }}"
+  - command: |
+        if [ -f .coveragerc ]; then
+            mkdir -p backend
+            mv .coveragerc backend/.coveragerc
+        fi
+    when: "{{ has_backend }}"
+  - command: |
         python3 '{{ _copier_conf.src_path }}/src/copier_tasks/copier_provenance.py' \
             '{{ _copier_conf.src_path }}/template' \
             '.' \
