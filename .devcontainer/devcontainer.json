@@ -23,7 +23,7 @@
 
         // Python
         "ms-python.python@2026.5.2026052901",
-        "ms-python.vscode-pylance@2026.2.104",
+        "meta.pyrefly@1.0.0",
         "ms-vscode-remote.remote-containers@0.414.0",
         "charliermarsh.ruff@2026.44.0",
 
@@ -44,6 +44,7 @@
           "editor.formatOnSave": true,
           "editor.defaultFormatter": "charliermarsh.ruff"
         },
+        "python.terminal.activateEnvironment": false, // uv manages the environment
         "ruff.nativeServer": "on",
         // TODO: see if there's a way to specify different configurations for different folders
         "ruff.configuration": "/workspaces/copier-nuxt-python-intranet-app/ruff-non-src.toml", // use the non-src configuration since it's less restrictive and won't show false positives and underline things
@@ -57,5 +58,5 @@
   "initializeCommand": "sh .devcontainer/initialize-command.sh",
   "onCreateCommand": "sh .devcontainer/on-create-command.sh",
   "postStartCommand": "sh .devcontainer/post-start-command.sh"
-  // Devcontainer context hash (do not manually edit this, it's managed by a pre-commit hook): 497c90af # spellchecker:disable-line
+  // Devcontainer context hash (do not manually edit this, it's managed by a pre-commit hook): 840b9234 # spellchecker:disable-line
 }
