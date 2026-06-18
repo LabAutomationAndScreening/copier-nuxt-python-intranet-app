@@ -120,11 +120,11 @@ def _strip_existing_header(content: str, comment_format: CommentFormat) -> str:
     elif t == "batch":
         pattern = r"REM ={14} WARNING[^\n]*\n(?:.*\n)*?REM ={50,}\n"
     elif t == "block":
-        pattern = r"/\*\n(?:[^\n]*\n)*? \*/\n"
+        pattern = r"/\*\n \* ={14} WARNING[^\n]*\n(?: \*.*\n)*? \*/\n"
     elif t == "jinja":
-        pattern = r"\{#\n(?:[^\n]*\n)*?#\}\n"
+        pattern = r"\{#\n ={14} WARNING[^\n]*\n(?:.*\n)*?#\}\n"
     elif t == "markdown":
-        pattern = r"<!--\n(?:[^\n]*\n)*?-->\n"
+        pattern = r"<!--\n={14} WARNING[^\n]*\n(?:.*\n)*?-->\n"
     else:
         return content
     if loc == "bottom":
@@ -281,6 +281,7 @@ def main() -> None:
     manifest_src = args.template_src or str(args.src_template_dir)
 
     ancestor_managed_by_src: dict[str, set[str]] = {}
+    ancestor_parent_by_src: dict[str, str] = {}
     ancestor_manifest_path = args.src_template_dir.parent / ".copier-managed-files.json"
     if ancestor_manifest_path.exists():
         data: dict[str, Any] = json.loads(ancestor_manifest_path.read_text(encoding="utf-8"))
@@ -301,6 +302,8 @@ def main() -> None:
                     resolved = str(Path(*[get_base_filename(p) for p in parts]))
                     path_set.add(resolved)
             ancestor_managed_by_src[t["src"]] = path_set
+            if t.get("parent_src"):
+                ancestor_parent_by_src[t["src"]] = t["parent_src"]
 
     managed_by_src = apply_file_markers(
         src_template_directory=args.src_template_dir,
@@ -314,11 +317,14 @@ def main() -> None:
     parent_src = _read_parent_src(args.src_template_dir)
     for src, files in managed_by_src.items():
         effective_src = manifest_src if src == header_src else src
+        # Current template's parent comes from copier-answers; ancestor entries carry
+        # their own parent_src forward from the ancestor manifest so the chain survives.
+        effective_parent = parent_src if effective_src == manifest_src else ancestor_parent_by_src.get(src)
         update_manifest(
             dst_directory=args.dst_dir,
             template_src=effective_src,
             managed_files=files,
-            parent_src=parent_src if effective_src == manifest_src else None,
+            parent_src=effective_parent,
         )
 
 
