@@ -76,6 +76,7 @@ source_paths = [ "src/backend_api/" ]
 pytest_add_cli_args_test_selection = [ "tests/unit/" ]
 pytest_add_cli_args = [ "--no-cov" ]
 also_copy = [ "src/static" ]
+mutate_only_covered_lines = true
 do_not_mutate = [   "*/generated/*" , # do not mutate generated code, this is created by external tooling that has undergone its own testing
                     "*/logger_config.py", # not thoroughly tested
                     "*/app_runner.py", # not thoroughly tested
@@ -92,7 +93,7 @@ do_not_mutate_patterns = [
     'logger\.\w+',
     # disable mutations of assert statements (for type narrowing...it often messes with the messages)
     'assert .+',
-    'f"Expected .+, got.+\{type\(.+\}.+\{.+',
+    'f"Expected .+,.+got.+\{type\(.+\}.+\{.+',
     # disable mutating untested exceptions
     'raise NotImplementedError.+',
     'raise AssertionError.+',
