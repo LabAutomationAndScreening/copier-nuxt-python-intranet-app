@@ -238,13 +238,13 @@ def fix_anyof_nullable_types(file_path: Path) -> int:  # noqa: C901, PLR0912, PL
 
     # Handle collection fields - two patterns depending on order
     # Pattern 1: getObjectValue first, then getCollectionOfPrimitiveValues
-    deser_collection_pattern = r"(\w+\.\w+\s*=\s*)n\.getObjectValue<\w+Member1>\(create\w+Member1FromDiscriminatorValue\)\s*\?\?\s*(n\.getCollectionOfPrimitiveValues<[^>]+>\(\)[^;]*)"
+    deser_collection_pattern = r"(\w+\.\w+\s*=\s*)n\.getObjectValue<\w+Member1>\(create\w+Member1FromDiscriminatorValue\)\s*\?\?\s*(n\.getCollectionOfPrimitiveValues<[^>]+>\([^)]*\)[^;]*)"
     content, count = re.subn(deser_collection_pattern, r"\1\2", content)
     fixes_applied += count
 
     # Pattern 2: getCollectionOfPrimitiveValues first, then getObjectValue (with Member1)
     # Handle both with and without type parameter: getObjectValue<Member1>(...) or getObjectValue(...)
-    deser_collection_pattern2 = r"(\w+\.\w+\s*=\s*)(n\.getCollectionOfPrimitiveValues<[^>]+>\(\))\s*\?\?\s*n\.getObjectValue(?:<\w+Member1>)?\(create\w+Member1FromDiscriminatorValue\)"
+    deser_collection_pattern2 = r"(\w+\.\w+\s*=\s*)(n\.getCollectionOfPrimitiveValues<[^>]+>\([^)]*\))\s*\?\?\s*n\.getObjectValue(?:<\w+Member1>)?\(create\w+Member1FromDiscriminatorValue\)"
     content, count = re.subn(deser_collection_pattern2, r"\1\2", content)
     fixes_applied += count
 
