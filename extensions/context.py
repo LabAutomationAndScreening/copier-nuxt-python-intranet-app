@@ -133,7 +133,7 @@ class ContextUpdater(ContextHook):
         context["alpine_image_version"] = "3.23"
         context["nginx_image_version"] = "1.30.1"
 
-        context["kiota_cli_version"] = "1.31.4"
+        context["kiota_cli_version"] = "1.32.4"
 
         context["py312_version"] = "3.12.7"
         context["py313_version"] = "3.13.9"
