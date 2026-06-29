@@ -91,7 +91,7 @@
         "_typos.toml",
         "biome.jsonc",
         "copier.yml",
-        "copier_template_resources/eslint.config.mjs",
+        "copier_template_resources/eslint.shared.mjs",
         "copier_template_resources/python_asyncio/asyncio_fixtures.py",
         "copier_template_resources/python_asyncio/background_tasks.py",
         "copier_template_resources/vcrpy_fixtures.py",

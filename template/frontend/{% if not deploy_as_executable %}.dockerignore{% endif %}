@@ -26,6 +26,7 @@ codegen.ts
 
 # Exclude linter configs
 eslint.config.mjs
+eslint.shared.mjs
 
 # Exclude test files
 tests/
