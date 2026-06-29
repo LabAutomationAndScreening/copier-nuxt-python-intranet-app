@@ -28,8 +28,7 @@ class ContextUpdater(ContextHook):
         context["pytest_version"] = ">=9.1.1"
         context["pytest_randomly_version"] = ">=4.1.0"
         context["pytest_cov_version"] = ">=7.1.0"
-        context["ty_version"] = ""
-        context["copier_version"] = "==9.15.1"
+        context["copier_version"] = "==9.16.0"
         context["copier_template_extensions_version"] = "==0.3.3"
         context["sphinx_version"] = "9.0.4"
         context["pulumi_version"] = ">=3.245.0"
@@ -134,7 +133,7 @@ class ContextUpdater(ContextHook):
         context["alpine_image_version"] = "3.23"
         context["nginx_image_version"] = "1.30.1"
 
-        context["kiota_cli_version"] = "1.31.1"
+        context["kiota_cli_version"] = "1.31.4"
 
         context["py312_version"] = "3.12.7"
         context["py313_version"] = "3.13.9"

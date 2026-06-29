@@ -22,8 +22,7 @@ dependencies = [
     "faker>=40.23.0",
     "pyright[nodejs]>=1.1.411",
     "pyrefly>=1.1.1",
-    "ty",
-    "copier==9.15.1",
+    "copier==9.16.0",
     "copier-template-extensions==0.3.3"
 ]
 
