@@ -1,17 +1,17 @@
 {% raw %}{
     "folders": [
         {
-            "name": "frontend",
-            "path": "frontend"
-        },
-        {% endraw %}{% if has_backend %}{
-            "name": "backend",
-            "path": "backend"
-        },
-        {% endif %}{% raw %}{
             "name": "root",
             "path": "."
-        }
+        },
+        {
+            "name": "frontend",
+            "path": "frontend"
+        },{% endraw %}{% if has_backend %}
+        {
+            "name": "backend",
+            "path": "backend"
+        },{% endif %}{% raw %}
     ],
     "settings": {
         // Shows the workspace name in the status bar
