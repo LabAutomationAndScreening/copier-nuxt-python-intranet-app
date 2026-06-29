@@ -40,3 +40,11 @@ matches = "**/tests/**"
 
 [sub-config.errors]
 implicitly-defined-attribute = "ignore" # doesn't make any sense for test cases. See https://github.com/microsoft/pyright/discussions/4834#discussioncomment-8496931
+
+# TODO: move this into win_service.py as a file-level per-code directive once pyrefly supports it.
+# Tracking: https://github.com/facebook/pyrefly/issues/3723
+[[sub-config]]
+matches = "**/entrypoint/win_service.py"
+
+[sub-config.errors]
+unused-ignore = "ignore"
