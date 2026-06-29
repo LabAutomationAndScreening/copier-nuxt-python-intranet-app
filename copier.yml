@@ -1,3 +1,10 @@
+# ============== WARNING ==============================================================================
+# File is managed by copier template: gh:LabAutomationAndScreening/copier-base-template.git
+# See .copier-managed-files.json for details.
+#
+# You are welcome to make changes to this file in your repo if they are custom to your project,
+# but if the change should be shared with other projects, please backport it to the template repo.
+# =====================================================================================================
 # Questions specific to this template
 has_backend:
     type: bool
@@ -380,16 +387,28 @@ _tasks:
       fi
     when: "{{ is_circuit_python_driver }}"
   - command: |
-      echo "Checking for .coveragerc in repo root..."
-      if [ -f .coveragerc ]; then
-        echo "Moving .coveragerc to backend folder..."
-        mkdir -p backend
-        mv .coveragerc backend/.coveragerc
-        echo ".coveragerc moved successfully"
-      else
-        echo ".coveragerc not found in repo root"
-      fi
+        echo "Checking for .coveragerc in repo root..."
+        if [ -f .coveragerc ]; then
+            echo "Moving .coveragerc to backend folder..."
+            mkdir -p backend
+            mv .coveragerc backend/.coveragerc
+            echo ".coveragerc moved successfully"
+        else
+            echo ".coveragerc not found in repo root"
+        fi
     when: "{{ has_backend }}"
+  - command: |
+        python3 '{{ _copier_conf.src_path }}/src/copier_tasks/copier_provenance.py' \
+            '{{ _copier_conf.src_path }}/template' \
+            '.' \
+            --template-src '{{ _src_path }}'
+  - command: |
+        if [ -d './template' ]; then
+            python3 '{{ _copier_conf.src_path }}/src/copier_tasks/copier_provenance.py' \
+                './template' \
+                './template' \
+                --template-src '{{ _src_path }}'
+        fi
 
 # Additional Settings
 _min_copier_version: "9.8"
