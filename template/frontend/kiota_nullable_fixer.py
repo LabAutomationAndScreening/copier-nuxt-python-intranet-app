@@ -374,6 +374,16 @@ def fix_anyof_nullable_types(file_path: Path) -> int:  # noqa: C901, PLR0912, PL
     # Fix multiple spaces
     content = re.sub(r"  +", " ", content)
 
+    # Step 4.75: Drop the schema default Kiota injects into writeObjectValue's null branch.
+    # Newer Kiota emits "writer.writeObjectValue("f", obj.field ?? <default> as <Type>, ...)" for
+    # fields with a schema default. This branch only runs when the value is NOT the primitive, so the
+    # coalesce forces the result to the default's primitive type, which the trailing "as undefined | null"
+    # cast then rejects (TS2352). The default is meaningless here; strip it so the cast applies to the
+    # raw field, matching the pre-default Kiota output.
+    write_object_default_pattern = r'(writer\.writeObjectValue\("[^"]+",\s*\w+\.\w+)\s*\?\?\s*[^,]+?(\s+as\s)'
+    content, count = re.subn(write_object_default_pattern, r"\1\2", content)
+    fixes_applied += count
+
     # Step 5: Remove helper functions
     # We need to remove:
     # A) All functions with "Member1" in the name
