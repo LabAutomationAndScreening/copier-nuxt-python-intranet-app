@@ -14,6 +14,8 @@ from pydantic import JsonValue
 from starlette.exceptions import HTTPException
 from uuid_utils import uuid7
 
+from .openapi_schema_simplifier import collapse_nullable_anyof
+
 logger = logging.getLogger(__name__)
 
 
@@ -182,6 +184,8 @@ def custom_openapi(app: FastAPI) -> dict[str, Any]:
                     "content": problem_content(),
                 },
             )
+
+    collapse_nullable_anyof(oas)
 
     app.openapi_schema = oas
     return oas
