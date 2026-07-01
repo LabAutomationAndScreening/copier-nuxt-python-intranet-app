@@ -326,6 +326,14 @@ _skip_if_exists:
     - backend/src/static/favicon.ico # TODO: figure out if there's another way to stop the template from overriding a changed icon
     - backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json # snapshot file of the OpenAPI schema that will be overwritten by the repo as the schema evolves
     - backend/tests/e2e/generated/open_api/** # when the repo regenerates the client code, we don't want Copier to overwrite it. the template is just dropping in a basic spec to support a healthcheck E2E test
+    # .copier-managed-files.json is regenerated fresh by the provenance task on every update, not
+    # rendered by Copier's own template engine. `skip_if_exists` entries are also passed as
+    # `git apply --exclude` patterns during Copier's update patch step (see Copier's
+    # `_apply_update`), which diffs a fresh old-template render against the pre-update commit and
+    # re-applies that diff on top of what the task just wrote. Without this exclusion, that patch
+    # step can reintroduce stale entries the task already corrected, since this file isn't really
+    # template source content and shouldn't be diffed/patched like one.
+    - .copier-managed-files.json
 
 _tasks:
   - command: |
