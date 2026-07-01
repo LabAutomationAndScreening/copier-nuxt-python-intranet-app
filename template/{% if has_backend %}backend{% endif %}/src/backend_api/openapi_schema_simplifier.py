@@ -1,0 +1,1 @@
+../../../../copier_template_resources/openapi_schema_simplifier.py

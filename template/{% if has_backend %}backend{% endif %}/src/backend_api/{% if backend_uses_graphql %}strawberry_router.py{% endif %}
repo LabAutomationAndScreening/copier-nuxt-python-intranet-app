@@ -49,7 +49,7 @@ class AddErrorTrace(SchemaExtension):
     def on_operation(self) -> Iterator[None]:
         yield
         result = self.execution_context.result  # pyright: ignore[reportUnknownMemberType,reportUnknownVariableType] # yes, it's unknown, that's why we're asserting to confirm
-        assert isinstance(result, (ExecutionResult, type(None))), (
+        assert isinstance(result, ExecutionResult) or result is None, (
             f"Expected ExecutionResult or None, got {type(result)}"  # pyright: ignore[reportUnknownArgumentType] # yes, it's unknown, that's why we're asserting to confirm
         )
         if result is None:

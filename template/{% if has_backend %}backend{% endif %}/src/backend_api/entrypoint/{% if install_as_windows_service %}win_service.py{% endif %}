@@ -8,10 +8,12 @@ import traceback
 from collections.abc import Sequence
 from pathlib import Path
 
-import servicemanager  # pyright: ignore[reportMissingModuleSource] # pyrefly: ignore[missing-import] # pywin32 has no stubs; only importable on Windows
-import win32service  # pyright: ignore[reportMissingModuleSource] # pyrefly: ignore[missing-import] # pywin32 has no stubs; only importable on Windows
-import win32serviceutil  # pyright: ignore[reportMissingModuleSource] # pyrefly: ignore[missing-import] # pywin32 has no stubs; only importable on Windows
-import winerror  # pyright: ignore[reportMissingModuleSource] # pyrefly: ignore[missing-import] # pywin32 has no stubs; only importable on Windows
+# pywin32 is win32-only, so the per-import reportMissingModuleSource ignores are required in CI/Linux but appear unnecessary on Windows dev machines. Inline directives to disable unused ignores do not work (they cannot suppress themselves), so have to do file level.
+# pyright: reportUnnecessaryTypeIgnoreComment=false
+import servicemanager  # pyright: ignore[reportMissingModuleSource,reportUnnecessaryTypeIgnoreComment] # pyrefly: ignore[missing-import,unused-ignore] # pywin32 has no stubs; only importable on Windows
+import win32service  # pyright: ignore[reportMissingModuleSource,reportUnnecessaryTypeIgnoreComment] # pyrefly: ignore[missing-import,unused-ignore] # pywin32 has no stubs; only importable on Windows
+import win32serviceutil  # pyright: ignore[reportMissingModuleSource,reportUnnecessaryTypeIgnoreComment] # pyrefly: ignore[missing-import,unused-ignore] # pywin32 has no stubs; only importable on Windows
+import winerror  # pyright: ignore[reportMissingModuleSource,reportUnnecessaryTypeIgnoreComment] # pyrefly: ignore[missing-import,unused-ignore] # pywin32 has no stubs; only importable on Windows
 
 from .. import app_runner
 from ..jinja_constants import APP_NAME

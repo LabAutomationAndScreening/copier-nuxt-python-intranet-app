@@ -76,7 +76,7 @@ runs:
 
     - name: Setup node
       if: ${{ inputs.node-version != 'notUsing' }}
-      uses: actions/setup-node@v6.3.0
+      uses: actions/setup-node@v6.4.0
       with:
         node-version: ${{ inputs.node-version }}
 

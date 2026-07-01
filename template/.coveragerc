@@ -8,6 +8,8 @@ omit =
     # omit CircuitPython firmware
     */firmware/code.py
     */firmware/boot.py
+    # code is tested in upstream copier template
+    */src/backend_api/openapi_schema_simplifier.py
     # a pyinstaller entrypoint cannot be unit tested, only E2E tested
     */src/entrypoint.py
     # Windows service class is tested via Windows CI E2E, not unit tests

@@ -1,0 +1,1 @@
+../../copier_template_resources/eslint.shared.mjs
