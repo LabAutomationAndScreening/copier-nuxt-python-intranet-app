@@ -6,6 +6,7 @@
 # but if the change should be shared with other projects, please backport it to the template repo.
 # =====================================================================================================
 import json
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -95,6 +96,8 @@ class TestJinjaTemplateMatching:
         assert content == file_content + "\n" + expected_markdown_comment + "\n"
 
     def test_jinja_template_file_gets_jinja_comment(self, tmp_path: Path) -> None:
+        # README.md.jinja → underlying extension is .md → markdown/bottom placement
+        # → jinja comment type, bottom location.
         template_dir = tmp_path / "template"
         template_dir.mkdir()
         (template_dir / "README.md.jinja.jinja-base").touch()
@@ -107,9 +110,34 @@ class TestJinjaTemplateMatching:
         _ = _run_script(src_template_dir=template_dir, dst_dir=dst_dir)
 
         content = (dst_dir / "README.md.jinja").read_text(encoding="utf-8")
-        assert content == expected_jinja_comment + "\n" + file_content
+        assert content == file_content + "\n" + expected_jinja_comment + "\n"
+
+    def test_plain_jinja_file_copied_as_is_matched(self, tmp_path: Path) -> None:
+        # When the parent template uses .jinja-base as its suffix, plain .jinja files
+        # are copied as-is to the destination (not rendered). The destination keeps the
+        # .jinja extension, but template_base_paths strips it. Both the file and the
+        # manifest entry should use the stripped base name.
+        template_dir = tmp_path / "template"
+        (template_dir / ".devcontainer").mkdir(parents=True)
+        (template_dir / ".devcontainer" / "envs.json.jinja").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_devcontainer = dst_dir / ".devcontainer"
+        dst_devcontainer.mkdir(parents=True)
+        file_content = '{"key": "{{ value }}"}'
+        _ = (dst_devcontainer / "envs.json.jinja").write_text(file_content, encoding="utf-8")
+
+        _ = _run_script(src_template_dir=template_dir, dst_dir=dst_dir)
+
+        manifest = json.loads((dst_dir / ".copier-managed-files.json").read_text(encoding="utf-8"))
+        managed_files = manifest["templates"][0]["managed_files"]
+        # Tracked under the actual filename on disk (with .jinja extension preserved).
+        assert ".devcontainer/envs.json.jinja" in managed_files
+        assert ".devcontainer/envs.json" not in managed_files
 
     def test_jinja_if_check_filename_matched(self, tmp_path: Path) -> None:
+        # .coveragerc.jinja → underlying name is .coveragerc → custom bottom placement
+        # → jinja comment type, bottom location.
         template_dir = tmp_path / "template"
         template_dir.mkdir()
         template_file = template_dir / "{% if is_python_template %}.coveragerc.jinja{% endif %}.jinja-base"
@@ -123,7 +151,7 @@ class TestJinjaTemplateMatching:
         _ = _run_script(src_template_dir=template_dir, dst_dir=dst_dir)
 
         content = (dst_dir / ".coveragerc.jinja").read_text(encoding="utf-8")
-        assert content == expected_jinja_comment + "\n" + file_content
+        assert content == file_content + "\n" + expected_jinja_comment + "\n"
 
     def test_symlinked_template_directory_traversed(self, tmp_path: Path) -> None:
         # Simulates base-template's template/template/.claude → ../../.claude symlink pattern.
@@ -162,6 +190,54 @@ class TestJinjaTemplateMatching:
         content = (backend_src / "__init__.py").read_text(encoding="utf-8")
         assert content.startswith(expected_hash_comment)
 
+    def test_conditional_dir_files_excluded_when_answer_is_false(self, tmp_path: Path) -> None:
+        # Regression: template has {% if is_circuit_python_driver %}helm{% endif %}/Chart.yaml.jinja
+        # but the destination's .copier-answers.yml says is_circuit_python_driver: false.
+        # Files that happen to exist under deployment/helm/ (e.g. committed directly to the repo)
+        # must NOT be claimed as template-managed.
+        template_dir = tmp_path / "template"
+        helm_tmpl = template_dir / "deployment" / "{% if is_circuit_python_driver %}helm{% endif %}"
+        helm_tmpl.mkdir(parents=True)
+        (helm_tmpl / "Chart.yaml.jinja").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        _ = (dst_dir / ".copier-answers.yml").write_text("is_circuit_python_driver: false\n", encoding="utf-8")
+        helm_dst = dst_dir / "deployment" / "helm"
+        helm_dst.mkdir(parents=True)
+        original = "chart: manually added\n"
+        _ = (helm_dst / "Chart.yaml").write_text(original, encoding="utf-8")
+
+        _ = _run_script(src_template_dir=template_dir, dst_dir=dst_dir)
+
+        manifest = json.loads((dst_dir / ".copier-managed-files.json").read_text(encoding="utf-8"))
+        all_managed = [f for t in manifest["templates"] for f in t["managed_files"]]
+        assert "deployment/helm/Chart.yaml" not in all_managed
+        assert (helm_dst / "Chart.yaml").read_text(encoding="utf-8") == original
+
+    def test_conditional_dir_files_managed_when_answer_is_true(self, tmp_path: Path) -> None:
+        # Counterpart: when the condition is true, files under the conditional directory
+        # must still be claimed as managed and receive a provenance comment.
+        template_dir = tmp_path / "template"
+        helm_tmpl = template_dir / "deployment" / "{% if is_circuit_python_driver %}helm{% endif %}"
+        helm_tmpl.mkdir(parents=True)
+        (helm_tmpl / "Chart.yaml.jinja").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        _ = (dst_dir / ".copier-answers.yml").write_text("is_circuit_python_driver: true\n", encoding="utf-8")
+        helm_dst = dst_dir / "deployment" / "helm"
+        helm_dst.mkdir(parents=True)
+        _ = (helm_dst / "Chart.yaml").write_text("chart: template-generated\n", encoding="utf-8")
+
+        _ = _run_script(src_template_dir=template_dir, dst_dir=dst_dir)
+
+        manifest = json.loads((dst_dir / ".copier-managed-files.json").read_text(encoding="utf-8"))
+        all_managed = [f for t in manifest["templates"] for f in t["managed_files"]]
+        assert "deployment/helm/Chart.yaml" in all_managed
+        content = (helm_dst / "Chart.yaml").read_text(encoding="utf-8")
+        assert expected_hash_comment in content
+
 
 class TestFileExtensionComments:
     @pytest.mark.parametrize(
@@ -197,6 +273,11 @@ class TestFileExtensionComments:
             (".coveragerc", "bottom", expected_hash_comment),
             (".python-version", "none", ""),
             (".prettierrc", "none", ""),
+            # .jinja files: comment type is always jinja; location from underlying extension
+            ("deploy.sh.jinja", "bottom", expected_jinja_comment),
+            ("config.yaml.jinja", "top", expected_jinja_comment),
+            ("data.json.jinja", "none", ""),
+            (".python-version.jinja", "none", ""),
         ],
         ids=[
             "py-hash-top",
@@ -221,6 +302,10 @@ class TestFileExtensionComments:
             "coveragerc-hash-bottom",
             "python-version-none",
             "prettierrc-none",
+            "sh-jinja-jinja-bottom",
+            "yaml-jinja-jinja-top",
+            "json-jinja-none",
+            "python-version-jinja-none",
         ],
     )
     def test_comment_format_by_file_type(
@@ -730,3 +815,60 @@ class TestManifest:
         assert "README.md" in srcs["https://github.com/org/base-template"]["managed_files"]
         assert "child_only.py" in srcs["https://github.com/org/child-template"]["managed_files"]
         assert "README.md" not in srcs["https://github.com/org/child-template"]["managed_files"]
+
+    def test_stale_conditional_ancestor_entries_cleared_on_update(self, tmp_path: Path) -> None:
+        # Regression test: when an ancestor template's files are ALL under a Jinja
+        # conditional directory (e.g. {% if is_circuit_python_driver %}helm{% endif %})
+        # and the condition changes to false on update, the ancestor's manifest entry
+        # must be cleared. Previously, because managed_by_src never got an entry for
+        # the ancestor, update_manifest was never called for it and stale paths persisted.
+        child_tmpl_repo = tmp_path / "child_tmpl_repo"
+        child_tmpl = child_tmpl_repo / "template"
+        helm_dir = child_tmpl / "deployment" / "{% if is_circuit_python_driver %}helm{% endif %}" / "templates"
+        helm_dir.mkdir(parents=True)
+        _ = (helm_dir.parent / "Chart.yaml.jinja").write_text("chart: content\n", encoding="utf-8")
+        _ = (helm_dir / "deploy.yaml.jinja").write_text("deploy: content\n", encoding="utf-8")
+
+        # Ancestor manifest: all helm files attributed to the ancestor template.
+        _ = (child_tmpl_repo / ".copier-managed-files.json").write_text(
+            json.dumps(
+                {
+                    "templates": [
+                        {
+                            "src": "https://github.com/org/ancestor-template",
+                            "managed_files": [
+                                "template/deployment/{% if is_circuit_python_driver %}helm{% endif %}/Chart.yaml.jinja",
+                                "template/deployment/{% if is_circuit_python_driver %}helm{% endif %}/templates/deploy.yaml.jinja",
+                            ],
+                        }
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        project = tmp_path / "project"
+
+        # First run: condition=true, helm files exist.
+        (project / "deployment" / "helm" / "templates").mkdir(parents=True)
+        _ = (project / "deployment" / "helm" / "Chart.yaml").write_text("c", encoding="utf-8")
+        _ = (project / "deployment" / "helm" / "templates" / "deploy.yaml").write_text("d", encoding="utf-8")
+        _ = _run_script(
+            src_template_dir=child_tmpl,
+            dst_dir=project,
+            template_src="https://github.com/org/child-template",
+        )
+        manifest_after_true = json.loads((project / ".copier-managed-files.json").read_text(encoding="utf-8"))
+        srcs_true = {t["src"]: t for t in manifest_after_true["templates"]}
+        assert "deployment/helm/Chart.yaml" in srcs_true["https://github.com/org/ancestor-template"]["managed_files"]
+
+        shutil.rmtree(project / "deployment")
+        _ = _run_script(
+            src_template_dir=child_tmpl,
+            dst_dir=project,
+            template_src="https://github.com/org/child-template",
+        )
+        manifest_after_false = json.loads((project / ".copier-managed-files.json").read_text(encoding="utf-8"))
+        srcs_false = {t["src"]: t for t in manifest_after_false["templates"]}
+        # Stale helm entries must be gone from the ancestor's manifest entry.
+        assert srcs_false["https://github.com/org/ancestor-template"]["managed_files"] == []

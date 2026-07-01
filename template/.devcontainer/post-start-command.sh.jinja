@@ -15,3 +15,13 @@ if ! bd ready; then
     rm -rf .claude/.beads && bd init --server-host="$BEADS_DOLT_SERVER_HOST" --database="$BEADS_DOLT_SERVER_DATABASE" --skip-hooks --stealth --prefix=work </dev/null && git -c core.hooksPath=/dev/null restore --source=HEAD --staged --worktree .claude/.beads
 fi{% endraw %}{% endif %}{% if python_package_registry is defined and python_package_registry != "PyPI" %}{% raw %}
 echo "!!! In order to install dependencies, you must authenticate into the private registry, so run this script to complete the process: source .devcontainer/manual-setup-deps.sh"{% endraw %}{% endif %}
+
+{#
+ ============== WARNING ==============================================================================
+ File is managed by copier template: gh:LabAutomationAndScreening/copier-base-template.git
+ See .copier-managed-files.json for details.
+
+ You are welcome to make changes to this file in your repo if they are custom to your project,
+ but if the change should be shared with other projects, please backport it to the template repo.
+ =====================================================================================================
+#}

@@ -39,8 +39,6 @@ custom_file_handling: dict[str, CommentFormat] = {
     ".vue": CommentFormat("markdown", "top"),
     ".html": CommentFormat("markdown", "top"),
     ".svg": CommentFormat("markdown", "top"),
-    ".jinja": CommentFormat("jinja", "top"),
-    ".jinja-base": CommentFormat("jinja", "top"),
     ".json": CommentFormat("none", "none"),
     ".jsonc": CommentFormat("block", "top"),
     ".yaml": CommentFormat("hash", "top"),
@@ -76,7 +74,7 @@ def _build_header(template_src: str) -> str:
     return "\n".join(lines)
 
 
-def get_base_filename(template_filename: str) -> str:
+def get_base_filename_handling_jinja_syntax_and_extensions(template_filename: str) -> str:
     """Return the destination filename for a template file.
 
     Handles two cases:
@@ -161,6 +159,27 @@ def _resolve_file_src(
     return template_src
 
 
+def _base_format_for_file(file: Path) -> CommentFormat:
+    """Return the base CommentFormat for a file.
+
+    For .jinja/.jinja-base files the comment type is always 'jinja', but the
+    location is derived from the underlying extension so that e.g. 'deploy.sh.jinja'
+    inherits bottom placement from '.sh' without any content sniffing.
+    """
+    if file.name in custom_filename_handling:
+        return custom_filename_handling[file.name]
+    suffix = file.suffix
+    if suffix not in (".jinja", ".jinja-base"):
+        return custom_file_handling.get(suffix, default_comment_format)
+    underlying = file.stem  # e.g. "deploy.sh" from "deploy.sh.jinja"
+    underlying_format = custom_filename_handling.get(
+        underlying, custom_file_handling.get(Path(underlying).suffix, default_comment_format)
+    )
+    if underlying_format.comment_type == "none":
+        return underlying_format
+    return CommentFormat("jinja", underlying_format.location)
+
+
 def _get_comment_format_for_file(file: Path, default_format: CommentFormat) -> CommentFormat | None:
     """Return the effective CommentFormat, or None if the file is binary (track but skip marking)."""
     if default_format.location != "top" or default_format.comment_type == "none":
@@ -174,15 +193,65 @@ def _get_comment_format_for_file(file: Path, default_format: CommentFormat) -> C
     return default_format
 
 
+def _read_copier_answers(dst_directory: Path) -> dict[str, Any]:
+    """Read boolean answers from .copier-answers.yml in dst_directory."""
+    answers_path = dst_directory / ".copier-answers.yml"
+    if not answers_path.exists():
+        return {}
+    result: dict[str, Any] = {}
+    for line in answers_path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or ":" not in stripped:
+            continue
+        key, _, raw = stripped.partition(":")
+        key = key.strip()
+        if key.startswith("_"):
+            continue
+        raw = raw.strip()
+        if raw.lower() == "true":
+            result[key] = True
+        elif raw.lower() == "false":
+            result[key] = False
+    return result
+
+
+def _is_false_jinja_conditional(component: str, answers: dict[str, Any]) -> bool:
+    """Return True if this path component is a {% if var %}...{% endif %} whose var is false in answers."""
+    m = re.fullmatch(r"\{%-?\s*if\s+(\w+)\s*-?%\}.*?\{%-?\s*endif\s*-?%\}", component, re.DOTALL)
+    if not m:
+        return False
+    var_name = m.group(1)
+    return var_name in answers and not answers[var_name]
+
+
 def _collect_template_base_paths(src_template_directory: Path) -> set[Path]:
     """Walk src_template_directory (following symlinks) and return resolved base paths."""
     paths: set[Path] = set()
     for root, _, files in os.walk(src_template_directory, followlinks=True):
         for fname in files:
             f = Path(root) / fname
-            parts = [get_base_filename(p) for p in f.relative_to(src_template_directory).parts]
+            parts = [
+                get_base_filename_handling_jinja_syntax_and_extensions(p)
+                for p in f.relative_to(src_template_directory).parts
+            ]
             paths.add(Path(*parts))
     return paths
+
+
+def _collect_false_conditional_paths(
+    src_template_directory: Path,
+    answers: dict[str, Any],
+) -> set[Path]:
+    """Return resolved paths of files whose template directory condition is false in answers."""
+    excluded: set[Path] = set()
+    for root, _, files in os.walk(src_template_directory, followlinks=True):
+        for fname in files:
+            f = Path(root) / fname
+            rel_parts = list(f.relative_to(src_template_directory).parts)
+            if any(_is_false_jinja_conditional(p, answers) for p in rel_parts):
+                resolved = [get_base_filename_handling_jinja_syntax_and_extensions(p) for p in rel_parts]
+                excluded.add(Path(*resolved))
+    return excluded
 
 
 def apply_file_markers(
@@ -191,14 +260,18 @@ def apply_file_markers(
     dst_directory: Path,
     template_src: str = "",
     ancestor_managed_by_src: dict[str, set[str]] | None = None,
-) -> dict[str, list[str]]:
+    answers: dict[str, Any] | None = None,
+) -> tuple[dict[str, list[str]], set[Path]]:
     """Stamp managed files with provenance headers.
 
-    Returns files bucketed by originating template src. Files listed in
-    ancestor_managed_by_src are attributed to their originating ancestor template;
-    remaining files are attributed to template_src.
+    Returns a tuple of (files bucketed by originating template src, template_base_paths).
+    Files listed in ancestor_managed_by_src are attributed to their originating ancestor
+    template; remaining files are attributed to template_src.
     """
     template_base_paths = _collect_template_base_paths(src_template_directory)
+    false_conditional_paths: set[Path] = (
+        _collect_false_conditional_paths(src_template_directory, answers) if answers else set()
+    )
 
     managed: dict[str, list[str]] = {}
 
@@ -208,16 +281,17 @@ def apply_file_markers(
 
     for file in sorted(dst_files):
         rel = file.relative_to(dst_directory)
-        if rel not in template_base_paths:
+        rel_base = Path(*map(get_base_filename_handling_jinja_syntax_and_extensions, rel.parts))
+        if rel not in template_base_paths and rel_base not in template_base_paths:
+            continue
+        if rel in false_conditional_paths or rel_base in false_conditional_paths:
             continue
 
         rel_str = str(rel)
         file_src = _resolve_file_src(rel_str, template_src, ancestor_managed_by_src)
         managed.setdefault(file_src, []).append(rel_str)
 
-        base_format = custom_filename_handling.get(
-            file.name, custom_file_handling.get(file.suffix, default_comment_format)
-        )
+        base_format = _base_format_for_file(file)
         comment_formatting = _get_comment_format_for_file(file, base_format)
         if comment_formatting is None:
             continue
@@ -228,7 +302,7 @@ def apply_file_markers(
 
     for file_list in managed.values():
         file_list.sort()
-    return managed
+    return managed, template_base_paths
 
 
 def _read_parent_src(src_template_directory: Path) -> str | None:
@@ -299,20 +373,35 @@ def main() -> None:
                 # and Jinja conditional names resolve to the final destination filename.
                 parts = Path(stripped).parts
                 if parts:
-                    resolved = str(Path(*[get_base_filename(p) for p in parts]))
+                    resolved = str(Path(*[get_base_filename_handling_jinja_syntax_and_extensions(p) for p in parts]))
                     path_set.add(resolved)
             ancestor_managed_by_src[t["src"]] = path_set
             if t.get("parent_src"):
                 ancestor_parent_by_src[t["src"]] = t["parent_src"]
 
-    managed_by_src = apply_file_markers(
+    answers = _read_copier_answers(args.dst_dir)
+
+    managed_by_src, template_base_paths = apply_file_markers(
         src_template_directory=args.src_template_dir,
         dst_directory=args.dst_dir,
         template_src=header_src,
         ancestor_managed_by_src=ancestor_managed_by_src or None,
+        answers=answers or None,
     )
     # Always write an entry for the current template even when no files matched.
     _ = managed_by_src.setdefault(header_src, [])
+
+    # Ensure ancestors whose files overlap with this template's scope get their
+    # manifest entries updated even when all of their conditional files were deleted.
+    # Without this, if every ancestor-managed file is under a Jinja conditional
+    # directory (e.g. {% if is_circuit_python_driver %}helm{% endif %}) and the
+    # condition changes to false, the ancestor never appears in managed_by_src and
+    # its stale manifest entry (listing the now-deleted files) persists.
+    if ancestor_managed_by_src:
+        template_base_path_strs = {str(p) for p in template_base_paths}
+        for src, paths in ancestor_managed_by_src.items():
+            if paths & template_base_path_strs:
+                _ = managed_by_src.setdefault(src, [])
 
     parent_src = _read_parent_src(args.src_template_dir)
     for src, files in managed_by_src.items():
