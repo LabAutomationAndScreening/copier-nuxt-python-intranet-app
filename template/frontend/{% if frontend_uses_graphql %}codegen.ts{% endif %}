@@ -4,12 +4,35 @@ const config: CodegenConfig = {
   schema: "../backend/src/backend_api/graphql/schema.graphql",
   documents: "./app/graphql/queries/**/*.gql",
   generates: {
+    "./app/graphql/generated/schema-types.ts": {
+      plugins: ["typescript"],
+      config: {
+        useTypeImports: true,
+        enumType: "native", // emit real `enum`s (not string-literal unions) since the app imports enums as values
+        scalars: {
+          DateTime: "string",
+        },
+      },
+    },
     "./app/graphql/generated/graphql.ts": {
-      plugins: ["typescript", "typescript-operations", "typescript-vue-apollo"], // cannot use `preset: "client"` because it causes duplications with typescript-vue-apollo
+      // The `typescript` plugin lives in its own `schema-types.ts` output rather than alongside the
+      // operation plugins here: typescript-operations v6+ self-generates the schema input/enum types
+      // its operations reference, so co-locating `typescript` produces duplicate declarations.
+      // `importSchemaTypesFrom` makes the operation types import those shared schema types instead of
+      // redeclaring them, and the `add` re-export keeps every type reachable from this single module so
+      // app imports from `~/graphql/generated/graphql` continue to work unchanged.
+      // (`preset: "client"` remains unusable because it duplicates with typescript-vue-apollo.)
+      plugins: [
+        { add: { content: 'export * from "./schema-types";' } },
+        "typescript-operations",
+        "typescript-vue-apollo",
+      ],
       config: {
         documentMode: "graphQLTag",
         vueCompositionApiImportFrom: "vue",
         useTypeImports: true,
+        enumType: "native",
+        importSchemaTypesFrom: "./app/graphql/generated/schema-types",
         scalars: {
           DateTime: "string",
         },
