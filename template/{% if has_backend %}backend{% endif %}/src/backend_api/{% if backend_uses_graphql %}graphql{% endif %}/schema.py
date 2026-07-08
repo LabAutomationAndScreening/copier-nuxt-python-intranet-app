@@ -2,8 +2,7 @@ import logging
 from pathlib import Path
 
 import strawberry
-
-from .strawberry_router import AddErrorTrace
+from backend_api.strawberry_router import AddErrorTrace
 
 logger = logging.getLogger(__name__)
 
