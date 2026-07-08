@@ -24,9 +24,9 @@ from .common.mdns import router as mdns_router
 from .common.rfc_servers_jinja import get_servers_container
 from .driver_routes import router as driver_router{% endraw %}{% endif %}{% raw %}
 from .entrypoint.parser import get_version
-from .fast_api_exception_handlers import register_exception_handlers
-from .jinja_constants import HUMAN_FRIENDLY_APP_NAME{% endraw %}{% if backend_uses_graphql %}{% raw %}
-from .schema_def import schema{% endraw %}{% endif %}{% raw %}{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
+from .fast_api_exception_handlers import register_exception_handlers{% endraw %}{% if backend_uses_graphql %}{% raw %}
+from .graphql.schema import schema{% endraw %}{% endif %}{% raw %}
+from .jinja_constants import HUMAN_FRIENDLY_APP_NAME{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
 from .simulator_config_builder import build_simulator_config{% endraw %}{% endif %}{% raw %}{% endraw %}{% if backend_uses_graphql %}{% raw %}
 from .strawberry_router import OfflineGraphQLRouter{% endraw %}{% endif %}{% raw %}
 
