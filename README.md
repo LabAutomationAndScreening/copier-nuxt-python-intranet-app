@@ -33,7 +33,7 @@ To create a new repository using this template:
 
 ## Updating from the template
 This repository uses a copier template. To pull in the latest updates from the template, use the command:
-`copier update --trust --conflict rej --defaults`
+`copier update --answers-file .config/.copier-answers.yml --trust --conflict rej --defaults`
 
 <!--
 ============== WARNING ==============================================================================
