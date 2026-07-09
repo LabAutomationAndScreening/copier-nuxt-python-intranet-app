@@ -49,6 +49,7 @@
         // TODO: see if there's a way to specify different configurations for different folders
         "ruff.configuration": "/workspaces/copier-nuxt-python-intranet-app/.config/ruff-non-src.toml", // use the non-src configuration since it's less restrictive and won't show false positives and underline things
         "python.pyrefly.configPath": "/workspaces/copier-nuxt-python-intranet-app/.config/pyrefly.toml",
+        "prettier.configPath": ".config/.prettierrc",
         "[jsonc][json][javascript][typescript][graphql][css][scss][html][vue]": {
           "editor.defaultFormatter": "esbenp.prettier-vscode",
           "editor.formatOnSave": true
@@ -59,5 +60,5 @@
   "initializeCommand": "sh .devcontainer/initialize-command.sh",
   "onCreateCommand": "sh .devcontainer/on-create-command.sh",
   "postStartCommand": "sh .devcontainer/post-start-command.sh"
-  // Devcontainer context hash (do not manually edit this, it's managed by a pre-commit hook): ad970de3 # spellchecker:disable-line
+  // Devcontainer context hash (do not manually edit this, it's managed by a pre-commit hook): e9381c0d # spellchecker:disable-line
 }
