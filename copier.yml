@@ -406,6 +406,8 @@ _tasks:
 # Additional Settings
 _min_copier_version: "9.8"
 
+_answers_file: ".config/.copier-answers.yml"
+
 _subdirectory: template
 
 _templates_suffix: .jinja
