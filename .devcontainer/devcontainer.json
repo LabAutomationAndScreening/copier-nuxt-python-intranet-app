@@ -16,14 +16,14 @@
       "extensions": [
         // basic tooling
         // "eamodio.gitlens@15.5.1",
-        "coderabbit.coderabbit-vscode@0.20.4",
+        "coderabbit.coderabbit-vscode@0.20.7",
         "ms-vscode.live-server@0.5.2025051301",
         "MS-vsliveshare.vsliveshare@1.0.5905",
-        "anthropic.claude-code@2.1.197",
+        "anthropic.claude-code@2.1.205",
 
         // Python
         "ms-python.python@2026.5.2026052901",
-        "meta.pyrefly@1.1.1",
+        "meta.pyrefly@1.1.9001",
         "ms-vscode-remote.remote-containers@0.414.0",
         "charliermarsh.ruff@2026.56.0",
 
@@ -48,6 +48,7 @@
         "ruff.nativeServer": "on",
         // TODO: see if there's a way to specify different configurations for different folders
         "ruff.configuration": "/workspaces/copier-nuxt-python-intranet-app/.config/ruff-non-src.toml", // use the non-src configuration since it's less restrictive and won't show false positives and underline things
+        "python.pyrefly.configPath": "/workspaces/copier-nuxt-python-intranet-app/.config/pyrefly.toml",
         "[jsonc][json][javascript][typescript][graphql][css][scss][html][vue]": {
           "editor.defaultFormatter": "esbenp.prettier-vscode",
           "editor.formatOnSave": true
@@ -58,5 +59,5 @@
   "initializeCommand": "sh .devcontainer/initialize-command.sh",
   "onCreateCommand": "sh .devcontainer/on-create-command.sh",
   "postStartCommand": "sh .devcontainer/post-start-command.sh"
-  // Devcontainer context hash (do not manually edit this, it's managed by a pre-commit hook): 13f3e99c # spellchecker:disable-line
+  // Devcontainer context hash (do not manually edit this, it's managed by a pre-commit hook): b781f291 # spellchecker:disable-line
 }
