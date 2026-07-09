@@ -323,7 +323,7 @@ repos:
     hooks:
       - id: pyrefly
         name: pyrefly
-        entry: bash -c "uv --directory=backend run pyrefly check -c ./.config/pyrefly.toml"
+        entry: bash -c "uv --directory=backend run pyrefly check -c ../.config/pyrefly.toml"
         files: '.+\.py$'
         exclude: |
           (?x)^(
