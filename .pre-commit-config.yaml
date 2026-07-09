@@ -260,6 +260,7 @@ repos:
               template/.*|
           )$
       - id: ruff-format
+        args: [--config=./.config/ruff.toml]
         exclude: |
           (?x)^(
               .*/generated/graphql/.*|
