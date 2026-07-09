@@ -178,7 +178,7 @@ For more details, see README.md and docs/QUICKSTART.md.
 
 # Copier-Managed Files
 
-Files generated from upstream copier templates are listed in `.copier-managed-files.json` (if present).
+Files generated from upstream copier templates are listed in `.config/.copier-managed-files.json` (if present).
 The manifest has a `templates` array — one entry per template in the chain. Each entry has `src` (the template URL),
 `managed_files` (files it placed), and optionally `parent_src` (the template that generated it, forming the chain).
 
@@ -194,7 +194,7 @@ template-managed and which template repo the changes should be backported to.
 <!--
 ============== WARNING ==============================================================================
 File is managed by copier template: gh:LabAutomationAndScreening/copier-base-template.git
-See .copier-managed-files.json for details.
+See .config/.copier-managed-files.json for details.
 
 You are welcome to make changes to this file in your repo if they are custom to your project,
 but if the change should be shared with other projects, please backport it to the template repo.
