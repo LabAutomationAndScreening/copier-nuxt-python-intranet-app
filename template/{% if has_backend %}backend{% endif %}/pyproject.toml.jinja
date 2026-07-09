@@ -76,7 +76,10 @@ package = true
 source_paths = [ "src/backend_api/" ]
 pytest_add_cli_args_test_selection = [ "tests/unit/" ]
 pytest_add_cli_args = [ "--no-cov" ]
-also_copy = [ "src/static" ]
+also_copy = [
+    "src/static",
+    "uv.lock" # lockfile is not copied by default, which messes with the `uv run` in the type_check_command https://github.com/boxed/mutmut/issues/529
+    ]
 mutate_only_covered_lines = true
 do_not_mutate = [   "*/generated/*" , # do not mutate generated code, this is created by external tooling that has undergone its own testing
                     "*/logger_config.py", # not thoroughly tested
