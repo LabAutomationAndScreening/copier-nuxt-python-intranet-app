@@ -12,8 +12,10 @@ dependencies = [
     # Managed by upstream template
     "fastapi{% endraw %}{{ fastapi_version }}{% raw %}",
     "fastapi-offline{% endraw %}{{ fastapi_offline_version }}{% raw %}",
+    "starlette{% endraw %}{{ starlette_version }}{% raw %}",
     "uuid-utils{% endraw %}{{ uuid_utils_version }}{% raw %}",{% endraw %}{% if backend_uses_graphql %}{% raw %}
-    "strawberry-graphql{% endraw %}{{ strawberry_graphql_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
+    "strawberry-graphql{% endraw %}{{ strawberry_graphql_version }}{% raw %}",
+    "graphql-core~=3.2.11",{% endraw %}{% endif %}{% raw %}
     "pip-system-certs>=5.3",{% endraw %}{% if install_as_windows_service %}{% raw %}
     "pywin32>=312; sys_platform == 'win32'",{% endraw %}{% endif %}{% raw %}
     "pydantic{% endraw %}{{ pydantic_version }}{% raw %}",
@@ -59,7 +61,7 @@ dev = [
 ]{% endraw %}{% if backend_uses_graphql %}{% raw %}
 
 [tool.ariadne-codegen]
-schema_path = "src/backend_api/schema.graphql"
+schema_path = "src/backend_api/graphql/schema.graphql"
 include_comments = "none"
 queries_path = "tests/e2e/queries/"
 async_client = false
@@ -74,7 +76,10 @@ package = true
 source_paths = [ "src/backend_api/" ]
 pytest_add_cli_args_test_selection = [ "tests/unit/" ]
 pytest_add_cli_args = [ "--no-cov" ]
-also_copy = [ "src/static" ]
+also_copy = [
+    "src/static",
+    "uv.lock" # lockfile is not copied by default, which messes with the `uv run` in the type_check_command https://github.com/boxed/mutmut/issues/529
+    ]
 mutate_only_covered_lines = true
 do_not_mutate = [   "*/generated/*" , # do not mutate generated code, this is created by external tooling that has undergone its own testing
                     "*/logger_config.py", # not thoroughly tested
@@ -86,7 +91,7 @@ do_not_mutate = [   "*/generated/*" , # do not mutate generated code, this is cr
 # mutants tree and excludes do_not_mutate files, so every reported type error falls inside a mutant
 # function and mutmut can attribute it. Without it, pyrefly checks the real source from the mutants/
 # cwd and reports errors on non-mutant lines, crashing with "Could not find mutant for type error".
-type_check_command = ['uv', 'run', 'pyrefly', 'check', '--output-format=json', '-c', '../../pyrefly.mutmut.toml']
+type_check_command = ['uv', 'run', 'pyrefly', 'check', '--output-format=json', '-c', '../../.config/pyrefly.mutmut.toml']
 do_not_mutate_patterns = [
     # disable mutations of all logger.info/debug/... statements
     'logger\.\w+',

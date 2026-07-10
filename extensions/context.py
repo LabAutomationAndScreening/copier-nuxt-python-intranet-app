@@ -1,6 +1,6 @@
 # ============== WARNING ==============================================================================
 # File is managed by copier template: gh:LabAutomationAndScreening/copier-base-template.git
-# See .copier-managed-files.json for details.
+# See .config/.copier-managed-files.json for details.
 #
 # You are welcome to make changes to this file in your repo if they are custom to your project,
 # but if the change should be shared with other projects, please backport it to the template repo.
@@ -43,9 +43,10 @@ class ContextUpdater(ContextHook):
         context["pyinstaller_version"] = ">=6.20.0"
         context["setuptools_version"] = "80.7.1"
         context["strawberry_graphql_version"] = "==0.298.0"
-        context["fastapi_version"] = ">=0.138.2"
+        context["fastapi_version"] = ">=0.139.0"
         context["fastapi_offline_version"] = ">=1.7.7"
-        context["uvicorn_version"] = ">=0.49.0"
+        context["starlette_version"] = ">=1.3.1"
+        context["uvicorn_version"] = ">=0.51.0"
         context["lab_auto_pulumi_version"] = ">=0.2.3"
         context["ariadne_codegen_version"] = ">=0.18.0"
         context["pytest_mock_version"] = ">=3.15.1"
@@ -60,7 +61,7 @@ class ContextUpdater(ContextHook):
         context["pytest_asyncio_version"] = ">=1.4.0"
         context["pytest_timeout_version"] = ">=2.4.0"
         context["pytest_reserial_version"] = ">=0.6.1"
-        context["python_faker_version"] = ">=40.23.0"
+        context["python_faker_version"] = ">=40.28.1"
         context["mutmut_version"] = ">=3.6.0"
         context["pyrefly_version"] = ">=1.1.1"
 

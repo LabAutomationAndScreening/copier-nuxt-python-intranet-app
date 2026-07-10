@@ -1,6 +1,6 @@
 # ============== WARNING ==============================================================================
 # File is managed by copier template: gh:LabAutomationAndScreening/copier-base-template.git
-# See .copier-managed-files.json for details.
+# See .config/.copier-managed-files.json for details.
 #
 # You are welcome to make changes to this file in your repo if they are custom to your project,
 # but if the change should be shared with other projects, please backport it to the template repo.
@@ -367,13 +367,13 @@ _tasks:
         python3 '{{ _copier_conf.src_path }}/src/copier_tasks/ensure_pnpm_minimum_release_age_exclude.py' --patterns "$PNPM_PATTERNS"
     when: "{{ pnpm_minimum_release_age_exclude }}"
   - command: |
-        if [ -f ruff.toml ]; then
+        if [ -f .config/ruff.toml ]; then
             echo "Updating ruff target-version from python_version..."
             py_major_minor="$(printf '%s' '{{ python_version }}' | cut -d. -f1,2)"
             py_tag="py$(printf '%s' "$py_major_minor" | tr -d '.')"
-            sed -i -E 's/^target-version = "py[0-9]+"/target-version = "'"$py_tag"'"/' ruff.toml
+            sed -i -E 's/^target-version = "py[0-9]+"/target-version = "'"$py_tag"'"/' .config/ruff.toml
         else
-            echo "ruff.toml not found; skipping Ruff target-version update."
+            echo ".config/ruff.toml not found; skipping Ruff target-version update."
         fi
   - command: |
       echo "Checking pyrightconfig.json..."
@@ -387,14 +387,14 @@ _tasks:
       fi
     when: "{{ is_circuit_python_driver }}"
   - command: |
-        echo "Checking for .coveragerc in repo root..."
-        if [ -f .coveragerc ]; then
+        echo "Checking for .coveragerc in repo root config..."
+        if [ -f .config/.coveragerc ]; then
             echo "Moving .coveragerc to backend folder..."
             mkdir -p backend
-            mv .coveragerc backend/.coveragerc
+            mv .config/.coveragerc backend/.coveragerc
             echo ".coveragerc moved successfully"
         else
-            echo ".coveragerc not found in repo root"
+            echo ".coveragerc not found in repo root config"
         fi
     when: "{{ has_backend }}"
   - command: |
@@ -402,16 +402,11 @@ _tasks:
             '{{ _copier_conf.src_path }}/template' \
             '.' \
             --template-src '{{ _src_path }}'
-  - command: |
-        if [ -d './template' ]; then
-            python3 '{{ _copier_conf.src_path }}/src/copier_tasks/copier_provenance.py' \
-                './template' \
-                './template' \
-                --template-src '{{ _src_path }}'
-        fi
 
 # Additional Settings
 _min_copier_version: "9.8"
+
+_answers_file: ".config/.copier-answers.yml"
 
 _subdirectory: template
 

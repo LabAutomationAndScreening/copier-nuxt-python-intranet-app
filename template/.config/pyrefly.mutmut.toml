@@ -1,6 +1,6 @@
 # ============== WARNING ==============================================================================
 # File is managed by copier template: gh:LabAutomationAndScreening/copier-base-template.git
-# See .copier-managed-files.json for details.
+# See .config/.copier-managed-files.json for details.
 #
 # You are welcome to make changes to this file in your repo if they are custom to your project,
 # but if the change should be shared with other projects, please backport it to the template repo.
@@ -12,7 +12,8 @@ use-ignore-files = false
 disable-project-excludes-heuristics = true
 python-platform = "linux"
 preset = "strict"
-project-includes = ["backend/mutants/src/**"]
+project-includes = ["../backend/mutants/src/**"]
 project-excludes = [
-    "**/generated/**",
+    # paths are relative to this config file (in .config/), so prefix with ../ to anchor at the repo root
+    "../**/generated/**",
 ]
