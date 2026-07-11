@@ -339,7 +339,7 @@ repos:
         # use require_serial so that script is only called once per commit
         require_serial: true
         # print the number of files as a sanity-check
-        verbose: true{% endraw %}{% endif %}{% raw %}
+        verbose: true
 
   - repo: local
     hooks:
@@ -359,7 +359,7 @@ repos:
           )$
         pass_filenames: false
         require_serial: true
-        verbose: true
+        verbose: true{% endraw %}{% endif %}{% raw %}
 
   # Updating repo config/tooling files
   - repo: local
