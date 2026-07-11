@@ -407,6 +407,13 @@ _tasks:
             '{{ _copier_conf.src_path }}/template' \
             '.' \
             --template-src '{{ _src_path }}'
+  - command: |
+        snapshot_file=backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json
+        if [ ! -f "$snapshot_file" ]; then
+            echo "Generating $snapshot_file from the actual OpenAPI schema..."
+            uv --directory=backend run pytest tests/unit/test_basic_server_functionality.py::test_openapi_schema --snapshot-update --cov-fail-under=0
+        fi
+    when: "{{ has_backend }}"
 
 # Additional Settings
 _min_copier_version: "9.8"

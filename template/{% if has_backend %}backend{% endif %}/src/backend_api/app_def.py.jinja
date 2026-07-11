@@ -82,8 +82,9 @@ OPENAPI_APP_SPECIFIC_TAGS: list[dict[str, str]] = [
 ]
 
 OPENAPI_TAGS = [
-    {"name": "system", "description": "Server health and lifecycle operations."}
-] + OPENAPI_APP_SPECIFIC_TAGS
+    {"name": "system", "description": "Server health and lifecycle operations."},
+    *OPENAPI_APP_SPECIFIC_TAGS,
+]
 
 try:
     app = FastAPIOffline(
