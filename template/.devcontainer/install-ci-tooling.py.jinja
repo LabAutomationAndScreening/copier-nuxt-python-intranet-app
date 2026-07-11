@@ -119,7 +119,11 @@ def main():
             )
             _ = subprocess.run(run_cmd, shell=True, check=True)  # noqa: S602 # we need shell=True for npm commands, and this is all our own input
 
-        vacuum_install_sequence = ["npm -v", f"npm install -g @quobix/vacuum@{VACUUM_OPENAPI_VERSION}", "vacuum version"]
+        vacuum_install_sequence = [
+            "npm -v",
+            f"npm install -g @quobix/vacuum@{VACUUM_OPENAPI_VERSION}",
+            "vacuum version",
+        ]
         for cmd in vacuum_install_sequence:
             run_cmd = (
                 [
