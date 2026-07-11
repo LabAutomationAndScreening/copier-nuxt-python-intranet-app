@@ -77,13 +77,13 @@ async def lifespan(app: FastAPI):
 
 API_DESCRIPTION = "{% endraw %}{{ backend_rest_api_description }}{% raw %}"
 
-OPENAPI_TAGS = [
-    {"name": "system", "description": "Server health and lifecycle operations."}
-]
-OPENAPI_APP_SPECIFIC_TAGS = [
+OPENAPI_APP_SPECIFIC_TAGS: list[dict[str, str]] = [
     # Insert app specific openapi tags here
 ]
-OPENAPI_TAGS += OPENAPI_APP_SPECIFIC_TAGS
+
+OPENAPI_TAGS = [
+    {"name": "system", "description": "Server health and lifecycle operations."}
+] + OPENAPI_APP_SPECIFIC_TAGS
 
 try:
     app = FastAPIOffline(
