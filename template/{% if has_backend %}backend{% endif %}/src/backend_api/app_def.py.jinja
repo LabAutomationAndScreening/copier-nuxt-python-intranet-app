@@ -82,7 +82,8 @@ OPENAPI_APP_SPECIFIC_TAGS: list[dict[str, str]] = [
 ]
 
 OPENAPI_TAGS = [
-    {"name": "system", "description": "Server health and lifecycle operations."},
+    {"name": "system", "description": "Server health and lifecycle operations."},{% endraw %}{% if backend_uses_graphql %}{% raw %}
+    {"name": "graphql", "description": "GraphQL endpoint (GraphiQL IDE on GET, queries/mutations on POST)."},{% endraw %}{% endif %}{% raw %}
     *OPENAPI_APP_SPECIFIC_TAGS,
 ]
 
@@ -112,7 +113,7 @@ class HealthcheckResponse(BaseModel):
     build is currently deployed.
     """
 
-    version: str = Field(description="Version of the application", default="1.0.0", examples=["1.0.0"])
+    version: str = Field(description="Version of the application", default="1.0.0")
 
 
 class ShutdownResponse(BaseModel):
@@ -125,7 +126,6 @@ class ShutdownResponse(BaseModel):
     message: str = Field(
         default="Shutdown request received. Server will exit shortly.",
         description="Message indicating the shutdown request was received",
-        examples=["Shutdown request received. Server will exit shortly."],
     )
 
 
