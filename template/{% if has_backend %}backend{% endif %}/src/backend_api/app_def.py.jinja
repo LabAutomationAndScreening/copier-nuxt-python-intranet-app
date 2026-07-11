@@ -75,7 +75,7 @@ async def lifespan(app: FastAPI):
 
 {% endraw %}{% endif %}{% raw %}
 
-API_DESCRIPTION = "Metrics Monitor REST API that discovers local network sensors via mDNS, collects and stores measurements on a configurable polling schedule, and provides dashboard/chart management plus alarm threshold configuration."
+API_DESCRIPTION = "{% endraw %}{{ backend_rest_api_description }}{% raw %}"
 
 OPENAPI_TAGS = [
     {"name": "system", "description": "Server health and lifecycle operations."}
