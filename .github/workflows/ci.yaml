@@ -206,18 +206,6 @@ jobs:
           restore-keys: |
             ${{ matrix.os }}-${{ matrix.python-version }}-build-${{ env.cache-name }}-
 
-      - name: DEBUG pyright investigation
-        if: hashFiles('backend/pyproject.toml') != ''
-        run: |
-          echo "--- backend/.venv/bin (pyright*) ---"
-          ls -la backend/.venv/bin/ | grep -i pyright || echo "NO PYRIGHT BINARY FOUND"
-          echo "--- uv --directory=backend run pyright --version ---"
-          PYRIGHT_PYTHON_DEBUG=1 uv --directory=backend run pyright --version || echo "EXIT CODE $?"
-          echo "--- uv --directory=backend pip show pyright ---"
-          uv --directory=backend pip show pyright || echo "EXIT CODE $?"
-          echo "--- ~/.cache/pyright ---"
-          ls -la ~/.cache/pyright 2>&1 || echo "NO CACHE DIR"
-
       - name: Run pre-commit
         run: |
           # skip devcontainer context hash because the template instantiation may make it different every time
