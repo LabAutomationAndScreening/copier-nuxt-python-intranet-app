@@ -1,0 +1,120 @@
+# Curated vacuum ruleset for the backend OpenAPI schema.
+#
+# Extends vacuum's built-in OpenAPI "recommended" set, then disables two rules that are noise/false
+# positives for a FastAPI-generated spec and enables a handful of opt-in best-practice rules plus three
+# OWASP data-hardening rules. Every non-default rule carries a comment explaining WHY.
+#
+# The target document is the OpenAPI 3.1.0 snapshot the backend emits (also the canonical spec fed to
+# Kiota codegen):
+#   backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json
+#
+# `formats` is intentionally omitted from every custom rule below: this repo only ever lints one 3.1.0
+# document, so scoping by format would be dead configuration.
+extends:
+  - - vacuum:oas
+    - recommended
+rules:
+  # DISABLED: flags identical description strings, but ours repeat legitimately — the same field
+  # (e.g. SensorInfo.id) is inherited across many response models, and the same 404 text is reused
+  # across endpoints. Forcing unique wording would make the docs less consistent, not better.
+  description-duplication: "off"
+
+  # DISABLED: `servers` is meaningless here — single-server, air-gapped device, no multi-environment
+  # URLs to document. FastAPI's default "/ - This server" relative entry is all Swagger UI needs.
+  oas3-api-servers: "off"
+
+  # DISABLED: false positive — it does not follow `$ref`, so enum/model-typed properties
+  # (severity, direction, status, measurementType, etc.) that reference a fully-typed component are wrongly
+  # flagged as "missing type". Every code-level workaround trips a different recommended rule
+  # (allOf -> no-unnecessary-combinator; bare $ref -> oas3-missing-example and loses the field
+  # description), so disabling this single shallow rule is the cleanest option. The fields keep their
+  # normal Field(description=, examples=). A FastAPI-generated spec can otherwise only trigger this on
+  # `Any`-typed fields, which are rare and usually unavoidable (e.g. the generated ValidationError.input).
+  oas-missing-type: "off"
+
+  # ENABLED: guarantees every tag used by an operation is declared at the top level with real metadata —
+  # this drives navigation/grouping in docs and Kiota-generated client namespaces.
+  openapi-tags:
+    given: $
+    severity: warn
+    resolved: true
+    then:
+      field: tags
+      function: schema
+      functionOptions:
+        forceValidation: true
+        schema:
+          type: array
+          uniqueItems: true
+          items:
+            type: object
+            minItems: 1
+
+  # ENABLED: a tag with no description is useless to a consumer reading the docs — enforce a
+  # human-readable purpose for each of system/debug/devices/data/alarms.
+  tag-description:
+    given: $
+    severity: warn
+    resolved: true
+    then:
+      function: tagDescription
+
+  # ENABLED: keeps each operation to exactly one tag so it appears once in generated navigation/clients
+  # (multi-tagging duplicates operations across groups and confuses codegen). We already tag singly.
+  operation-singular-tag:
+    given: $
+    severity: warn
+    resolved: true
+    then:
+      function: oasOpSingleTag
+
+  # ENABLED: a POST with no documented success response is an incomplete contract; ensures every
+  # create/action endpoint declares its 2xx (we already return 201) so clients know the success shape.
+  post-response-success:
+    given: $.paths.*.post.responses
+    severity: warn
+    resolved: true
+    then:
+      function: postResponseSuccess
+      functionOptions:
+        properties:
+          - 200
+          - 201
+          - 202
+          - 204
+
+  # ENABLED: correctness guard — every entry in a schema's `required` list must actually exist in
+  # `properties`. Catches real bugs (typo'd/removed field left in required) that break client codegen.
+  required-fields-defined:
+    given: $
+    severity: warn
+    resolved: true
+    then:
+      function: requiredFieldsDefined
+
+  # ENABLED (OWASP): three data-hardening rules worth keeping even on an air-gapped/no-auth API. The
+  # rest of the OWASP pack (auth/HTTPS/rate-limit/protection-*/string-restricted) is intentionally NOT
+  # enabled for this trusted air-gapped, no-auth deployment; revisit if the API is ever exposed/authed.
+  #
+  # Documented validation-error response (400/422/4XX) on every operation.
+  owasp-define-error-validation:
+    given: $
+    severity: warn
+    then:
+      function: owaspDefineErrorDefinition
+      functionOptions:
+        codes: ["400", "422", "4XX"]
+
+  # Integers must declare int32/int64 `format` so codegen picks the right numeric type.
+  owasp-integer-format:
+    given: $
+    severity: error
+    then:
+      function: owaspIntegerFormat
+
+  # Integers must declare min/max bounds (input validation / resource-exhaustion guard).
+  owasp-integer-limit:
+    given: $
+    severity: error
+    then:
+      function: owaspIntegerLimit

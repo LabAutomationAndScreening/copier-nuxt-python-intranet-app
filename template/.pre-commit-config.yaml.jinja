@@ -341,6 +341,26 @@ repos:
         # print the number of files as a sanity-check
         verbose: true{% endraw %}{% endif %}{% raw %}
 
+  - repo: local
+    hooks:
+      - id: vacuum-openapi
+        name: vacuum OpenAPI schema lint
+        # Lints the generated OpenAPI snapshot (the canonical spec fed to Kiota) against the curated
+        # ruleset. `language: node` with additional_dependencies lets pre-commit install vacuum in an
+        # isolated env, so this runs in CI without any global/devcontainer install. Fails on warn-or-worse.
+        entry: vacuum lint --no-banner --no-style --fail-severity warn -r .config/vacuum-ruleset.yaml --ignore-file .config/vacuum-ignore.yaml backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json
+        language: node
+        additional_dependencies: ['@quobix/vacuum@0.27.0']
+        files: |
+          (?x)^(
+              backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema\.json|
+              .config/vacuum-ruleset\.yaml|
+              .config/vacuum-ignore\.yaml
+          )$
+        pass_filenames: false
+        require_serial: true
+        verbose: true
+
   # Updating repo config/tooling files
   - repo: local
     hooks:
