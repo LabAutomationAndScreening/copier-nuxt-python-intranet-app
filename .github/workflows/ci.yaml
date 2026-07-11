@@ -207,7 +207,7 @@ jobs:
         run: |
           # skip devcontainer context hash because the template instantiation may make it different every time
           # skip vacuum-openapi because the new template will not have an OpenAPI spec yet, so it will always fail
-          SKIP=git-dirty,compute-devcontainer-context-hash,vacuum-openapi pre-commit run -a || PRE_COMMIT_EXIT_CODE=$?
+          SKIP=git-dirty,compute-devcontainer-context-hash pre-commit run -a || PRE_COMMIT_EXIT_CODE=$?
           if [ -n "$PRE_COMMIT_EXIT_CODE" ]; then
             echo "Pre-commit failed with exit code $PRE_COMMIT_EXIT_CODE"
             echo "Showing git diff:"
