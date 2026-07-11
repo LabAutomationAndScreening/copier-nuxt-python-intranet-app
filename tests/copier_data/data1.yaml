@@ -33,6 +33,7 @@ aws_region_for_stack: us-east-2
 # Data added based on the specifics of this template
 human_friendly_app_name: Doing Great Thing
 has_backend: true
+backend_rest_api_description: Doing Great Thing REST API
 backend_makes_api_calls: true
 backend_source_uses_kiota: true
 backend_deployed_port_number: 8080
