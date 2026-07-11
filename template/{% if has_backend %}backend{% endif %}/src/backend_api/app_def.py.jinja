@@ -74,9 +74,22 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down FastAPI application")
 
 {% endraw %}{% endif %}{% raw %}
+
+API_DESCRIPTION = "Metrics Monitor REST API that discovers local network sensors via mDNS, collects and stores measurements on a configurable polling schedule, and provides dashboard/chart management plus alarm threshold configuration."
+
+OPENAPI_TAGS = [
+    {"name": "system", "description": "Server health and lifecycle operations."}
+]
+OPENAPI_APP_SPECIFIC_TAGS = [
+    // Insert app specific openapi tags here
+]
+OPENAPI_TAGS += OPENAPI_APP_SPECIFIC_TAGS
+
 try:
     app = FastAPIOffline(
         title=HUMAN_FRIENDLY_APP_NAME,
+        description=API_DESCRIPTION,
+        openapi_tags=OPENAPI_TAGS,
         favicon_url="favicon.ico",
         version=get_version(),
         docs_url="/api-docs",
