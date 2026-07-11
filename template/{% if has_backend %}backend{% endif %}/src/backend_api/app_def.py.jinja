@@ -106,10 +106,22 @@ except (  # pragma: no cover # This is just logging unexpected errors, and it's 
 
 
 class HealthcheckResponse(BaseModel):
+    """Result of an API health check.
+
+    Reports the running application version so a caller can confirm the server is up and identify which
+    build is currently deployed.
+    """
+
     version: str = Field(description="Version of the application", default="1.0.0")
 
 
 class ShutdownResponse(BaseModel):
+    """Acknowledgement of a server shutdown request.
+
+    Returned immediately when a shutdown is requested; the server process exits shortly after this response
+    is sent.
+    """
+
     message: str = Field(
         default="Shutdown request received. Server will exit shortly.",
         description="Message indicating the shutdown request was received",
