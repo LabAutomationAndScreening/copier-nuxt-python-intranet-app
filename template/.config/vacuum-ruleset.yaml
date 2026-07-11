@@ -34,87 +34,33 @@ rules:
 
   # ENABLED: guarantees every tag used by an operation is declared at the top level with real metadata —
   # this drives navigation/grouping in docs and Kiota-generated client namespaces.
-  openapi-tags:
-    given: $
-    severity: warn
-    resolved: true
-    then:
-      field: tags
-      function: schema
-      functionOptions:
-        forceValidation: true
-        schema:
-          type: array
-          uniqueItems: true
-          items:
-            type: object
-            minItems: 1
+  # `true` pulls vacuum's built-in definition verbatim (it's an opt-in rule, absent from `recommended`).
+  openapi-tags: true
 
   # ENABLED: a tag with no description is useless to a consumer reading the docs — enforce a
   # human-readable purpose for each of system/debug/devices/data/alarms.
-  tag-description:
-    given: $
-    severity: warn
-    resolved: true
-    then:
-      function: tagDescription
+  tag-description: true
 
   # ENABLED: keeps each operation to exactly one tag so it appears once in generated navigation/clients
   # (multi-tagging duplicates operations across groups and confuses codegen). We already tag singly.
-  operation-singular-tag:
-    given: $
-    severity: warn
-    resolved: true
-    then:
-      function: oasOpSingleTag
+  operation-singular-tag: true
 
   # ENABLED: a POST with no documented success response is an incomplete contract; ensures every
-  # create/action endpoint declares its 2xx (we already return 201) so clients know the success shape.
-  post-response-success:
-    given: $.paths.*.post.responses
-    severity: warn
-    resolved: true
-    then:
-      function: postResponseSuccess
-      functionOptions:
-        properties:
-          - 200
-          - 201
-          - 202
-          - 204
+  # create/action endpoint declares its 2xx/3xx (we already return 201) so clients know the success shape.
+  post-response-success: true
 
   # ENABLED: correctness guard — every entry in a schema's `required` list must actually exist in
   # `properties`. Catches real bugs (typo'd/removed field left in required) that break client codegen.
-  required-fields-defined:
-    given: $
-    severity: warn
-    resolved: true
-    then:
-      function: requiredFieldsDefined
+  required-fields-defined: true
 
   # ENABLED (OWASP): three data-hardening rules worth keeping even on an air-gapped/no-auth API. The
   # rest of the OWASP pack (auth/HTTPS/rate-limit/protection-*/string-restricted) is intentionally NOT
   # enabled for this trusted air-gapped, no-auth deployment; revisit if the API is ever exposed/authed.
-  #
-  # Documented validation-error response (400/422/4XX) on every operation.
-  owasp-define-error-validation:
-    given: $
-    severity: warn
-    then:
-      function: owaspDefineErrorDefinition
-      functionOptions:
-        codes: ["400", "422", "4XX"]
+  owasp-define-error-validation: true
 
   # Integers must declare int32/int64 `format` so codegen picks the right numeric type.
-  owasp-integer-format:
-    given: $
-    severity: error
-    then:
-      function: owaspIntegerFormat
+  # (Config, not `true`: OWASP rules aren't in the extended set, so `true` would be dropped.)
+  owasp-integer-format: true
 
   # Integers must declare min/max bounds (input validation / resource-exhaustion guard).
-  owasp-integer-limit:
-    given: $
-    severity: error
-    then:
-      function: owaspIntegerLimit
+  owasp-integer-limit: true
