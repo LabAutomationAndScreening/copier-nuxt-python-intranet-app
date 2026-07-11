@@ -125,6 +125,5 @@ dist
 
 # vacuum OpenAPI lint reports (generated ad-hoc; the linter runs against the committed snapshot)
 vacuum-report-*.json
-/report.html
 
 # Ignores specific to this repository
