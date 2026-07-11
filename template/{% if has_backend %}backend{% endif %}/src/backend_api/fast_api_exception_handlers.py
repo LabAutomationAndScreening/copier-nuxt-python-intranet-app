@@ -19,14 +19,39 @@ from .openapi_schema_simplifier import collapse_nullable_anyof
 logger = logging.getLogger(__name__)
 
 
+_HTTP_STATUS_SCHEMA: dict[str, JsonValue] = {"format": "int32", "minimum": 100, "maximum": 599}
+
+
 class ProblemDetails(BaseModel):
-    type: str = "about:blank"
-    title: str
-    status: int
+    """RFC 9457 problem details describing an error response.
+
+    Returned (as application/problem+json) for error responses so clients and codegen tools such as Kiota
+    have a consistent, machine-readable error shape.
+    """
+
+    type: str = Field(
+        default="about:blank", examples=["about:blank"], description="A URI reference identifying the problem type."
+    )
+    title: str = Field(
+        examples=["Internal Server Error"], description="A short, human-readable summary of the problem."
+    )
+    status: int = Field(
+        json_schema_extra=_HTTP_STATUS_SCHEMA, examples=[500], description="The HTTP status code for this problem."
+    )
     # The vendor extension lets Kiota use this as the exception message.
-    detail: str = Field(..., json_schema_extra={"x-ms-primary-error-message": True})
-    instance: str
-    error_type: str | None = Field(default=None, alias="errorType")
+    detail: str = Field(
+        ...,
+        json_schema_extra={"x-ms-primary-error-message": True},
+        examples=["An unexpected error occurred."],
+        description="A human-readable explanation specific to this occurrence of the problem.",
+    )
+    instance: str = Field(examples=["/api/healthcheck"], description="A URI reference identifying this occurrence.")
+    error_type: str | None = Field(
+        default=None,
+        alias="errorType",
+        examples=["ValueError"],
+        description="The internal exception class name, when available.",
+    )
 
 
 def should_show_error_details() -> bool:
@@ -144,7 +169,14 @@ def custom_openapi(app: FastAPI) -> dict[str, Any]:
     """
     if app.openapi_schema:  # don't regenerate the schema on subsequent API calls if it's already been done
         return app.openapi_schema
-    oas = get_openapi(title=app.title, version=app.version, routes=app.routes)
+    oas = get_openapi(
+        title=app.title,
+        version=app.version,
+        routes=app.routes,
+        description=app.description,
+        tags=app.openapi_tags,
+        servers=app.servers,
+    )
 
     # Ensure ProblemDetails schema exists
     comps = oas.setdefault("components", {}).setdefault("schemas", {})
@@ -152,6 +184,29 @@ def custom_openapi(app: FastAPI) -> dict[str, Any]:
         "ProblemDetails",
         ProblemDetails.model_json_schema(ref_template="#/components/schemas/{model}"),
     )
+
+    # FastAPI generates the validation-error schemas without descriptions or examples; we cannot annotate
+    # them at the model level, so document and exemplify them here. This also lets every media type that
+    # references them (the 422 responses) satisfy the "missing example" lint rule.
+    validation_error_example: JsonValue = {
+        "loc": ["body", "field_name"],
+        "msg": "field required",
+        "type": "missing",
+    }
+    generated_schema_metadata: dict[str, dict[str, JsonValue]] = {
+        "HTTPValidationError": {
+            "description": "Error response returned when request validation fails.",
+            "examples": [{"detail": [validation_error_example]}],
+        },
+        "ValidationError": {
+            "description": "Details of a single request validation failure.",
+            "examples": [validation_error_example],
+        },
+    }
+    for schema_name, schema_metadata in generated_schema_metadata.items():
+        if schema_name in comps:
+            for key, value in schema_metadata.items():
+                _ = comps[schema_name].setdefault(key, value)
 
     def problem_ref() -> dict[str, JsonValue]:
         return {"$ref": "#/components/schemas/ProblemDetails"}
