@@ -118,25 +118,6 @@ def main():
                 else [cmd]
             )
             _ = subprocess.run(run_cmd, shell=True, check=True)  # noqa: S602 # we need shell=True for npm commands, and this is all our own input
-
-        vacuum_install_sequence = [
-            "npm -v",
-            f"npm install -g @quobix/vacuum@{VACUUM_OPENAPI_VERSION}",
-            "vacuum version",
-        ]
-        for cmd in vacuum_install_sequence:
-            run_cmd = (
-                [
-                    pwsh,  # type: ignore[reportPossiblyUnboundVariable] # this matches the conditional above that defines pwsh
-                    "-NoProfile",
-                    "-NonInteractive",
-                    "-Command",
-                    cmd,
-                ]
-                if is_windows
-                else [cmd]
-            )
-            _ = subprocess.run(run_cmd, shell=True, check=True)  # noqa: S602 # we need shell=True for npm commands, and this is all our own input
     if INSTALL_SSM_PLUGIN_BY_DEFAULT and not args.skip_installing_ssm_plugin:
         with tempfile.TemporaryDirectory() as tmp_dir:
             if is_windows:
