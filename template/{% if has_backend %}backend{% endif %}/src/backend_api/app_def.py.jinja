@@ -83,7 +83,7 @@ OPENAPI_APP_SPECIFIC_TAGS: list[dict[str, str]] = [
 
 OPENAPI_TAGS = [
     {"name": "system", "description": "Server health and lifecycle operations."},{% endraw %}{% if backend_uses_graphql %}{% raw %}
-    {"name": "graphql", "description": "GraphQL endpoint (GraphiQL IDE on GET, queries/mutations on POST)."},{% endraw %}{% endif %}{% raw %}
+    {"name": "graphql", "description": "GraphQL endpoint"},{% endraw %}{% endif %}{% raw %}
     *OPENAPI_APP_SPECIFIC_TAGS,
 ]
 
