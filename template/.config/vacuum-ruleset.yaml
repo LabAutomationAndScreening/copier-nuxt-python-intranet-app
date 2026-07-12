@@ -64,3 +64,109 @@ rules:
 
   # Integers must declare min/max bounds (input validation / resource-exhaustion guard).
   owasp-integer-limit: true
+
+  # ENABLED: path id parameters must be explicit and resource-qualified, never a bare generic
+  # identifier. Bare `{id}` is ambiguous in a multi-resource spec and produces collision-prone Kiota
+  # client method names (every resource collapses to `by_id`). The denylist is Tier 1 only
+  # (unambiguously generic tokens). Tier 2 natural-key tokens (code|slug|name|type) are intentionally
+  # excluded because they are often legitimate (e.g. /countries/{code}); add them only if wanted.
+  path-no-generic-id:
+    description: Path id parameters must be explicit, not a bare generic identifier.
+    given: $.paths[*]~
+    severity: error
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: "\\{(id|pk|fk|uid|guid|uuid|oid|key|ref|hash|idx|index|num|no|identifier|value|item|object|entity|record|data|thing)\\}"
+
+  # ENABLED: path PARAMETERS must be snake_case. The kebab-case + lowercase half of our hybrid casing
+  # decision (kebab static segments, snake_case params) is ALREADY enforced by the recommended set's
+  # `paths-kebab-case` rule, which flags non-kebab STATIC segments and ignores `{param}` segments
+  # entirely. This rule adds the parameter half that `paths-kebab-case` does not cover. FastAPI binds a
+  # path parameter's name to a Python function argument (which cannot contain hyphens), so snake_case is
+  # the only practical casing for parameters.
+  path-param-snake-case:
+    description: Path parameters must be snake_case.
+    given: $.paths[*][*].parameters[?(@.in=='path')]
+    severity: warn
+    then:
+      field: name
+      function: casing
+      functionOptions:
+        type: snake
+
+  # ENABLED: query parameters must be snake_case — consistent with the existing code and with gov.au
+  # (which puts hyphens in path segments, not query strings).
+  query-param-snake-case:
+    description: Query parameters must be snake_case.
+    given: $.paths[*][*].parameters[?(@.in=='query')]
+    severity: warn
+    then:
+      field: name
+      function: casing
+      functionOptions:
+        type: snake
+
+  # ENABLED (gov.au API Response): response bodies must be application/json. `application/problem+json`
+  # is also allowed because custom_openapi emits RFC 7807 ProblemDetails error bodies with that media
+  # type. Fires zero violations against the current snapshot.
+  response-media-type-json:
+    description: Response bodies must be application/json (or application/problem+json for errors).
+    given: $.paths[*][*].responses[*].content[*]~
+    severity: warn
+    then:
+      function: pattern
+      functionOptions:
+        match: "^application/(json|problem\\+json)$"
+
+  # ENABLED (gov.au API Request): request bodies must be application/json. Fires zero violations against
+  # the current snapshot.
+  request-media-type-json:
+    description: Request bodies must be application/json.
+    given: $.paths[*][*].requestBody.content[*]~
+    severity: warn
+    then:
+      function: pattern
+      functionOptions:
+        match: "^application/json$"
+
+  # ENABLED: POST request bodies must not REQUIRE an id — the backend generates it (a client may still
+  # supply an optional one). This targets each entry of the resolved request-body schema's `required`
+  # array and asserts none is literally "id"; if `required` is absent, no nodes match and the rule
+  # passes. (A schema-of-schema `not/contains` approach was tried first but vacuum reported it as a
+  # false positive on every POST body, so this pattern-based form is used instead.)
+  create-body-no-required-id:
+    description: POST request bodies must not require an id (backend-generated).
+    given: $.paths[*].post.requestBody.content.*.schema.required[*]
+    resolved: true
+    severity: warn
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: "^id$"
+
+  # ENABLED (gov.au Naming: nouns not verbs). The recommended set's `no-http-verbs-in-path` already
+  # catches HTTP-method names used as path segments; this adds the non-HTTP action verbs it does not
+  # cover. Fires zero violations against the current snapshot.
+  no-action-verbs-in-path:
+    description: Path segments must be nouns, not action verbs.
+    given: $.paths[*]~
+    severity: warn
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: "/(list|create|add|update|edit|remove|fetch|retrieve|make)(-|/|$)"
+
+  # ENABLED (gov.au API Response): a 201 Created must return the new resource's Location. This fires on
+  # POST operations that declare a 201 response, so genuine resource creates (add device, create
+  # threshold, create view) declare + emit a Location header. Non-create POST actions should return a
+  # non-201 success (e.g. push measurements returns 202 Accepted) so this rule does not apply to them.
+  # (A `function: schema` form with a nested `required: [Location]` was tried first but vacuum reported
+  # it as a false positive even when the header was present, so this truthy field check is used instead.)
+  location-header-on-201:
+    description: 201 Created responses must declare a Location header.
+    given: $.paths[*].post.responses['201']
+    severity: warn
+    then:
+      field: headers.Location
+      function: truthy
