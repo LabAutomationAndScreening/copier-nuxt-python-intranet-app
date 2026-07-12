@@ -348,14 +348,15 @@ repos:
         # Lints the generated OpenAPI snapshot against the curated ruleset.
         # `language: node` with additional_dependencies lets pre-commit install vacuum in an
         # isolated env, so this runs in CI without any global/devcontainer install. Fails on warn-or-worse.
-        entry: vacuum lint --no-banner --no-style --fail-severity warn -r .config/vacuum-ruleset.yaml --ignore-file .config/vacuum-ignore.yaml backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json
+        entry: vacuum lint --no-banner --no-style --fail-severity warn -f .config/vacuum-functions -r .config/vacuum-ruleset.yaml --ignore-file .config/vacuum-ignore.yaml backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json
         language: node
         additional_dependencies: ['@quobix/vacuum@{% endraw %}{{ vacuum_openapi_version }}{% raw %}']
         files: |
           (?x)^(
               backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema\.json|
               .config/vacuum-ruleset\.yaml|
-              .config/vacuum-ignore\.yaml
+              .config/vacuum-ignore\.yaml|
+              .config/vacuum-functions/.*\.js
           )$
         pass_filenames: false
         require_serial: true

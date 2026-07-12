@@ -170,3 +170,16 @@ rules:
     then:
       field: headers.Location
       function: truthy
+
+  # ENABLED (gov.au Naming: plural resources). Static path segments should be plural resource nouns.
+  # Declarative casing/pattern rules cannot pluralize, so this uses a custom JavaScript function
+  # (.config/vacuum-functions/resourcesPlural.js) run via `vacuum lint -f .config/vacuum-functions`. The
+  # check is heuristic: it flags a static segment only when it is clearly singular (does not end in "s")
+  # and is not in the function's ALLOWLIST of non-collection segments (namespaces, actions, uncountable
+  # nouns). Tune that allowlist in the JS file rather than here.
+  resources-plural:
+    description: Path resource segments should be plural nouns.
+    given: $.paths[*]~
+    severity: warn
+    then:
+      function: resourcesPlural
