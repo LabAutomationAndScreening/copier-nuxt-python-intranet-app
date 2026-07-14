@@ -75,7 +75,7 @@ async def lifespan(app: FastAPI):
 
 {% endraw %}{% endif %}{% raw %}
 
-API_DESCRIPTION = "{% endraw %}{{ backend_rest_api_description }}{% raw %}"
+API_DESCRIPTION = {% endraw %}{{ backend_rest_api_description | tojson }}{% raw %}
 
 OPENAPI_APP_SPECIFIC_TAGS: list[dict[str, str]] = [
     # Insert app specific openapi tags here
