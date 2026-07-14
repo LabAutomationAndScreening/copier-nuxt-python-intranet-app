@@ -18,7 +18,9 @@ var ALLOWLIST = [
   // health / status / lifecycle singletons
   "health", "healthcheck", "healthz", "readyz", "livez", "status", "shutdown", "ping", "version",
   // common actions, filters and singleton sub-resources
-  "me", "self", "search", "online", "offline", "push", "polling", "dashboard", "summary", "latest", "current"
+  "me", "self", "search", "online", "offline", "push", "polling", "dashboard", "summary", "latest", "current",
+  // non-REST endpoints (not resource collections)
+  "graphql"
 ];
 
 function getSchema() {
