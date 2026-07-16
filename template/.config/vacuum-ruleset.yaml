@@ -87,25 +87,23 @@ rules:
   # the only practical casing for parameters.
   path-param-snake-case:
     description: Path parameters must be snake_case.
-    given: $.paths[*][*].parameters[?(@.in=='path')]
+    given: $.paths[*][*].parameters[?(@.in=='path')].name
     severity: warn
     then:
-      field: name
       function: casing
       functionOptions:
         type: snake
 
-  # ENABLED: query parameters must be snake_case — consistent with the existing code and with gov.au
-  # (which puts hyphens in path segments, not query strings).
-  query-param-snake-case:
-    description: Query parameters must be snake_case.
-    given: $.paths[*][*].parameters[?(@.in=='query')]
+  # ENABLED: query parameters must be camelCase — body params are already camelCase, so matching that
+  # for query params keeps frontend clients consistent instead of converting between casings per field.
+  query-param-camel-case:
+    description: Query parameters must be camelCase.
+    given: $.paths[*][*].parameters[?(@.in=='query')].name
     severity: warn
     then:
-      field: name
       function: casing
       functionOptions:
-        type: snake
+        type: camel
 
   # ENABLED (gov.au API Response): response bodies must be application/json. `application/problem+json`
   # is also allowed because custom_openapi emits RFC 7807 ProblemDetails error bodies with that media
