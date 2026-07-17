@@ -149,7 +149,7 @@ class NoCacheStaticFiles(StaticFiles):
 def healthcheck(
     *,
     prepend_v: bool = Query(  # pyright: ignore[reportCallInDefaultInitializer] # This seems to be an accepted FastAPI pattern
-        default=False, description="Include a 'v' before the version number"
+        default=False, alias="prependV", description="Include a 'v' before the version number"
     ),
 ) -> HealthcheckResponse:
     return HealthcheckResponse(version=get_version(prepend_v=prepend_v))
