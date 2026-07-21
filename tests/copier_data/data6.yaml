@@ -1,10 +1,10 @@
 # Data managed by upstream template
-repo_name: baz
+repo_name: arm_exe
 repo_org_name: foo
 is_open_source: true
-description: Testing deploy as executable
+description: Testing deploy as executable with ARM build targets
 install_claude_cli: true
-ssh_port_number: 54322
+ssh_port_number: 54323
 pull_from_ecr: false
 repo_names_for_codespaces_read_permissions: ok-repo,awesome-stuff,super-repo
 use_windows_in_ci: true
@@ -23,23 +23,25 @@ use_staging_environment: false
 aws_region_for_stack: us-east-2
 
 # Data added based on the specifics of this template
-human_friendly_app_name: Destroyer of Worlds
+human_friendly_app_name: Arm Exe
 has_backend: true
-backend_rest_api_description: Destroyer of Worlds REST API
+backend_rest_api_description: Arm Exe REST API
 backend_makes_api_calls: true
 backend_source_uses_kiota: false
-backend_deployed_port_number: 4020
+backend_deployed_port_number: 4021
 backend_uses_graphql: false
 deploy_as_executable: true
 use_upx_for_executable: true
-build_arm_linux_target: false
-build_arm_windows_target: false
+build_arm_linux_target: true
+gha_arm_linux_runner: ubuntu-arm-2core
+build_arm_windows_target: true
+gha_arm_windows_runner: windows-arm-8core
 install_as_windows_service: true
 is_circuit_python_driver: false
 has_circuit_python_backend_template_been_instantiated: false
 install_gcc_in_backend_container_build_phase: false
 frontend_uses_graphql: false
-frontend_deployed_port_number: 3000
+frontend_deployed_port_number: 3001
 frontend_uses_zod: true
 push_to_ecr: false
 create_docker_image_tar_artifact: false
@@ -52,5 +54,5 @@ backend_image_name: not-applicable
 auth_to_ecr_for_e2e_in_ci: false
 run_backend_e2e_in_ci: true
 auth_to_ecr_for_backend_e2e_in_ci: false
-frontend_nodeport_number: 30500
-backend_nodeport_number: 30505
+frontend_nodeport_number: 30501
+backend_nodeport_number: 30506

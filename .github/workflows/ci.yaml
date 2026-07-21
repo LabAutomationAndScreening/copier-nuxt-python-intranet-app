@@ -114,6 +114,7 @@ jobs:
           '--data-file tests/copier_data/data3.yaml',
           '--data-file tests/copier_data/data4.yaml',
           '--data-file tests/copier_data/data5.yaml',
+          '--data-file tests/copier_data/data6.yaml',
           ]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 8

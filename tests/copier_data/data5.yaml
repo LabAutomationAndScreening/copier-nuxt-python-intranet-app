@@ -32,6 +32,7 @@ backend_deployed_port_number: 5050
 backend_uses_graphql: false
 deploy_as_executable: true
 use_upx_for_executable: false
+build_arm_linux_target: false
 install_as_windows_service: false
 is_circuit_python_driver: false
 has_circuit_python_backend_template_been_instantiated: false
