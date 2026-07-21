@@ -3,13 +3,6 @@
 # Extends vacuum's built-in OpenAPI "recommended" set, then disables two rules that are noise/false
 # positives for a FastAPI-generated spec and enables a handful of opt-in best-practice rules plus three
 # OWASP data-hardening rules. Every non-default rule carries a comment explaining WHY.
-#
-# The target document is the OpenAPI 3.1.0 snapshot the backend emits (also the canonical spec fed to
-# Kiota codegen):
-#   backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json
-#
-# `formats` is intentionally omitted from every custom rule below: this repo only ever lints one 3.1.0
-# document, so scoping by format would be dead configuration.
 extends:
   - - vacuum:oas
     - recommended
