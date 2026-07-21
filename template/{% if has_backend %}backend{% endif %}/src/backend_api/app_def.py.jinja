@@ -74,9 +74,26 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down FastAPI application")
 
 {% endraw %}{% endif %}{% raw %}
+
+API_DESCRIPTION = {% endraw %}{{ backend_rest_api_description | tojson }}{% raw %}
+
+OPENAPI_APP_SPECIFIC_TAGS: list[dict[str, str]] = [
+    # Insert app specific openapi tags here
+]
+
+OPENAPI_TAGS = [
+    {"name": "system", "description": "Server health and lifecycle operations."},{% endraw %}{% if backend_uses_graphql %}{% raw %}
+    {"name": "graphql", "description": "GraphQL endpoint"},{% endraw %}{% endif %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
+    {"name": "debug", "description": "Debug and diagnostic operations."},
+    {"name": "mDNS", "description": "mDNS service discovery operations."},{% endraw %}{% endif %}{% raw %}
+    *OPENAPI_APP_SPECIFIC_TAGS,
+]
+
 try:
     app = FastAPIOffline(
         title=HUMAN_FRIENDLY_APP_NAME,
+        description=API_DESCRIPTION,
+        openapi_tags=OPENAPI_TAGS,
         favicon_url="favicon.ico",
         version=get_version(),
         docs_url="/api-docs",
@@ -92,10 +109,22 @@ except (  # pragma: no cover # This is just logging unexpected errors, and it's 
 
 
 class HealthcheckResponse(BaseModel):
+    """Result of an API health check.
+
+    Reports the running application version so a caller can confirm the server is up and identify which
+    build is currently deployed.
+    """
+
     version: str = Field(description="Version of the application", default="1.0.0")
 
 
 class ShutdownResponse(BaseModel):
+    """Acknowledgement of a server shutdown request.
+
+    Returned immediately when a shutdown is requested; the server process exits shortly after this response
+    is sent.
+    """
+
     message: str = Field(
         default="Shutdown request received. Server will exit shortly.",
         description="Message indicating the shutdown request was received",
@@ -120,7 +149,7 @@ class NoCacheStaticFiles(StaticFiles):
 def healthcheck(
     *,
     prepend_v: bool = Query(  # pyright: ignore[reportCallInDefaultInitializer] # This seems to be an accepted FastAPI pattern
-        default=False, description="Include a 'v' before the version number"
+        default=False, alias="prependV", description="Include a 'v' before the version number"
     ),
 ) -> HealthcheckResponse:
     return HealthcheckResponse(version=get_version(prepend_v=prepend_v))
@@ -151,7 +180,7 @@ try:
     ){% endraw %}{% if backend_uses_graphql %}{% raw %}
 
     graphql_app = OfflineGraphQLRouter(schema)
-    app.include_router(graphql_app, prefix="/api/graphql"){% endraw %}{% endif %}{% raw %}{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
+    app.include_router(graphql_app, prefix="/api/graphql", tags=["graphql"]){% endraw %}{% endif %}{% raw %}{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
     app.include_router(driver_router, prefix="/api/driver")
     app.include_router(bridges_router, prefix="/api/bridges", tags=["debug"])
     app.include_router(mdns_router, prefix="/api", tags=["mDNS"]){% endraw %}{% endif %}{% raw %}

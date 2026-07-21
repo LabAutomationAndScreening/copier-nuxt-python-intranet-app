@@ -171,7 +171,10 @@ jobs:
           # delete the subfolder
           rm -frd new-template
           ls -la
-
+          # any venv created by copier _tasks while the template still lived under new-template/
+          # has console-script shebangs baked with that now-stale absolute path. Remove it so it
+          # gets rebuilt from scratch at the correct final path.
+          rm -rf backend/.venv
 
       - name: install new dependencies
         env:

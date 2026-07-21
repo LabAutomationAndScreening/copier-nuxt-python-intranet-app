@@ -27,7 +27,7 @@ def test_Given_healthy__When_healthcheck__Then_version_in_response():
 def test_Given_healthy__When_healthcheck_with_prepend_v__Then_version_in_response():
     client = TestClient(app)
 
-    response = client.get("/api/healthcheck?prepend_v=true")
+    response = client.get("/api/healthcheck?prependV=true")
 
     assert response.status_code == codes.OK
     response_json = response.json()

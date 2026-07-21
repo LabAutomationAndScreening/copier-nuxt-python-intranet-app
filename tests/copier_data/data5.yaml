@@ -25,6 +25,7 @@ aws_region_for_stack: eu-west-1
 # Data added based on the specifics of this template
 human_friendly_app_name: Tiny Exe
 has_backend: true
+backend_rest_api_description: Tiny Exe REST API
 backend_makes_api_calls: false
 backend_source_uses_kiota: false
 backend_deployed_port_number: 5050

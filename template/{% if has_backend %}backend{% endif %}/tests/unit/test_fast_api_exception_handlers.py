@@ -24,7 +24,7 @@ class TestExceptionHandlers:
     def test_Given_malformed_input_to_api_route__Then_uuid_in_log_and_response_and_response_contains_details_and_cors_headers(
         self,
     ):
-        response = self.client.get("/api/healthcheck?prepend_v=not_a_bool")
+        response = self.client.get("/api/healthcheck?prependV=not_a_bool")
 
         self.spied_uuid_generator.assert_called_once()
         expected_uuid = str(self.spied_uuid_generator.spy_return)
@@ -37,7 +37,7 @@ class TestExceptionHandlers:
         assert response_json["type"] == "about:blank"
         assert response_json["title"] == "Validation Error"
         assert response_json["status"] == codes.UNPROCESSABLE_ENTITY
-        assert "prepend_v" in response_json["detail"]
+        assert "prependV" in response_json["detail"]
         assert "valid boolean" in response_json["detail"]
         assert response_json["instance"] == f"urn:uuid:{expected_uuid}"
         self.spied_logger_warning.assert_called_once()

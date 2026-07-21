@@ -123,4 +123,7 @@ dist
 # macOS dev cleanliness
 **/.DS_Store
 
+# vacuum OpenAPI lint reports (generated ad-hoc; the linter runs against the committed snapshot)
+vacuum-report-*.json
+
 # Ignores specific to this repository
