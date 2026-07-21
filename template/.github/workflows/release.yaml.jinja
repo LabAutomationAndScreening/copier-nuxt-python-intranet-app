@@ -140,7 +140,7 @@ jobs:
       contents: write # needed to create GitHub releases
       actions: read # needed to download artifacts from CI runs
     steps:{% endraw %}{% if deploy_as_executable %}{% raw %}
-{% endraw %}{% set os_runners = [gha_linux_runner] + ([gha_windows_runner] if use_windows_in_ci else []) %}{% for runner in os_runners %}{% set ext = "tar" if runner == gha_linux_runner else "zip" %}{% raw %}
+{% endraw %}{% set linux_runners = [gha_linux_runner] + ([gha_arm_linux_runner] if build_arm_linux_target else []) %}{% set os_runners = linux_runners + ([gha_windows_runner] if use_windows_in_ci else []) + ([gha_arm_windows_runner] if build_arm_windows_target else []) %}{% for runner in os_runners %}{% set ext = "tar" if runner in linux_runners else "zip" %}{% raw %}
       - name: Download executable artifact ({% endraw %}{{ runner }}{% raw %})
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
@@ -149,7 +149,7 @@ jobs:
           run-id: ${{ needs.guard.outputs.ci-run-id }}
           github-token: ${{ github.token }}
       - name: Prepare release asset ({% endraw %}{{ runner }}{% raw %})
-        run: {% endraw %}{% if runner == gha_linux_runner %}mv artifacts/{{ runner }}/app.tar {{ repo_name }}-{{ runner }}-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.{{ ext }}{% else %}(cd artifacts/{{ runner }} && zip -r ../../{{ repo_name }}-{{ runner }}-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.{{ ext }} .){% endif %}
+        run: {% endraw %}{% if runner in linux_runners %}mv artifacts/{{ runner }}/app.tar {{ repo_name }}-{{ runner }}-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.{{ ext }}{% else %}(cd artifacts/{{ runner }} && zip -r ../../{{ repo_name }}-{{ runner }}-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.{{ ext }} .){% endif %}
 {% endfor %}{% endif %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
       - name: Find firmware artifact name
         id: find-firmware-artifact
@@ -181,6 +181,6 @@ jobs:
           name: {% endraw %}{{ repo_name }}{% raw %} v${{ needs.guard.outputs.version }}
           generate_release_notes: true{% endraw %}{% if deploy_as_executable or has_circuit_python_backend_template_been_instantiated %}{% raw %}
           fail_on_unmatched_files: true
-          files: |{% endraw %}{% if deploy_as_executable %}{% for runner in ([gha_linux_runner] + ([gha_windows_runner] if use_windows_in_ci else [])) %}{% set ext = "tar" if runner == gha_linux_runner else "zip" %}
+          files: |{% endraw %}{% if deploy_as_executable %}{% set linux_runners = [gha_linux_runner] + ([gha_arm_linux_runner] if build_arm_linux_target else []) %}{% for runner in (linux_runners + ([gha_windows_runner] if use_windows_in_ci else []) + ([gha_arm_windows_runner] if build_arm_windows_target else [])) %}{% set ext = "tar" if runner in linux_runners else "zip" %}
             {{ repo_name }}-{{ runner }}-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.{{ ext }}{% endfor %}{% endif %}{% if has_circuit_python_backend_template_been_instantiated %}
             {% raw %}${{ steps.find-firmware-artifact.outputs.artifact-name }}{% endraw %}.zip{% endif %}{% endif %}

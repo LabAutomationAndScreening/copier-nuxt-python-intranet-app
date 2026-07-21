@@ -173,6 +173,30 @@ use_upx_for_executable:
     default: yes
     when: "{{ deploy_as_executable }}"
 
+build_arm_linux_target:
+    type: bool
+    help: Should CI additionally build an ARM Linux executable (e.g. for Raspberry Pi)?
+    default: no
+    when: "{{ deploy_as_executable }}"
+
+gha_arm_linux_runner:
+    type: str
+    help: What GitHub Actions runner label should be used for the ARM Linux build?
+    default: ubuntu-arm-2core
+    when: "{{ build_arm_linux_target }}"
+
+build_arm_windows_target:
+    type: bool
+    help: Should CI additionally build an ARM Windows executable?
+    default: no
+    when: "{{ deploy_as_executable and use_windows_in_ci }}"
+
+gha_arm_windows_runner:
+    type: str
+    help: What GitHub Actions runner label should be used for the ARM Windows build?
+    default: windows-arm-8core
+    when: "{{ build_arm_windows_target }}"
+
 install_as_windows_service:
     type: bool
     help: Should this application be installable as a Windows service?
