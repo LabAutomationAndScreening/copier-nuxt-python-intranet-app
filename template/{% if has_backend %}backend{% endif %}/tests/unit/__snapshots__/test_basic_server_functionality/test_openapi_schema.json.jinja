@@ -111,7 +111,7 @@
           }
         }
       }
-    },{% endraw %}{% if backend_uses_graphql %}{% raw %}
+    }{% endraw %}{% if backend_uses_graphql %}{% raw %},
     "/api/graphql": {
       "get": {
         "tags": [
@@ -190,8 +190,8 @@
           }
         }
       }
-    }
-  },{% endraw %}{% endif %}{% raw %}
+    }{% endraw %}{% endif %}{% raw %}
+  },
   "components": {
     "schemas": {
       "HTTPValidationError": {
