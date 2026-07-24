@@ -111,7 +111,7 @@
           }
         }
       }
-    },
+    },{% endraw %}{% if backend_uses_graphql %}{% raw %}
     "/api/graphql": {
       "get": {
         "tags": [
@@ -191,7 +191,7 @@
         }
       }
     }
-  },
+  },{% endraw %}{% endif %}{% raw %}
   "components": {
     "schemas": {
       "HTTPValidationError": {
@@ -375,10 +375,10 @@
     {
       "name": "system",
       "description": "Server health and lifecycle operations."
-    },
+    }{% endraw %}{% if backend_uses_graphql %}{% raw %},
     {
       "name": "graphql",
       "description": "GraphQL endpoint"
-    }
+    }{% endraw %}{% endif %}{% raw %}
   ]
 }{% endraw %}
