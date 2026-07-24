@@ -413,7 +413,7 @@ _tasks:
             echo "Generating $snapshot_file from the actual OpenAPI schema..."
             uv --directory=backend run pytest tests/unit/test_basic_server_functionality.py::test_openapi_schema --snapshot-update --cov-fail-under=0
         fi
-    when: "{{ has_backend and _copier_operation == 'copy' }}"
+    when: "{{ has_backend and initial_copier_run }}"
 
 # Additional Settings
 _min_copier_version: "9.8"
@@ -431,3 +431,4 @@ _exclude:
 _jinja_extensions:
 - copier_template_extensions.TemplateExtensionLoader
 - extensions/context.py:ContextUpdater
+- extensions/copier_env.py:TemplateDefaultExtension
