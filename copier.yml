@@ -408,17 +408,6 @@ _tasks:
             '.' \
             --template-src '{{ _src_path }}'
 
-
-migrations:
-    - command: |
-        echo "Doing migration"
-        snapshot_file={{ _copier_conf.dst_path }}/backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json
-        if [ ! -f "$snapshot_file" ]; then
-            echo "Migration:Generating $snapshot_file from the actual OpenAPI schema..."
-            uv --directory=backend run pytest tests/unit/test_basic_server_functionality.py::test_openapi_schema --snapshot-update --cov-fail-under=0
-        fi
-      when: "{{ has_backend }}"
-
 # Additional Settings
 _min_copier_version: "9.8"
 
