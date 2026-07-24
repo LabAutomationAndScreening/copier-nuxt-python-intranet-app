@@ -411,7 +411,7 @@ _tasks:
         snapshot_file=backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json
         if [ ! -f "$snapshot_file" ]; then
             echo "Generating $snapshot_file from the actual OpenAPI schema..."
-            uv --directory=backend run pytest tests/unit/test_basic_server_functionality.py::test_openapi_schema --snapshot-update --cov-fail-under=0
+            test "${PWD#'/tmp'}" = "$PWD" && uv --directory=backend run pytest tests/unit/test_basic_server_functionality.py::test_openapi_schema --snapshot-update --cov-fail-under=0
         fi
     when: "{{ has_backend and initial_copier_run }}"
 
