@@ -38,16 +38,33 @@ export async function expectFullPageScreenshot(
 
 // Main-content-only visual snapshot (no navbar/header/footer) taken in both light and dark mode by
 // default. Uses `#__nuxt > div > * > main` — the wildcard third segment avoids coupling to the
-// layout wrapper's utility classes. No masks needed; the main area contains no dynamic chrome.
+// layout wrapper's utility classes. Pass `mask` to cover any dynamic regions inside the content area
+// (e.g. non-deterministic ids); masks are z-unaware and paint a flat rect over the element's box.
 export async function expectContentPaneScreenshot(
   page: Page,
   name: string,
-  { colorSchemes = ["light", "dark"] }: { colorSchemes?: ColorScheme[] } = {},
+  { mask = [], colorSchemes = ["light", "dark"] }: { mask?: Locator[]; colorSchemes?: ColorScheme[] } = {},
 ): Promise<void> {
   for (const colorScheme of colorSchemes) {
     await page.emulateMedia({ colorScheme });
     const main = page.locator("#__nuxt > div > * > main");
-    await expect(main).toHaveScreenshot(withColorSchemeSuffix(name, colorScheme));
+    await expect(main).toHaveScreenshot(withColorSchemeSuffix(name, colorScheme), { mask });
+  }
+}
+
+// Element-scoped visual snapshot taken in both light and dark mode by default. Screenshots just the
+// given locator rather than the whole page or content pane, so the baseline is insensitive to
+// unrelated layout changes elsewhere on the page. Use this for a self-contained widget/section that
+// already has a broader page-level VRT covering overall layout. Pass `mask` to cover dynamic regions
+// within the element; masks are z-unaware and paint a flat rect over the element's box.
+export async function expectElementScreenshot(
+  locator: Locator,
+  name: string,
+  { mask = [], colorSchemes = ["light", "dark"] }: { mask?: Locator[]; colorSchemes?: ColorScheme[] } = {},
+): Promise<void> {
+  for (const colorScheme of colorSchemes) {
+    await locator.page().emulateMedia({ colorScheme });
+    await expect(locator).toHaveScreenshot(withColorSchemeSuffix(name, colorScheme), { mask });
   }
 }
 
