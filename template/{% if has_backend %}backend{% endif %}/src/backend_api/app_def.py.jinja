@@ -4,6 +4,7 @@ import threading
 import time{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
 from contextlib import asynccontextmanager{% endraw %}{% endif %}{% raw %}
 from pathlib import Path
+from typing import Annotated
 from typing import Any
 from typing import override
 {% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
@@ -13,7 +14,6 @@ from fastapi import Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi_offline import FastAPIOffline
-from pydantic import BaseModel
 from pydantic import Field{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
 from zeroconf.asyncio import AsyncZeroconf{% endraw %}{% endif %}{% raw %}
 {% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
@@ -23,6 +23,7 @@ from .common.mdns import register_driver
 from .common.mdns import router as mdns_router
 from .common.rfc_servers_jinja import get_servers_container
 from .driver_routes import router as driver_router{% endraw %}{% endif %}{% raw %}
+from .camel_case_model import CamelCaseModel
 from .entrypoint.parser import get_version
 from .fast_api_exception_handlers import register_exception_handlers{% endraw %}{% if backend_uses_graphql %}{% raw %}
 from .graphql.schema import schema{% endraw %}{% endif %}{% raw %}
@@ -108,17 +109,21 @@ except (  # pragma: no cover # This is just logging unexpected errors, and it's 
     raise
 
 
-class HealthcheckResponse(BaseModel):
+class HealthcheckResponse(CamelCaseModel):
     """Result of an API health check.
 
     Reports the running application version so a caller can confirm the server is up and identify which
     build is currently deployed.
     """
 
-    version: str = Field(description="Version of the application", default="1.0.0")
+    version: str = Field(description="Version of the application", default="1.0.0", examples=["1.0.0"])
 
 
-class ShutdownResponse(BaseModel):
+class HealthcheckQuery(CamelCaseModel):
+    prepend_v: bool = Field(default=False, description="Include a 'v' before the version number")
+
+
+class ShutdownResponse(CamelCaseModel):
     """Acknowledgement of a server shutdown request.
 
     Returned immediately when a shutdown is requested; the server process exits shortly after this response
@@ -128,6 +133,7 @@ class ShutdownResponse(BaseModel):
     message: str = Field(
         default="Shutdown request received. Server will exit shortly.",
         description="Message indicating the shutdown request was received",
+        examples=["Shutdown request received. Server will exit shortly."],
     )
 
 
@@ -147,12 +153,9 @@ class NoCacheStaticFiles(StaticFiles):
 
 @app.get("/api/healthcheck", summary="Check API health", tags=["system"])
 def healthcheck(
-    *,
-    prepend_v: bool = Query(  # pyright: ignore[reportCallInDefaultInitializer] # This seems to be an accepted FastAPI pattern
-        default=False, alias="prependV", description="Include a 'v' before the version number"
-    ),
+    query: Annotated[HealthcheckQuery, Query()],
 ) -> HealthcheckResponse:
-    return HealthcheckResponse(version=get_version(prepend_v=prepend_v))
+    return HealthcheckResponse(version=get_version(prepend_v=query.prepend_v))
 
 
 @app.get("/api/shutdown", summary="Shut down the server", tags=["system"])

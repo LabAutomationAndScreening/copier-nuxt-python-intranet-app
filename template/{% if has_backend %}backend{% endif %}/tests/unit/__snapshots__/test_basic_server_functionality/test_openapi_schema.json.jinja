@@ -20,9 +20,9 @@
             "required": false,
             "schema": {
               "type": "boolean",
+              "title": "Prepend V",
               "description": "Include a 'v' before the version number",
-              "default": false,
-              "title": "Prependv"
+              "default": false
             },
             "description": "Include a 'v' before the version number"
           }
@@ -228,7 +228,10 @@
             "type": "string",
             "title": "Version",
             "description": "Version of the application",
-            "default": "1.0.0"
+            "default": "1.0.0",
+            "examples": [
+              "1.0.0"
+            ]
           }
         },
         "type": "object",
@@ -241,7 +244,10 @@
             "type": "string",
             "title": "Message",
             "description": "Message indicating the shutdown request was received",
-            "default": "Shutdown request received. Server will exit shortly."
+            "default": "Shutdown request received. Server will exit shortly.",
+            "examples": [
+              "Shutdown request received. Server will exit shortly."
+            ]
           }
         },
         "type": "object",
@@ -353,7 +359,7 @@
             "examples": [
               "ValueError"
             ],
-            "title": "Errortype",
+            "title": "Error Type",
             "type": [
               "string",
               "null"
