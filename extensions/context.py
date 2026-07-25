@@ -24,6 +24,7 @@ class ContextUpdater(ContextHook):
         context["npm_version"] = "11.13.0"
         context["nvm_version"] = "0.40.5"
         context["pre_commit_version"] = "4.5.1"
+        context["vacuum_openapi_version"] = "0.30.0"
         context["pyright_version"] = ">=1.1.411"
         context["pytest_version"] = ">=9.1.1"
         context["pytest_randomly_version"] = ">=4.1.0"
