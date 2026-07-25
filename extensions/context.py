@@ -66,7 +66,7 @@ class ContextUpdater(ContextHook):
         context["pyrefly_version"] = ">=1.1.1"
 
         context["default_node_version"] = "24.11.1"
-        context["nuxt_ui_version"] = "^4.8.1"
+        context["nuxt_ui_version"] = "^4.10.0"
         context["nuxt_version"] = "^4.4.6"
         context["nuxt_icon_version"] = "^2.2.1"
         context["typescript_version"] = "^6.0.2"
@@ -96,9 +96,10 @@ class ContextUpdater(ContextHook):
         context["vue_eslint_parser_version"] = "^10.4.0"
         context["happy_dom_version"] = "^20.10.1"
         context["node_kiota_bundle_version"] = "1.0.0-preview.103"
-        context["labsync_nuxt_common_version"] = "^0.1.4"
+        context["labsync_nuxt_common_version"] = "^0.2.3"
         context["tanstack_vue_table_version"] = "^8.21.3"
         context["unplugin_auto_import_version"] = "^21.0.0"
+        context["openapi_types_version"] = "^12.1.3"
 
         context["gha_checkout"] = "v6.0.2"
         context["gha_setup_python"] = "v6.2.0"
