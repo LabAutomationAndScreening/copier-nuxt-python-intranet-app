@@ -92,3 +92,19 @@ export async function expectFullPageScreenshotInCurrentColorMode(
     mask: [...defaultMasks, ...mask],
   });
 }
+
+// Navigation-rail-only visual snapshot (the ShellRail `<aside>`) taken in both light and dark mode by
+// default. The logo is masked (it swaps light/dark variants); pass `colorSchemes` to limit the modes.
+export async function expectNavigationRailScreenshot(
+  page: Page,
+  name: string,
+  { colorSchemes = ["light", "dark"] }: { colorSchemes?: ColorScheme[] } = {},
+): Promise<void> {
+  for (const colorScheme of colorSchemes) {
+    await page.emulateMedia({ colorScheme });
+    const defaultMasks: Locator[] = [];
+    pushLogoMask({ page, defaultMasks });
+    const rail = page.locator("aside");
+    await expect(rail).toHaveScreenshot(withColorSchemeSuffix(name, colorScheme), { mask: defaultMasks });
+  }
+}
