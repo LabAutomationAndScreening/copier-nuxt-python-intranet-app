@@ -71,7 +71,8 @@
     "graphql": "^16.14.0",
     "graphql-tag": "^2.12.6",{% endraw %}{% endif %}{% raw %}
     "happy-dom": "{% endraw %}{{ happy_dom_version }}{% raw %}",{% endraw %}{% if frontend_uses_graphql %}{% raw %}
-    "mock-apollo-client": "^1.4.0",{% endraw %}{% endif %}{% raw %}
+    "mock-apollo-client": "^1.4.0",{% endraw %}{% endif %}{% if is_circuit_python_driver %}{% raw %}
+    "openapi-types": "{% endraw %}{{ openapi_types_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
     "playwright": "{% endraw %}{{ playwright_version }}{% raw %}",
     "playwright-core": "{% endraw %}{{ playwright_version }}{% raw %}",
     "postcss": "^8.5.14",
