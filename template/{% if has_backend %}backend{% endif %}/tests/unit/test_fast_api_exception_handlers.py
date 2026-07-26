@@ -140,6 +140,8 @@ class TestExceptionHandlers:
         expected_uuid = str(self.spied_uuid_generator.spy_return)
         assert response.status_code == codes.INTERNAL_SERVER_ERROR
         assert response.headers["Content-Type"] == "application/problem+json"
+        assert "Access-Control-Allow-Origin" in response.headers
+        assert "Access-Control-Allow-Credentials" in response.headers
         response_json = response.json()
         assert response_json["type"] == "about:blank"
         assert response_json["title"] == "Internal Server Error"

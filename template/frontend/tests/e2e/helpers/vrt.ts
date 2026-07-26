@@ -20,16 +20,16 @@ export async function expectFullPageScreenshot(
   page: Page,
   name: string,
   {
-    mask = [],
+    masks = [],
     maskLogo = true,
     maskCopyrightYear = true,
     colorSchemes = ["light", "dark"],
-  }: { mask?: Locator[]; maskLogo?: boolean; maskCopyrightYear?: boolean; colorSchemes?: ColorScheme[] } = {},
+  }: { masks?: Locator[]; maskLogo?: boolean; maskCopyrightYear?: boolean; colorSchemes?: ColorScheme[] } = {},
 ): Promise<void> {
   for (const colorScheme of colorSchemes) {
     await page.emulateMedia({ colorScheme });
     await expectFullPageScreenshotInCurrentColorMode(page, withColorSchemeSuffix(name, colorScheme), {
-      mask,
+      masks,
       maskLogo,
       maskCopyrightYear,
     });
@@ -38,16 +38,33 @@ export async function expectFullPageScreenshot(
 
 // Main-content-only visual snapshot (no navbar/header/footer) taken in both light and dark mode by
 // default. Uses `#__nuxt > div > * > main` — the wildcard third segment avoids coupling to the
-// layout wrapper's utility classes. No masks needed; the main area contains no dynamic chrome.
+// layout wrapper's utility classes. Pass `mask` to cover any dynamic regions inside the content area
+// (e.g. non-deterministic ids); masks are z-unaware and paint a flat rect over the element's box.
 export async function expectContentPaneScreenshot(
   page: Page,
   name: string,
-  { colorSchemes = ["light", "dark"] }: { colorSchemes?: ColorScheme[] } = {},
+  { mask = [], colorSchemes = ["light", "dark"] }: { mask?: Locator[]; colorSchemes?: ColorScheme[] } = {},
 ): Promise<void> {
   for (const colorScheme of colorSchemes) {
     await page.emulateMedia({ colorScheme });
     const main = page.locator("#__nuxt > div > * > main");
-    await expect(main).toHaveScreenshot(withColorSchemeSuffix(name, colorScheme));
+    await expect(main).toHaveScreenshot(withColorSchemeSuffix(name, colorScheme), { mask });
+  }
+}
+
+// Element-scoped visual snapshot taken in both light and dark mode by default. Screenshots just the
+// given locator rather than the whole page or content pane, so the baseline is insensitive to
+// unrelated layout changes elsewhere on the page. Use this for a self-contained widget/section that
+// already has a broader page-level VRT covering overall layout. Pass `mask` to cover dynamic regions
+// within the element; masks are z-unaware and paint a flat rect over the element's box.
+export async function expectElementScreenshot(
+  locator: Locator,
+  name: string,
+  { mask = [], colorSchemes = ["light", "dark"] }: { mask?: Locator[]; colorSchemes?: ColorScheme[] } = {},
+): Promise<void> {
+  for (const colorScheme of colorSchemes) {
+    await locator.page().emulateMedia({ colorScheme });
+    await expect(locator).toHaveScreenshot(withColorSchemeSuffix(name, colorScheme), { mask });
   }
 }
 
@@ -58,10 +75,10 @@ export async function expectFullPageScreenshotInCurrentColorMode(
   page: Page,
   name: string,
   {
-    mask = [],
+    masks = [],
     maskLogo = true,
     maskCopyrightYear = true,
-  }: { mask?: Locator[]; maskLogo?: boolean; maskCopyrightYear?: boolean } = {},
+  }: { masks?: Locator[]; maskLogo?: boolean; maskCopyrightYear?: boolean } = {},
 ): Promise<void> {
   const defaultMasks: Locator[] = [];
   if (maskCopyrightYear) {
@@ -72,6 +89,22 @@ export async function expectFullPageScreenshotInCurrentColorMode(
   }
   await expect(page).toHaveScreenshot(name, {
     fullPage: true,
-    mask: [...defaultMasks, ...mask],
+    mask: [...defaultMasks, ...masks],
   });
+}
+
+// Navigation-rail-only visual snapshot (the ShellRail `<aside>`) taken in both light and dark mode by
+// default. The logo is masked (it swaps light/dark variants); pass `colorSchemes` to limit the modes.
+export async function expectNavigationRailScreenshot(
+  page: Page,
+  name: string,
+  { colorSchemes = ["light", "dark"] }: { colorSchemes?: ColorScheme[] } = {},
+): Promise<void> {
+  for (const colorScheme of colorSchemes) {
+    await page.emulateMedia({ colorScheme });
+    const defaultMasks: Locator[] = [];
+    pushLogoMask({ page, defaultMasks });
+    const rail = page.locator("aside");
+    await expect(rail).toHaveScreenshot(withColorSchemeSuffix(name, colorScheme), { mask: defaultMasks });
+  }
 }

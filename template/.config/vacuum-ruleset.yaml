@@ -25,6 +25,21 @@ rules:
   # `Any`-typed fields, which are rare and usually unavoidable (e.g. the generated ValidationError.input).
   oas-missing-type: "off"
 
+  # DISABLED: same false-positive family as `oas-missing-type` above — it checks requestBody.description
+  # / response.description directly and does not follow `$ref`, so it can't see that the payload/response
+  # model's own docstring already documents the body. That forced every route to hand-type a description
+  # duplicating the model docstring almost verbatim. Replaced below by `request-body-description` /
+  # `response-body-description`, which resolve the schema first and pass if either the body itself or its
+  # (dereferenced) schema has a description.
+  operation-description: "off"
+
+  # DISABLED: same false-positive family as `operation-description` above — it only checks for an
+  # `example`/`examples` key on the media type object (or, at the property level, on that property's own
+  # node) and does not resolve `$ref`, so it can't see a body/response model's own field-level examples.
+  # Replaced below by `request-body-example` / `response-body-example`, which resolve the schema first and
+  # pass if an example exists anywhere within it.
+  oas3-missing-example: "off"
+
   # ENABLED: guarantees every tag used by an operation is declared at the top level with real metadata —
   # this drives navigation/grouping in docs and Kiota-generated client namespaces.
   # `true` pulls vacuum's built-in definition verbatim (it's an opt-in rule, absent from `recommended`).
@@ -81,7 +96,7 @@ rules:
   path-param-snake-case:
     description: Path parameters must be snake_case.
     given: $.paths[*][*].parameters[?(@.in=='path')].name
-    severity: warn
+    severity: error
     then:
       function: casing
       functionOptions:
@@ -92,7 +107,7 @@ rules:
   query-param-camel-case:
     description: Query parameters must be camelCase.
     given: $.paths[*][*].parameters[?(@.in=='query')].name
-    severity: warn
+    severity: error
     then:
       function: casing
       functionOptions:
@@ -104,7 +119,7 @@ rules:
   response-media-type-json:
     description: Response bodies must be application/json (or application/problem+json for errors).
     given: $.paths[*][*].responses[*].content[*]~
-    severity: warn
+    severity: error
     then:
       function: pattern
       functionOptions:
@@ -115,7 +130,7 @@ rules:
   request-media-type-json:
     description: Request bodies must be application/json.
     given: $.paths[*][*].requestBody.content[*]~
-    severity: warn
+    severity: error
     then:
       function: pattern
       functionOptions:
@@ -130,7 +145,7 @@ rules:
     description: POST request bodies must not require an id (backend-generated).
     given: $.paths[*].post.requestBody.content.*.schema.required[*]
     resolved: true
-    severity: warn
+    severity: error
     then:
       function: pattern
       functionOptions:
@@ -142,7 +157,7 @@ rules:
   no-action-verbs-in-path:
     description: Path segments must be nouns, not action verbs.
     given: $.paths[*]~
-    severity: warn
+    severity: error
     then:
       function: pattern
       functionOptions:
@@ -157,7 +172,7 @@ rules:
   location-header-on-201:
     description: 201 Created responses must declare a Location header.
     given: $.paths[*].post.responses['201']
-    severity: warn
+    severity: error
     then:
       field: headers.Location
       function: truthy
@@ -171,6 +186,44 @@ rules:
   resources-plural:
     description: Path resource segments should be plural nouns.
     given: $.paths[*]~
-    severity: warn
+    severity: error
     then:
       function: resourcesPlural
+
+  # ENABLED: replaces the requestBody half of the built-in `operation-description` (disabled above).
+  # Uses .config/vacuum-functions/bodyDescription.js, which resolves the requestBody's schema and passes
+  # if either the requestBody itself or its (dereferenced) schema has a description — so a payload
+  # model's docstring is enough, no hand-typed duplicate needed.
+  request-body-description:
+    description: Request bodies must have a description, either their own or via their schema's docstring.
+    given: $.paths[*][*].requestBody
+    severity: error
+    then:
+      function: bodyDescription
+
+  # ENABLED: same replacement as `request-body-description` above, for response bodies.
+  response-body-description:
+    description: Response bodies must have a description, either their own or via their schema's docstring.
+    given: $.paths[*][*].responses[*]
+    severity: error
+    then:
+      function: bodyDescription
+
+  # ENABLED: replaces the requestBody half of the built-in `oas3-missing-example` (disabled above). Uses
+  # .config/vacuum-functions/bodyExample.js, which resolves the requestBody's schema and passes if an
+  # example exists on the body itself or anywhere within its (dereferenced) schema — so field-level
+  # `Field(examples=[...])` on the payload model is enough, no hand-typed duplicate needed.
+  request-body-example:
+    description: Request bodies must have an example, either their own or via their schema's fields.
+    given: $.paths[*][*].requestBody
+    severity: error
+    then:
+      function: bodyExample
+
+  # ENABLED: same replacement as `request-body-example` above, for response bodies.
+  response-body-example:
+    description: Response bodies must have an example, either their own or via their schema's fields.
+    given: $.paths[*][*].responses[*]
+    severity: error
+    then:
+      function: bodyExample

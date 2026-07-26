@@ -8,12 +8,12 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
 from pydantic import Field
 from pydantic import JsonValue
 from starlette.exceptions import HTTPException
 from uuid_utils import uuid7
 
+from .camel_case_model import CamelCaseModel
 from .openapi_schema_simplifier import collapse_nullable_anyof
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 _HTTP_STATUS_SCHEMA: dict[str, JsonValue] = {"format": "int32", "minimum": 100, "maximum": 599}
 
 
-class ProblemDetails(BaseModel):
+class ProblemDetails(CamelCaseModel):
     """RFC 9457 problem details describing an error response.
 
     Returned (as application/problem+json) for error responses so clients and codegen tools such as Kiota
@@ -48,7 +48,6 @@ class ProblemDetails(BaseModel):
     instance: str = Field(examples=["/api/healthcheck"], description="A URI reference identifying this occurrence.")
     error_type: str | None = Field(
         default=None,
-        alias="errorType",
         examples=["ValueError"],
         description="The internal exception class name, when available.",
     )
@@ -76,7 +75,7 @@ def _problem_dict(
         status=status,
         detail=detail,
         instance=f"urn:uuid:{trace_id}",
-        errorType=exc_type,
+        error_type=exc_type,
     ).model_dump(by_alias=True, mode="json")
 
 
