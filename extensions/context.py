@@ -64,6 +64,7 @@ class ContextUpdater(ContextHook):
         context["python_faker_version"] = ">=40.35.0"
         context["mutmut_version"] = ">=3.6.0"
         context["pyrefly_version"] = ">=1.1.1"
+        context["vacuum_openapi_version"] = "0.30.0"
 
         context["default_node_version"] = "24.11.1"
         context["nuxt_ui_version"] = "^4.10.0"
