@@ -20,16 +20,16 @@ export async function expectFullPageScreenshot(
   page: Page,
   name: string,
   {
-    mask = [],
+    masks = [],
     maskLogo = true,
     maskCopyrightYear = true,
     colorSchemes = ["light", "dark"],
-  }: { mask?: Locator[]; maskLogo?: boolean; maskCopyrightYear?: boolean; colorSchemes?: ColorScheme[] } = {},
+  }: { masks?: Locator[]; maskLogo?: boolean; maskCopyrightYear?: boolean; colorSchemes?: ColorScheme[] } = {},
 ): Promise<void> {
   for (const colorScheme of colorSchemes) {
     await page.emulateMedia({ colorScheme });
     await expectFullPageScreenshotInCurrentColorMode(page, withColorSchemeSuffix(name, colorScheme), {
-      mask,
+      masks,
       maskLogo,
       maskCopyrightYear,
     });
@@ -58,10 +58,10 @@ export async function expectFullPageScreenshotInCurrentColorMode(
   page: Page,
   name: string,
   {
-    mask = [],
+    masks = [],
     maskLogo = true,
     maskCopyrightYear = true,
-  }: { mask?: Locator[]; maskLogo?: boolean; maskCopyrightYear?: boolean } = {},
+  }: { masks?: Locator[]; maskLogo?: boolean; maskCopyrightYear?: boolean } = {},
 ): Promise<void> {
   const defaultMasks: Locator[] = [];
   if (maskCopyrightYear) {
@@ -72,6 +72,6 @@ export async function expectFullPageScreenshotInCurrentColorMode(
   }
   await expect(page).toHaveScreenshot(name, {
     fullPage: true,
-    mask: [...defaultMasks, ...mask],
+    mask: [...defaultMasks, ...masks],
   });
 }
