@@ -203,7 +203,9 @@ def custom_openapi(app: FastAPI) -> dict[str, Any]:
         },
     }
     for schema_name, schema_metadata in generated_schema_metadata.items():
-        if schema_name in comps:
+        if (
+            schema_name in comps
+        ):  # pragma: no branch # every app has at least one validating route (even just the health check), so HTTPValidationError/ValidationError are always already in comps by the time this runs
             for key, value in schema_metadata.items():
                 _ = comps[schema_name].setdefault(key, value)
 
