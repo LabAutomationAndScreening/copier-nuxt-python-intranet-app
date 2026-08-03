@@ -19,8 +19,8 @@ class ContextUpdater(ContextHook):
     def hook(  # noqa: PLR0915 # yes, this is a lot of statements, but it's all just creating the dict
         self, context: dict[Any, Any]
     ) -> dict[Any, Any]:
-        context["uv_version"] = "0.11.25"
-        context["pnpm_version"] = "11.9.0"
+        context["uv_version"] = "0.12.1"
+        context["pnpm_version"] = "11.20.0"
         context["npm_version"] = "11.13.0"
         context["nvm_version"] = "0.40.5"
         context["pre_commit_version"] = "4.5.1"
@@ -28,7 +28,7 @@ class ContextUpdater(ContextHook):
         context["pytest_version"] = ">=9.1.1"
         context["pytest_randomly_version"] = ">=4.1.0"
         context["pytest_cov_version"] = ">=7.1.0"
-        context["copier_version"] = "==9.16.0"
+        context["copier_version"] = "==9.17.0"
         context["copier_template_extensions_version"] = "==0.3.3"
         context["sphinx_version"] = "9.0.4"
         context["pulumi_version"] = ">=3.245.0"
@@ -61,9 +61,9 @@ class ContextUpdater(ContextHook):
         context["pytest_asyncio_version"] = ">=1.4.0"
         context["pytest_timeout_version"] = ">=2.4.0"
         context["pytest_reserial_version"] = ">=0.6.1"
-        context["python_faker_version"] = ">=40.35.0"
-        context["mutmut_version"] = ">=3.6.0"
-        context["pyrefly_version"] = ">=1.1.1"
+        context["python_faker_version"] = ">=40.36.0"
+        context["mutmut_version"] = ">=3.7.0"
+        context["pyrefly_version"] = ">=1.2.0"
         context["vacuum_openapi_version"] = "0.30.0"
 
         context["default_node_version"] = "24.11.1"
