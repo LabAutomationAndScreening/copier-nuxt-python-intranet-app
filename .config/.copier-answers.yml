@@ -8,6 +8,7 @@ install_claude_cli: true
 python_ci_versions:
 - 3.12.7
 - 3.13.9
+- 3.14.0
 python_version: 3.12.7
 repo_name: copier-nuxt-python-intranet-app
 repo_org_name: LabAutomationAndScreening

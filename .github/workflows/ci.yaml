@@ -71,6 +71,8 @@ jobs:
 
           - 3.13.9
 
+          - 3.14.0
+
     runs-on: ${{ matrix.os }}
     timeout-minutes: 8
     env:
@@ -107,6 +109,8 @@ jobs:
           - 3.12.7
 
           - 3.13.9
+
+          - 3.14.0
 
         copier: [
           '--data-file tests/copier_data/data1.yaml',
