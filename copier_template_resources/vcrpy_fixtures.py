@@ -10,7 +10,6 @@ import logging
 import os
 import traceback
 from typing import Any
-from typing import cast
 
 import pytest
 from vcr import VCR
@@ -88,11 +87,6 @@ def pytest_recording_configure(
     config: pytest.Config,  # noqa: ARG001 # the config argument MUST be present (even when unused) or pytest-recording throws an error
     vcr: VCR,
 ):
-    vcr.match_on = cast(tuple[str, ...], vcr.match_on)
-    assert isinstance(vcr.match_on, tuple), (
-        f"vcr.match_on is not a tuple, it is a {type(vcr.match_on)} with value {vcr.match_on}"
-    )
-
     vcr.register_matcher("logging_body", _logging_body_matcher)
     vcr.match_on += ("logging_body",)  # body is not included by default, but it seems relevant
 
