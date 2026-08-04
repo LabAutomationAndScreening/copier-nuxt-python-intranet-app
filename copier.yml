@@ -381,6 +381,17 @@ _tasks:
             echo ".config/ruff.toml not found; skipping Ruff target-version update."
         fi
   - command: |
+        echo "Checking pyrefly.toml search-path for circuit python firmware..."
+        if [ -f .config/pyrefly.toml ]; then
+            # circuit python cannot do relative imports, so firmware uses absolute imports rooted at firmware/src; tell pyrefly about them
+            if ! grep -q 'firmware/src' .config/pyrefly.toml; then
+                sed -i 's#^search-path = \["../backend/src", "../backend"\]#search-path = ["../backend/src", "../backend", "../backend/src/backend_api/firmware/src"]#' .config/pyrefly.toml
+            fi
+        else
+            echo ".config/pyrefly.toml not found"
+        fi
+    when: "{{ is_circuit_python_driver }}"
+  - command: |
         echo "Checking for .coveragerc in repo root config..."
         if [ -f .config/.coveragerc ]; then
             echo "Moving .coveragerc to backend folder..."
