@@ -127,7 +127,7 @@ def get_services_from_compose(compose_file: Path) -> dict[str, dict[str, str]]:
     config = json.loads(result.stdout)
     all_services = config.get("services", {})
     assert isinstance(all_services, dict), f"Expected services to be a dict, got {type(all_services)}: {all_services}"
-    return all_services  # pyright: ignore[reportUnknownVariableType] # there's only so much we can assert about dicts
+    return all_services
 
 
 def get_images_from_compose(compose_file: Path, *, services: list[str] | None = None) -> list[str]:
