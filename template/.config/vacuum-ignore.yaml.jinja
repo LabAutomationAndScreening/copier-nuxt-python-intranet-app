@@ -7,7 +7,27 @@
 owasp-define-error-validation:
   - "$.paths['/api/shutdown'].get.responses"
 
-{% endraw %}{% if backend_uses_graphql %}{% raw %}# /api/graphql's 200 response body is arbitrary JSON shaped by the caller's GraphQL query/GraphiQL page;
+{% endraw %}{% if is_circuit_python_driver %}{% raw %}# A generated driver only ever manages a single physical device connection at a time, so its
+# resource paths are intentionally singular ("driver", not "drivers") rather than REST-collection plural.
+resources-plural:
+  - "$.paths['/api/driver/data-from-serial-port']"
+  - "$.paths['/api/driver/device-info-from-serial-port']"
+  - "$.paths['/api/driver/device-connection']"
+  - "$.paths['/api/driver/send-raw-command']"
+  - "$.paths['/api/driver/measurement-types']"
+  - "$.paths['/api/driver/{sensor_id}']"
+  - "$.paths['/api/driver/{sensor_id}/name']"
+  - "$.paths['/api/driver/{sensor_id}/reset']"
+  - "$.paths['/api/driver/{sensor_id}/clear-memory']"
+  - "$.paths['/api/driver/{sensor_id}/measure/export']"
+
+# no-request-body flags DELETE with a body as non-RESTful. DELETE /device-connection removes a
+# device by mDNS service name with no resource ID in the path, so the service name must travel
+# in the body. The rule stays enabled for future endpoints; only this one is exempted.
+no-request-body:
+  - "$.paths['/api/driver/device-connection'].delete"
+
+{% endraw %}{% endif %}{% raw %}{% endraw %}{% if backend_uses_graphql %}{% raw %}# /api/graphql's 200 response body is arbitrary JSON shaped by the caller's GraphQL query/GraphiQL page;
 # there is no single representative example to attach without misleadingly implying a fixed response shape.
 response-body-example:
   - "$.paths['/api/graphql'].get.responses['200']"

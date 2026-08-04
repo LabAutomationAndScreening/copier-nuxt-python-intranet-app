@@ -29,7 +29,7 @@
         "python.defaultInterpreterPath": "${workspaceFolder:backend}/.venv/bin/python",
         // Works for both devcontainer and non-devcontainer users (devcontainer.json hardcodes
         // an absolute /workspaces/ path that breaks outside the container)
-        "ruff.configuration": "${workspaceFolder:root}/ruff-non-src.toml",
+        "ruff.configuration": "${workspaceFolder:root}/.config/ruff-non-src.toml",
 
         {% endraw %}{% endif %}{% raw %}"files.exclude": {
             // Excluding service dirs since they are imported as their own workspace folders

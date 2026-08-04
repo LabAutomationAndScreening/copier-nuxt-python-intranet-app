@@ -16,14 +16,14 @@ from fastapi.staticfiles import StaticFiles
 from fastapi_offline import FastAPIOffline
 from pydantic import Field{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
 from zeroconf.asyncio import AsyncZeroconf{% endraw %}{% endif %}{% raw %}
-{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
+
+from .camel_case_model import CamelCaseModel{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
 from .common.bridges import router as bridges_router
 from .common.mdns import SimpleBrowser
 from .common.mdns import register_driver
 from .common.mdns import router as mdns_router
 from .common.rfc_servers_jinja import get_servers_container
 from .driver_routes import router as driver_router{% endraw %}{% endif %}{% raw %}
-from .camel_case_model import CamelCaseModel
 from .entrypoint.parser import get_version
 from .fast_api_exception_handlers import register_exception_handlers{% endraw %}{% if backend_uses_graphql %}{% raw %}
 from .graphql.schema import schema{% endraw %}{% endif %}{% raw %}
@@ -75,7 +75,6 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down FastAPI application")
 
 {% endraw %}{% endif %}{% raw %}
-
 API_DESCRIPTION = {% endraw %}{{ backend_rest_api_description | tojson }}{% raw %}
 
 OPENAPI_APP_SPECIFIC_TAGS: list[dict[str, str]] = [
@@ -86,6 +85,10 @@ OPENAPI_TAGS = [
     {"name": "system", "description": "Server health and lifecycle operations."},{% endraw %}{% if backend_uses_graphql %}{% raw %}
     {"name": "graphql", "description": "GraphQL endpoint"},{% endraw %}{% endif %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
     {"name": "debug", "description": "Debug and diagnostic operations."},
+    {
+        "name": "driver",
+        "description": "Operations for reading measurements from and controlling a connected device driver.",
+    },
     {"name": "mDNS", "description": "mDNS service discovery operations."},{% endraw %}{% endif %}{% raw %}
     *OPENAPI_APP_SPECIFIC_TAGS,
 ]
