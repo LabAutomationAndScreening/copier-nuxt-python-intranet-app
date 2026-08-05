@@ -48,9 +48,9 @@ class AddErrorTrace(SchemaExtension):
     @override
     def on_operation(self) -> Iterator[None]:
         yield
-        result = self.execution_context.result
+        result = self.execution_context.result  # pyright: ignore[reportUnknownMemberType,reportUnknownVariableType] # yes, it's unknown, that's why we're asserting to confirm
         assert isinstance(result, ExecutionResult) or result is None, (
-            f"Expected ExecutionResult or None, got {type(result)}"
+            f"Expected ExecutionResult or None, got {type(result)}"  # pyright: ignore[reportUnknownArgumentType] # yes, it's unknown, that's why we're asserting to confirm
         )
         if result is None:
             return  # pragma: no cover # not sure how to create a test that triggers this, but it seems good practice to gracefully handle the case where this is None
