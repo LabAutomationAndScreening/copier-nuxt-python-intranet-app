@@ -89,9 +89,7 @@ async def backend_client() -> AsyncGenerator[BackendClient]:
 
 @pytest.fixture(scope="session", autouse=True)
 def running_application(backend_client_session: BackendClient):
-    backend_url = (
-        backend_client_session.api.request_adapter.base_url
-    )
+    backend_url = backend_client_session.api.request_adapter.base_url
     assert isinstance(backend_url, str), f"Expected backend_url to be str, got {type(backend_url)} for {backend_url}"
     backend_port = int(backend_url.split(":")[-1])
     exe_process: subprocess.Popen[bytes] | None = None
