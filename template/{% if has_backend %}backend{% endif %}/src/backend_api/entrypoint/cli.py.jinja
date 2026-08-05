@@ -21,7 +21,7 @@ def entrypoint(argv: Sequence[str], *, stop_event: threading.Event | None = None
                 print("Windows service management is only supported on Windows", file=sys.stderr)  # noqa: T201 # intentional user-facing output
                 return 2
             # lazy: win_service.py imports pywin32 + winreg, Windows-only (covered in Windows CI)
-            from . import win_service  # noqa: PLC0415  # pyright: ignore[reportUnreachable]  # pragma: no cover
+            from . import win_service  # noqa: PLC0415  # pragma: no cover
 
             return win_service.dispatch_windows_service(argv)  # pragma: no cover{% endraw %}{% endif %}{% raw %}
         try:

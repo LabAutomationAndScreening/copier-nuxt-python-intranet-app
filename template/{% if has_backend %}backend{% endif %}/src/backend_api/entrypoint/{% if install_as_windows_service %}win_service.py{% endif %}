@@ -8,12 +8,11 @@ import traceback
 from collections.abc import Sequence
 from pathlib import Path
 
-# pywin32 is win32-only, so the per-import reportMissingModuleSource ignores are required in CI/Linux but appear unnecessary on Windows dev machines. Inline directives to disable unused ignores do not work (they cannot suppress themselves), so have to do file level.
-# pyright: reportUnnecessaryTypeIgnoreComment=false
-import servicemanager  # pyright: ignore[reportMissingModuleSource,reportUnnecessaryTypeIgnoreComment] # pyrefly: ignore[missing-import,unused-ignore] # pywin32 has no stubs; only importable on Windows
-import win32service  # pyright: ignore[reportMissingModuleSource,reportUnnecessaryTypeIgnoreComment] # pyrefly: ignore[missing-import,unused-ignore] # pywin32 has no stubs; only importable on Windows
-import win32serviceutil  # pyright: ignore[reportMissingModuleSource,reportUnnecessaryTypeIgnoreComment] # pyrefly: ignore[missing-import,unused-ignore] # pywin32 has no stubs; only importable on Windows
-import winerror  # pyright: ignore[reportMissingModuleSource,reportUnnecessaryTypeIgnoreComment] # pyrefly: ignore[missing-import,unused-ignore] # pywin32 has no stubs; only importable on Windows
+# pywin32 is win32-only, so the per-import missing-import ignores are required in CI/Linux but appear unnecessary on Windows dev machines.
+import servicemanager  # pyrefly: ignore[missing-import,unused-ignore] # pywin32 has no stubs; only importable on Windows
+import win32service  # pyrefly: ignore[missing-import,unused-ignore] # pywin32 has no stubs; only importable on Windows
+import win32serviceutil  # pyrefly: ignore[missing-import,unused-ignore] # pywin32 has no stubs; only importable on Windows
+import winerror  # pyrefly: ignore[missing-import,unused-ignore] # pywin32 has no stubs; only importable on Windows
 
 from .. import app_runner
 from ..jinja_constants import APP_NAME
@@ -53,7 +52,7 @@ class AppService(win32serviceutil.ServiceFramework):
         self._worker: threading.Thread | None = None
 
     def SvcStop(self) -> None:  # noqa: N802 # pywin32 mandates this exact method name
-        self.ReportServiceStatus(win32service.SERVICE_STOP_PENDING)  # pyright: ignore[reportUnknownMemberType]
+        self.ReportServiceStatus(win32service.SERVICE_STOP_PENDING)
         self._stop_event.set()
         if self._worker is not None:
             self._worker.join(timeout=30)
@@ -106,7 +105,7 @@ class AppService(win32serviceutil.ServiceFramework):
             # exit lets `sc failure` recovery actions fire and lets monitoring distinguish a worker
             # crash from a clean admin stop. Without this, pywin32 reports SERVICE_STOPPED with
             # win32ExitCode=0, indistinguishable from a normal shutdown.
-            self.ReportServiceStatus(  # pyright: ignore[reportUnknownMemberType] # pywin32 has no stubs so ServiceFramework methods are untyped
+            self.ReportServiceStatus(
                 win32service.SERVICE_STOPPED,
                 win32ExitCode=winerror.ERROR_SERVICE_SPECIFIC_ERROR,
                 svcExitCode=1,
@@ -134,9 +133,9 @@ def dispatch_windows_service(argv: Sequence[str]) -> int:
             # pywin32 reads _exe_args_ at install time and bakes the suffix into the ImagePath
             # registry value itself — no post-install registry patching needed.
             AppService._exe_args_ = subprocess.list2cmdline(["service", *runtime_args])
-        win32serviceutil.HandleCommandLine(AppService, argv=[sys.argv[0], *install_args])  # pyright: ignore[reportUnknownMemberType]
+        win32serviceutil.HandleCommandLine(AppService, argv=[sys.argv[0], *install_args])
     else:
         servicemanager.Initialize()
         servicemanager.PrepareToHostSingle(AppService)
-        servicemanager.StartServiceCtrlDispatcher()  # pyright: ignore[reportUnknownMemberType]
+        servicemanager.StartServiceCtrlDispatcher()
     return 0

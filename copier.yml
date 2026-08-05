@@ -381,15 +381,15 @@ _tasks:
             echo ".config/ruff.toml not found; skipping Ruff target-version update."
         fi
   - command: |
-      echo "Checking pyrightconfig.json..."
-      if [ -f pyrightconfig.json ]; then
-        if ! grep -q '"extraPaths"' pyrightconfig.json; then
-          sed -i '/"executionEnvironments":/,/^  \]$/ { /^  \]$/ { s/$/,/; a\  "extraPaths": ["backend/src/backend_api/firmware/src"] // circuit python cannot do relative imports, so we need to use absolute imports and tell pyright about them
-        }; }' pyrightconfig.json
+        echo "Checking pyrefly.toml search-path for circuit python firmware..."
+        if [ -f .config/pyrefly.toml ]; then
+            # circuit python cannot do relative imports, so firmware uses absolute imports rooted at firmware/src; tell pyrefly about them
+            if ! grep -q 'firmware/src' .config/pyrefly.toml; then
+                sed -i 's#^search-path = \["../backend/src", "../backend"\]#search-path = ["../backend/src", "../backend", "../backend/src/backend_api/firmware/src"]#' .config/pyrefly.toml
+            fi
+        else
+            echo ".config/pyrefly.toml not found"
         fi
-      else
-        echo "pyrightconfig.json not found"
-      fi
     when: "{{ is_circuit_python_driver }}"
   - command: |
       echo "Checking .config/pyrefly.toml..."
