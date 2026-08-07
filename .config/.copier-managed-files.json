@@ -200,6 +200,8 @@
         "template/pytest.ini",
         "template/scripts/delete_false_positive_rej.py",
         "template/sh.bat",
+        "tests/__init__.py",
+        "tests/conftest.py",
         "tests/copier_data/data1.yaml",
         "tests/copier_data/data2.yaml",
         "tests/unit/copier_tasks/__init__.py",
