@@ -110,6 +110,7 @@ class ExceptionHandler:
         body = _problem_dict(
             title="HTTP Error",
             status=exc.status_code,
+            # pyrefly: ignore[unnecessary-type-conversion] # starlette annotates HTTPException.detail as str, but FastAPI's subclass accepts Any, so a route can put a dict/list here at runtime
             detail=str(exc.detail),
             trace_id=str(error_trace_id),
             exc_type=exc.__class__.__name__,
@@ -166,7 +167,7 @@ def custom_openapi(app: FastAPI) -> dict[str, Any]:
 
     This helps with codegen tools such as Kiota.
     """
-    if app.openapi_schema:  # don't regenerate the schema on subsequent API calls if it's already been done
+    if app.openapi_schema is not None:  # don't regenerate the schema on subsequent API calls if it's already been done
         return app.openapi_schema
     oas = get_openapi(
         title=app.title,

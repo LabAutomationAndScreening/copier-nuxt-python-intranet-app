@@ -36,6 +36,13 @@ no-access = "ignore" # (already covered by ruff SLF001)
 # reportMissingTypeStubs=false in pyright
 untyped-import = "ignore"
 unannotated-return = "ignore" # ruff ANN2xx already requires this, but with suppress-none-returning so that None-returning functions don't need the noise. pyrefly has no equivalent option---the error kind is all-or-nothing.
+# The `Any`-propagation family below is unworkable against JSON-shaped data: FastAPI's get_openapi() returns
+# dict[str, Any], and every response.json() in a test is Any. Annotating around it requires writing `Any`
+# explicitly, which explicit-any then rejects. ruff ANN401 still guards `Any` in argument position.
+explicit-any = "ignore"
+unknown-variable-type = "ignore"
+unknown-argument-type = "ignore"
+no-any-return-implicit = "ignore"
 
 [[sub-config]]
 matches = "../**/tests/**"

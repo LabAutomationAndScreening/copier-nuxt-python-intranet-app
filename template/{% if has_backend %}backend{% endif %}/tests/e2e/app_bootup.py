@@ -82,7 +82,7 @@ def wait_for_service_to_be_healthy(*, max_retries: int = 15, retry_delay: int = 
                 timeout=20,
             )
 
-            if not result.stdout.strip():
+            if len(result.stdout.strip()) == 0:
                 logger.info(f"Attempt {attempt + 1}/{max_retries}: Container info not available yet")
                 time.sleep(retry_delay)
                 continue
@@ -177,7 +177,10 @@ def start_compose(
 ):
     assert compose_file.exists(), f"Compose file {compose_file} does not exist"
     if "CI" not in os.environ:
-        build_targets = services_to_build or []
+        if services_to_build is None:
+            build_targets: list[str] = []
+        else:
+            build_targets = services_to_build
         _ = subprocess.run(  # noqa: S603 # we trust this input
             [  # noqa: S607 # docker should definitely be in PATH
                 "docker",
@@ -191,6 +194,10 @@ def start_compose(
             timeout=300,
         )
     pull_images(compose_file=compose_file, services=services_to_start)
+    if services_to_start is None:
+        start_targets: list[str] = []
+    else:
+        start_targets = services_to_start
     extra_up_args: list[str] = []
     if "frontend" in get_services_from_compose(compose_file) and (
         services_to_start is None or "frontend" not in services_to_start
@@ -209,7 +216,7 @@ def start_compose(
             "--renew-anon-volumes",
             "--remove-orphans",
             *extra_up_args,
-            *(services_to_start or []),
+            *start_targets,
         ],
         check=True,
         timeout=60,
