@@ -41,7 +41,7 @@ repos:
 
   # Reformatting (should generally come before any file format or other checks, because reformatting can change things)
   - repo: https://github.com/crate-ci/typos
-    rev: 359573a3ff38f71c93e160f2ace96d118f6ff42e  # frozen: v1
+    rev: 12ffd4a04b4893ab75db66a59aaad2d996c3e982  # frozen: v1
     hooks:
       - id: typos
         args: [--write-changes, --force-exclude, --config, .config/_typos.toml]
@@ -77,19 +77,6 @@ repos:
               .*\.svg|
               .*/vendor_files/.*|
           )$
-      - id: pretty-format-json
-        exclude: |
-          (?x)^(
-              .devcontainer/devcontainer.json|
-              .devcontainer/devcontainer-lock.json|
-              .*devcontainer.json|
-              .*tsconfig.json|
-              .*biome.jsonc|
-              .*/generated/open[-_]api/.*|
-              .*tests/.*/__snapshots__/.*|
-              .*/vendor_files/.*|
-          )$
-        args: [--autofix, --no-sort-keys]
 
   - repo: https://github.com/biomejs/pre-commit
     rev: a450e9c04887b1305951c298db5999cd30155f74  # frozen: v2.1.1
@@ -104,7 +91,7 @@ repos:
           )$
 
   - repo: https://github.com/rbubley/mirrors-prettier
-    rev: 515f543f5718ebfd6ce22e16708bb32c68ff96e1  # frozen: v3.8.3
+    rev: 0ee178619d696787ca73d210cc191d720868c631  # frozen: v3.9.6
     hooks:
       - id: prettier
         args: [--config, .config/.prettierrc]
@@ -173,7 +160,7 @@ repos:
       - id: check-case-conflict
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 943377262562a12b57292fc98fabd7dbf81451fe  # frozen: 0.37.2
+    rev: c4654a7e007c9619a5eb63c39a456572a0fa1851  # frozen: 0.38.0
     hooks:
       - id: check-github-workflows
 
@@ -267,18 +254,18 @@ repos:
         exclude: docs/.*\.rst$
 
   - repo: https://github.com/hadolint/hadolint
-    rev: 4e697ba704fd23b2409b947a319c19c3ee54d24f  # frozen: v2.14.0
+    rev: 2eece55955ced00200be9729e9728cb7dacca505  # frozen: v2.15.1
     hooks:
       - id: hadolint-docker
         name: Lint Dockerfiles
         # The hadolint pre-commit has a problem where it just always pulls the `latest` image at runtime.
         # Explicitly pinning the image here to the same rev as the hook to patch it until https://github.com/hadolint/hadolint/pull/1177 gets resolved.
-        entry: ghcr.io/hadolint/hadolint:v2.14.0@sha256:27086352fd5e1907ea2b934eb1023f217c5ae087992eb59fde121dce9c9ff21e hadolint
+        entry: ghcr.io/hadolint/hadolint:v2.15.1@sha256:fdf19d026b54834f88c62774fdf2a61ff3b586a42632e5070674d41a796bfdf3 hadolint
         exclude: .*\.jinja$
         description: Runs hadolint to lint Dockerfiles
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 6fec9b7edb08fd9989088709d864a7826dc74e80  # frozen: v0.15.12
+    rev: 65dbdb59d2f2d9c3bdc343c566821ad3319ddaa3  # frozen: v0.16.3
     hooks:
       - id: ruff
         name: ruff-src
@@ -307,7 +294,7 @@ repos:
           )${% endraw %}{% if has_backend %}{% raw %}
 
   - repo: https://github.com/pylint-dev/pylint
-    rev: 88e1ab7545a4af4aea15c305a154c164a95ab842  # frozen: v4.0.5
+    rev: f5a6e3b1de17502747a40d7f92f285ccf9c6c459  # frozen: v4.0.7
     hooks:
       - id: pylint
         name: pylint

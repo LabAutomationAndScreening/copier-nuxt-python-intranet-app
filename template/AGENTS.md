@@ -67,13 +67,14 @@
 ### Frontend Testing
 
 - Key `data-testid` selectors off unique IDs (e.g. UUIDs), not human-readable names which may collide or change.
-- In DOM-based tests, scope queries to the tightest relevant container. Only query `document` or `document.body` directly to find the top-level portal/popup element (e.g. a Reka UI dialog via `[role="dialog"][data-state="open"]`); all further queries should run on that element, not on `document.body` again.
+- In DOM-based unit tests, scope queries to the tightest relevant container. Only query `document` or `document.body` directly to find the top-level portal/popup element (e.g. a Reka UI dialog via `[role="dialog"][data-state="open"]`); all further queries should run on that element, not on `document.body` again. Browser automation (e.g. Playwright) fails an ambiguous locator outright, so a unique `data-testid` looked up from the page is enough there.
 
 ## FastAPI
 - Use `fastapi.status` constants (e.g., `status.HTTP_204_NO_CONTENT`) instead of raw integers for status codes
 - All HTTP request and response payloads must use camelCase field names in JSON. Use Pydantic's `alias_generator=to_camel` with `populate_by_name=True` on models so that Python code uses snake_case internally while the wire format uses camelCase.
 - When a route raises an `HTTPException` for a specific status code, document it in the route decorator's `responses` parameter using `fastapi.status` constants: `responses={status.HTTP_404_NOT_FOUND: {"description": "Resource not found", "content": {"application/problem+json": {"example": {"detail":"ID xyz was not found"},"schema": {"$ref": "#/components/schemas/ProblemDetails"}}}}}`. This ensures the OpenAPI schema reflects all possible responses, not just the success case.
 - Do not apply the keyword-only parameter rule (`*`) to FastAPI route function parameters — FastAPI resolves them via dependency injection and the functions are never called directly from Python code, so keyword-only syntax has no effect.
+- The prohibition of one-line docstrings does not apply to docstrings that become OpenAPI schema text (component-schema models and route handlers).
 
 # Agent Implementations & Configurations
 
