@@ -46,7 +46,7 @@ ENV API_PORT={% endraw %}{{ backend_deployed_port_number }}{% raw %}
 EXPOSE {% endraw %}{{ backend_deployed_port_number }}{% raw %}
 
 HEALTHCHECK --interval=5s --timeout=1s --retries=20 --start-period=10s \
-  CMD python -c "import urllib.request, os; port = os.environ['API_PORT']; urllib.request.urlopen(f'http://localhost:{int(port)}/api/healthcheck')" || exit 1
+  CMD ["python", "-c", "import urllib.request, os; port = os.environ['API_PORT']; urllib.request.urlopen(f'http://localhost:{int(port)}/api/healthcheck')"]
 
 # By default, run the entrypoint to serve the app # the exec form ensures signals from docker compose / k3s are properly forwarded. TODO: have the CLI pick up envvars so that in docker we don't have to use sh
 CMD ["sh", "-c", "exec python src/entrypoint.py --host 0.0.0.0 --port $API_PORT"]{% endraw %}
