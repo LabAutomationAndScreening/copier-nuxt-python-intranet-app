@@ -36,13 +36,13 @@ no-access = "ignore" # (already covered by ruff SLF001)
 # reportMissingTypeStubs=false in pyright
 untyped-import = "ignore"
 unannotated-return = "ignore" # ruff ANN2xx already requires this, but with suppress-none-returning so that None-returning functions don't need the noise. pyrefly has no equivalent option---the error kind is all-or-nothing.
-# The `Any`-propagation family below is unworkable against JSON-shaped data: FastAPI's get_openapi() returns
-# dict[str, Any], and every response.json() in a test is Any. Annotating around it requires writing `Any`
-# explicitly, which explicit-any then rejects. ruff ANN401 still guards `Any` in argument position.
-explicit-any = "ignore"
+# The two `Any`-propagation checks below are unworkable against JSON-shaped data: FastAPI's get_openapi()
+# returns dict[str, Any], and every response.json() in a test is Any, so anything indexed or called off one
+# of those becomes an implicit Any that these flag. Note that `no-any-return-implicit` is deliberately NOT
+# ignored: it fires only where such a value escapes through a declared return type, which is exactly the
+# boundary worth narrowing at.
 unknown-variable-type = "ignore"
 unknown-argument-type = "ignore"
-no-any-return-implicit = "ignore"
 # The check keeps a distributed library's public API deliberate: consumers should only reach symbols the
 # package explicitly re-exports via __all__ or a redundant alias. This project is an application — nothing
 # imports backend_api from outside the repo, and its only real API surface is the HTTP interface — so every

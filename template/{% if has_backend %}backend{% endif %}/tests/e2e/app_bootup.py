@@ -29,7 +29,9 @@ EXE_FILE_PATH = EXE_DIR_PATH / EXE_FILE_NAME
 def get_random_open_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("", 0))  # Bind to an available ephemeral port
-        return s.getsockname()[1]  # Return the port number
+        port = s.getsockname()[1]
+        assert isinstance(port, int)
+        return port
 
 
 def _backend_port() -> int:

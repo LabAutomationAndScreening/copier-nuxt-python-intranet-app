@@ -68,7 +68,7 @@ def _problem_dict(
     detail: str,
     trace_id: str,
     exc_type: str,
-) -> dict[str, Any]:
+) -> dict[str, JsonValue]:
     return ProblemDetails(
         type="about:blank",
         title=title,
@@ -122,7 +122,7 @@ class ExceptionHandler:
         self._app.add_exception_handler(RequestValidationError, self.handle_validation_exception)
         self._app.add_exception_handler(Exception, self.handle_unhandled_exception)
 
-    def _json_response(self, *, status_code: int, body: dict[str, Any]) -> JSONResponse:
+    def _json_response(self, *, status_code: int, body: dict[str, JsonValue]) -> JSONResponse:
         return JSONResponse(
             status_code=status_code,
             content=body,
@@ -162,7 +162,7 @@ class ExceptionHandler:
         return self._json_response(status_code=500, body=body)
 
 
-def custom_openapi(app: FastAPI) -> dict[str, Any]:
+def custom_openapi(app: FastAPI) -> dict[str, Any]:  # pyrefly: ignore[explicit-any] # this wraps FastAPI's get_openapi(), which is annotated as returning dict[str, Any]
     """Modify the OpenAPI schema to be more explicit about the generic errors that any route can throw.
 
     This helps with codegen tools such as Kiota.

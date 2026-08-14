@@ -4,6 +4,7 @@ import pytest
 from backend_api import fast_api_exception_handlers
 from backend_api.app_def import HealthcheckResponse
 from backend_api.app_def import app
+from backend_api.fast_api_exception_handlers import ProblemDetails
 from fastapi.testclient import TestClient
 from httpx import codes
 from pytest_mock import MockerFixture
@@ -33,13 +34,13 @@ class TestExceptionHandlers:
         assert "Access-Control-Allow-Origin" in response.headers
         assert "Access-Control-Allow-Credentials" in response.headers
 
-        response_json = response.json()
-        assert response_json["type"] == "about:blank"
-        assert response_json["title"] == "Validation Error"
-        assert response_json["status"] == codes.UNPROCESSABLE_ENTITY
-        assert "prependV" in response_json["detail"]
-        assert "valid boolean" in response_json["detail"]
-        assert response_json["instance"] == f"urn:uuid:{expected_uuid}"
+        problem = ProblemDetails.model_validate(response.json())
+        assert problem.type == "about:blank"
+        assert problem.title == "Validation Error"
+        assert problem.status == codes.UNPROCESSABLE_ENTITY
+        assert "prependV" in problem.detail
+        assert "valid boolean" in problem.detail
+        assert problem.instance == f"urn:uuid:{expected_uuid}"
         self.spied_logger_warning.assert_called_once()
         log_call_args = self.spied_logger_warning.call_args[0]
         log_message = log_call_args[0]
@@ -59,13 +60,13 @@ class TestExceptionHandlers:
         assert response.headers["Content-Type"] == "application/problem+json"
         assert "Access-Control-Allow-Origin" in response.headers
         assert "Access-Control-Allow-Credentials" in response.headers
-        response_json = response.json()
-        assert response_json["type"] == "about:blank"
-        assert response_json["title"] == "HTTP Error"
-        assert response_json["status"] == codes.METHOD_NOT_ALLOWED
-        assert response_json["detail"] == "Method Not Allowed"
-        assert response_json["errorType"] == "HTTPException"
-        assert response_json["instance"] == f"urn:uuid:{expected_uuid}"
+        problem = ProblemDetails.model_validate(response.json())
+        assert problem.type == "about:blank"
+        assert problem.title == "HTTP Error"
+        assert problem.status == codes.METHOD_NOT_ALLOWED
+        assert problem.detail == "Method Not Allowed"
+        assert problem.error_type == "HTTPException"
+        assert problem.instance == f"urn:uuid:{expected_uuid}"
         self.spied_logger_warning.assert_called_once()
         log_call_args = self.spied_logger_warning.call_args[0]
         log_message = log_call_args[0]
@@ -99,13 +100,13 @@ class TestExceptionHandlers:
         assert response.headers["Content-Type"] == "application/problem+json"
         assert "Access-Control-Allow-Origin" in response.headers
         assert "Access-Control-Allow-Credentials" in response.headers
-        response_json = response.json()
-        assert response_json["type"] == "about:blank"
-        assert response_json["title"] == "Internal Server Error"
-        assert response_json["status"] == codes.INTERNAL_SERVER_ERROR
-        assert expected_error_message in response_json["detail"]
-        assert response_json["errorType"] == expected_error.__class__.__name__
-        assert response_json["instance"] == f"urn:uuid:{expected_uuid}"
+        problem = ProblemDetails.model_validate(response.json())
+        assert problem.type == "about:blank"
+        assert problem.title == "Internal Server Error"
+        assert problem.status == codes.INTERNAL_SERVER_ERROR
+        assert expected_error_message in problem.detail
+        assert problem.error_type == expected_error.__class__.__name__
+        assert problem.instance == f"urn:uuid:{expected_uuid}"
         self.spied_logger_error.assert_called_once()
         log_call_args = self.spied_logger_error.call_args[0]
         log_call_kwargs = self.spied_logger_error.call_args[1]
@@ -142,13 +143,13 @@ class TestExceptionHandlers:
         assert response.headers["Content-Type"] == "application/problem+json"
         assert "Access-Control-Allow-Origin" in response.headers
         assert "Access-Control-Allow-Credentials" in response.headers
-        response_json = response.json()
-        assert response_json["type"] == "about:blank"
-        assert response_json["title"] == "Internal Server Error"
-        assert response_json["status"] == codes.INTERNAL_SERVER_ERROR
-        assert response_json["detail"] == "An unexpected error occurred."
-        assert response_json["errorType"] == expected_error.__class__.__name__
-        assert response_json["instance"] == f"urn:uuid:{expected_uuid}"
+        problem = ProblemDetails.model_validate(response.json())
+        assert problem.type == "about:blank"
+        assert problem.title == "Internal Server Error"
+        assert problem.status == codes.INTERNAL_SERVER_ERROR
+        assert problem.detail == "An unexpected error occurred."
+        assert problem.error_type == expected_error.__class__.__name__
+        assert problem.instance == f"urn:uuid:{expected_uuid}"
         self.spied_logger_error.assert_called_once()
         log_call_args = self.spied_logger_error.call_args[0]
         log_call_kwargs = self.spied_logger_error.call_args[1]

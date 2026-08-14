@@ -31,7 +31,9 @@ class TestCliArgParsing:
         self.spied_configure_logging = self.mocker.spy(app_runner, app_runner.configure_logging.__name__)
 
     def _built_config(self) -> uvicorn.Config:
-        return self.spied_server_init.call_args.args[1]
+        built_config = self.spied_server_init.call_args.args[1]
+        assert isinstance(built_config, uvicorn.Config)
+        return built_config
 
     def _run_entrypoint(self, argv: Sequence[str]) -> None:
         self.exit_code = entrypoint(argv)

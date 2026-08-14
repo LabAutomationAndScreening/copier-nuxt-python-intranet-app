@@ -145,8 +145,10 @@ class NoCacheStaticFiles(StaticFiles):
 
     @override
     def file_response(  # pragma: no cover # This generally just gets hit by E2E tests
-        self, *args: Any, **kwargs: Any
-    ) -> Any:
+        self,
+        *args: Any,  # pyrefly: ignore[explicit-any] # must match the signature of the Starlette method being overridden
+        **kwargs: Any,  # pyrefly: ignore[explicit-any] # must match the signature of the Starlette method being overridden
+    ) -> Any:  # pyrefly: ignore[explicit-any] # must match the signature of the Starlette method being overridden
         response = super().file_response(*args, **kwargs)
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         response.headers["Pragma"] = "no-cache"
