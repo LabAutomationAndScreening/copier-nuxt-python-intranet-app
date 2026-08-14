@@ -64,6 +64,10 @@
 - **Never hand-edit syrupy snapshot files.** Snapshots are auto-generated — to create or update them, run `uv run pytest --snapshot-update <test path> --no-cov`. A missing snapshot causes the test to fail, which is expected until you run with `--snapshot-update`. When a snapshot mismatch occurs, fix the code if the change was unintentional; run `--snapshot-update` if it was intentional.
 - **Never hand-write or hand-edit pytest-reserial `.jsonl` recording files.** Recordings must be captured from real serial port traffic by running the test with `--record` while the device is connected: `uv run pytest --record <test path> --no-cov`. The default mode replays recordings — a missing recording causes an error, which is expected until recorded against a live device.
 
+#### FastAPI Testing
+
+- Assert on the response model, not raw JSON: `problem = ProblemDetails.model_validate(response.json())`, then `assert problem.error_type == ...` rather than `response.json()["errorType"]`. String keys are invisible to the type checker and yield implicit `Any`, and validating checks the whole payload against the schema (camelCase aliases included) rather than only the keys the test reads.
+
 ### Frontend Testing
 
 - Key `data-testid` selectors off unique IDs (e.g. UUIDs), not human-readable names which may collide or change.

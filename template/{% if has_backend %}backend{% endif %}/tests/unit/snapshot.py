@@ -23,11 +23,11 @@ class SingleFileJsonSnapshot(SingleTextFileSnapshot):
     @override
     def serialize(
         self,
-        data: SerializableData,  # pyrefly: ignore[explicit-any] # syrupy defines this alias as Any; https://github.com/facebook/pyrefly/issues/4088 tracks not attributing third-party aliases to first-party code
+        data: SerializableData,  # pyrefly: ignore[explicit-any] # syrupy defines this alias as Any, and the signature must match the method being overridden; https://github.com/facebook/pyrefly/issues/4088 and https://github.com/facebook/pyrefly/issues/4548 each track exempting one of those
         *,
         exclude: PropertyFilter | None = None,
         include: PropertyFilter | None = None,
-        matcher: PropertyMatcher | None = None,  # pyrefly: ignore[explicit-any] # syrupy defines this alias as Any; https://github.com/facebook/pyrefly/issues/4088 tracks not attributing third-party aliases to first-party code
+        matcher: PropertyMatcher | None = None,  # pyrefly: ignore[explicit-any] # syrupy defines this alias as Any, and the signature must match the method being overridden; https://github.com/facebook/pyrefly/issues/4088 and https://github.com/facebook/pyrefly/issues/4548 each track exempting one of those
     ) -> SerializedData:
         # TODO: consider a way to apply the exclude/include/matcher filters to the data before dumping to pretty-format JSON
         pretty_data = json.dumps(data, indent=2) + "\n"
