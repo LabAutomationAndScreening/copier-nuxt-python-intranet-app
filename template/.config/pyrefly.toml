@@ -43,6 +43,11 @@ explicit-any = "ignore"
 unknown-variable-type = "ignore"
 unknown-argument-type = "ignore"
 no-any-return-implicit = "ignore"
+# The check keeps a distributed library's public API deliberate: consumers should only reach symbols the
+# package explicitly re-exports via __all__ or a redundant alias. This project is an application — nothing
+# imports backend_api from outside the repo, and its only real API surface is the HTTP interface — so every
+# importer is in-repo and the __all__ bookkeeping buys nothing.
+implicit-reexport = "ignore"
 
 [[sub-config]]
 matches = "../**/tests/**"
