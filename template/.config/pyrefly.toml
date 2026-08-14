@@ -36,13 +36,6 @@ no-access = "ignore" # (already covered by ruff SLF001)
 # reportMissingTypeStubs=false in pyright
 untyped-import = "ignore"
 unannotated-return = "ignore" # ruff ANN2xx already requires this, but with suppress-none-returning so that None-returning functions don't need the noise. pyrefly has no equivalent option---the error kind is all-or-nothing.
-# The two `Any`-propagation checks below are unworkable against JSON-shaped data: FastAPI's get_openapi()
-# returns dict[str, Any], and every response.json() in a test is Any, so anything indexed or called off one
-# of those becomes an implicit Any that these flag. Note that `no-any-return-implicit` is deliberately NOT
-# ignored: it fires only where such a value escapes through a declared return type, which is exactly the
-# boundary worth narrowing at.
-unknown-variable-type = "ignore"
-unknown-argument-type = "ignore"
 # The check keeps a distributed library's public API deliberate: consumers should only reach symbols the
 # package explicitly re-exports via __all__ or a redundant alias. This project is an application — nothing
 # imports backend_api from outside the repo, and its only real API surface is the HTTP interface — so every
@@ -54,6 +47,12 @@ matches = "../**/tests/**"
 
 [sub-config.errors]
 implicitly-defined-attribute = "ignore" # doesn't make any sense for test cases. See https://github.com/microsoft/pyright/discussions/4834#discussioncomment-8496931
+# Tests are self-asserting: a value that isn't what the test assumed fails the very next assertion,
+# pointing at the exact line. The unknowns these rules flag also come almost entirely from mocking, where the value
+# genuinely is `Any` and no upstream typing fix is possible --- `spy_return` is set dynamically on the mock,
+# and `call_args[0]` is untyped by construction --- so enforcing here only buys narrowing ceremony at every spy.
+unknown-variable-type = "ignore"
+unknown-argument-type = "ignore"
 
 # TODO: move this into win_service.py as a file-level per-code directive once pyrefly supports it.
 # Tracking: https://github.com/facebook/pyrefly/issues/3723

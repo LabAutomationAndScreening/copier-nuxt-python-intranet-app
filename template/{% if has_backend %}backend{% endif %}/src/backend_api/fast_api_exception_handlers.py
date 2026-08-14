@@ -179,8 +179,11 @@ def custom_openapi(app: FastAPI) -> dict[str, Any]:  # pyrefly: ignore[explicit-
     )
 
     # Ensure ProblemDetails schema exists
-    comps = oas.setdefault("components", {}).setdefault("schemas", {})
-    comps.setdefault(
+    # get_openapi() is annotated as returning dict[str, Any], so every value walked out of it is an implicit
+    # Any. These annotations state the shape the OpenAPI spec guarantees, which is the only way to keep the
+    # rest of this function type-checked.
+    comps: dict[str, dict[str, JsonValue]] = oas.setdefault("components", {}).setdefault("schemas", {})
+    _ = comps.setdefault(
         "ProblemDetails",
         ProblemDetails.model_json_schema(ref_template="#/components/schemas/{model}"),
     )
@@ -216,16 +219,22 @@ def custom_openapi(app: FastAPI) -> dict[str, Any]:  # pyrefly: ignore[explicit-
     def problem_content() -> dict[str, JsonValue]:
         return {"application/problem+json": {"schema": problem_ref()}}
 
-    paths = oas.get("paths", {})
+    # annotated for the same reason as `comps` above; from here on the walk is checked against the shape the
+    # OpenAPI spec guarantees: paths map to operations, and an operation maps keys to JSON values
+    paths: dict[str, dict[str, dict[str, JsonValue]]] = oas.get("paths", {})
     for methods in paths.values():
         for method, op in list(methods.items()):
             if method not in ("get", "put", "post", "delete", "options", "head", "patch", "trace"):
                 continue  # pragma: no cover # Most schemas we create will only have those types of methods, so this line will never be hit.  But there are others that are possible (it seems), such as summary/description/servers
-            responses = op.setdefault("responses", {})
+            assert "responses" in op, (
+                f"Expected FastAPI to have generated a responses object for the {method} operation"
+            )
+            responses = op["responses"]
+            assert isinstance(responses, dict), f"Expected the responses object to be a dict, got {type(responses)}"
 
             # Do NOT touch 422 if FastAPI added it, only add additional responses:
             # 500 should never be present in any defined route, so always add it
-            responses.setdefault(
+            _ = responses.setdefault(
                 "500",
                 {
                     "description": "Internal Server Error",
@@ -234,7 +243,7 @@ def custom_openapi(app: FastAPI) -> dict[str, Any]:  # pyrefly: ignore[explicit-
             )
 
             # Optional but recommended for Kiota: add default catch-all.  'default' should never be present in a route, so no need to check for it before adding it
-            responses.setdefault(
+            _ = responses.setdefault(
                 "default",
                 {
                     "description": "Error",

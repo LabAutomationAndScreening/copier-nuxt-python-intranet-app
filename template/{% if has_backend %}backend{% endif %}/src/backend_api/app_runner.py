@@ -45,6 +45,7 @@ def start_app(cli_args: argparse.Namespace, *, stop_event: threading.Event | Non
         _ = signal.signal(signal.SIGTERM, lambda _sig, _frame: effective_stop_event.set())  # noqa: ARG005 # signal handler signature requires these args but they are unused
     else:
         effective_stop_event = stop_event
+    assert isinstance(cli_args.log_level, str), f"Expected log_level to be a str, got {type(cli_args.log_level)}"
     return run(
         stop_event=effective_stop_event,
         host=cli_args.host,

@@ -9,6 +9,8 @@ from backend_api.strawberry_router import AddErrorTrace
 from pytest_mock import MockerFixture
 from uuid_utils import uuid7
 
+from .spy_helpers import logged_message
+
 RETURNED_UUIDS = [uuid7() for _ in range(5)]
 
 
@@ -93,9 +95,8 @@ class TestSingleError(Helper):
         assert "traceId" in error.extensions
         assert error.extensions["traceId"] == expected_uuid
         self.spied_logger_error.assert_called_once()
-        log_call_args = self.spied_logger_error.call_args[0]
         log_call_kwargs = self.spied_logger_error.call_args[1]
-        log_message = log_call_args[0]
+        log_message = logged_message(self.spied_logger_error)
         logged_error = log_call_kwargs["exc_info"]
         assert expected_uuid in log_message
         assert "doSomething" in log_message
@@ -126,8 +127,7 @@ class TestSingleError(Helper):
         assert isinstance(error.extensions, dict)
         assert "traceId" in error.extensions
         assert error.extensions["traceId"] == expected_uuid
-        log_call_args = self.spied_logger_error.call_args[0]
-        log_message = log_call_args[0]
+        log_message = logged_message(self.spied_logger_error)
         assert expected_uuid in log_message
         assert "doOtherThing" in log_message
         assert log_message.startswith("Execution contract") is True
@@ -156,8 +156,7 @@ class TestSingleError(Helper):
         assert isinstance(error.extensions, dict)
         assert "traceId" in error.extensions
         assert error.extensions["traceId"] == expected_uuid
-        log_call_args = self.spied_logger_error.call_args[0]
-        log_message = log_call_args[0]
+        log_message = logged_message(self.spied_logger_error)
         assert expected_uuid in log_message
         assert "doOtherThing" in log_message
         assert log_message.startswith("Execution contract") is True
@@ -185,8 +184,7 @@ class TestSingleError(Helper):
         assert isinstance(error.extensions, dict)
         assert "traceId" in error.extensions
         assert error.extensions["traceId"] == expected_uuid
-        log_call_args = self.spied_logger_warning.call_args[0]
-        log_message = log_call_args[0]
+        log_message = logged_message(self.spied_logger_warning)
         assert expected_uuid in log_message
         assert "$value2" in log_message
 
@@ -225,8 +223,7 @@ class TestExceptionHandlersForMultipleErrors(Helper):
         assert isinstance(error.extensions, dict)
         assert "traceId" in error.extensions
         assert error.extensions["traceId"] == str(RETURNED_UUIDS[0])
-        log_call_args = self.spied_logger_warning.call_args_list[0][0]
-        log_message = log_call_args[0]
+        log_message = logged_message(self.spied_logger_warning, call_index=0)
         assert str(RETURNED_UUIDS[0]) in log_message
         assert "$value1" in log_message
 
@@ -236,7 +233,6 @@ class TestExceptionHandlersForMultipleErrors(Helper):
         assert isinstance(error.extensions, dict)
         assert "traceId" in error.extensions
         assert error.extensions["traceId"] == str(RETURNED_UUIDS[1])
-        log_call_args = self.spied_logger_warning.call_args_list[1][0]
-        log_message = log_call_args[0]
+        log_message = logged_message(self.spied_logger_warning, call_index=1)
         assert str(RETURNED_UUIDS[1]) in log_message
         assert "$value2" in log_message

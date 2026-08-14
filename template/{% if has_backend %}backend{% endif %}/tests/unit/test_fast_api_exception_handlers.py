@@ -9,6 +9,8 @@ from fastapi.testclient import TestClient
 from httpx import codes
 from pytest_mock import MockerFixture
 
+from .spy_helpers import logged_message
+
 
 class TestExceptionHandlers:
     @pytest.fixture(autouse=True)
@@ -42,8 +44,7 @@ class TestExceptionHandlers:
         assert "valid boolean" in problem.detail
         assert problem.instance == f"urn:uuid:{expected_uuid}"
         self.spied_logger_warning.assert_called_once()
-        log_call_args = self.spied_logger_warning.call_args[0]
-        log_message = log_call_args[0]
+        log_message = logged_message(self.spied_logger_warning)
         assert expected_uuid in log_message
         assert "GET" in log_message
         assert "/api/healthcheck" in log_message
@@ -68,8 +69,7 @@ class TestExceptionHandlers:
         assert problem.error_type == "HTTPException"
         assert problem.instance == f"urn:uuid:{expected_uuid}"
         self.spied_logger_warning.assert_called_once()
-        log_call_args = self.spied_logger_warning.call_args[0]
-        log_message = log_call_args[0]
+        log_message = logged_message(self.spied_logger_warning)
         assert expected_uuid in log_message
         assert "DELETE" in log_message
         assert expected_route in log_message
@@ -108,9 +108,8 @@ class TestExceptionHandlers:
         assert problem.error_type == expected_error.__class__.__name__
         assert problem.instance == f"urn:uuid:{expected_uuid}"
         self.spied_logger_error.assert_called_once()
-        log_call_args = self.spied_logger_error.call_args[0]
         log_call_kwargs = self.spied_logger_error.call_args[1]
-        log_message = log_call_args[0]
+        log_message = logged_message(self.spied_logger_error)
         log_stack_trace = str(log_call_kwargs["exc_info"])
         assert expected_uuid in log_message
         assert "GET" in log_message
@@ -151,9 +150,8 @@ class TestExceptionHandlers:
         assert problem.error_type == expected_error.__class__.__name__
         assert problem.instance == f"urn:uuid:{expected_uuid}"
         self.spied_logger_error.assert_called_once()
-        log_call_args = self.spied_logger_error.call_args[0]
         log_call_kwargs = self.spied_logger_error.call_args[1]
-        log_message = log_call_args[0]
+        log_message = logged_message(self.spied_logger_error)
         log_stack_trace = str(log_call_kwargs["exc_info"])
         assert expected_uuid in log_message
         assert "GET" in log_message
