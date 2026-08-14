@@ -35,6 +35,8 @@
 - When a test's final assertion is an absence (e.g., element is `null`, list is empty, modal is closed), include a prior presence assertion confirming the expected state existed before the action that removed it. A test whose only assertion is an absence check can pass vacuously if setup silently failed.
 - When asserting a mock or spy was called with specific arguments, always constrain as tightly as possible. In order of preference: (1) assert called exactly once with those args (`assert_called_once_with` in Python, `toHaveBeenCalledExactlyOnceWith` in Vitest/Jest); (2) if multiple calls are expected, assert the total call count and use a positional or last-call assertion (`nthCalledWith`, `lastCalledWith` / `assert_has_calls` with `call_args_list[n]`); (3) plain "called with at any point" (`toHaveBeenCalledWith`, `assert_called_with`) is a last resort only when neither the call count nor the call order can reasonably be constrained.
 - When asserting an exception is raised, verify the error message includes all key constructor arguments — not just one identifying field. This ensures the error message is fully populated and catches cases where arguments are swapped or missing. In Python: use the `match` parameter in `pytest.raises`. In TypeScript: use a regex or substring in `toThrow`, or catch and assert on error properties individually.
+- Name tests with Given/When/Then where each clause means a specific thing: **When** names the single action under test plus the input that distinguishes this case; **Given** names only preconditions established before that action (fixtures, mocks, prior state) and is omitted when there are none; **Then** names the asserted outcome.
+- A Given or When clause shared by every test in a group belongs on the enclosing scope (a pytest class, a `describe` block) rather than repeated in each test name. The chain from the outermost scope through the test name must read as one complete Given/When/Then, and a scope carrying a clause must state it explicitly (`TestWhenFooInvoked`, `describe("Given foo mocked to succeed")`).
 - When an exception has a fixed message with no variable data, prefer a specific exception subclass over `match` — the subclass type is the full assertion, and matching a hardcoded string duplicates the exception class without adding test value. In this case, suppress PT011 with an inline `# noqa: PT011` comment explaining why.
 - Structure each test body in this order, with a single blank line separating each section:
   1. **Constants** — random/faker values and test data objects
@@ -70,7 +72,7 @@
 
 ### Frontend Testing
 
-- Key `data-testid` selectors off unique IDs (e.g. UUIDs), not human-readable names which may collide or change.
+- When a `data-testid` identifies one of many rendered entities, interpolate that entity's stable identifier as the dynamic value, not its display label — prefer an ID (`item.itemId`, `record.sha`) whenever the entity has one, since labels collide and change. Where the identifier *is* human-readable and no ID exists, that name is the key.
 - In DOM-based unit tests, scope queries to the tightest relevant container. Only query `document` or `document.body` directly to find the top-level portal/popup element (e.g. a Reka UI dialog via `[role="dialog"][data-state="open"]`); all further queries should run on that element, not on `document.body` again. Browser automation (e.g. Playwright) fails an ambiguous locator outright, so a unique `data-testid` looked up from the page is enough there.
 
 ## FastAPI
