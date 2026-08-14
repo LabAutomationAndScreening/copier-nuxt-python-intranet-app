@@ -1,3 +1,5 @@
+import json
+import random
 from uuid import uuid4
 
 import pytest
@@ -5,11 +7,16 @@ from backend_api import fast_api_exception_handlers
 from backend_api.app_def import HealthcheckResponse
 from backend_api.app_def import app
 from backend_api.fast_api_exception_handlers import ProblemDetails
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from httpx import codes
 from pytest_mock import MockerFixture
 
 from .spy_helpers import logged_message
+
+
+def _random_error_status_code() -> codes:
+    return random.choice((codes.BAD_REQUEST, codes.FORBIDDEN, codes.CONFLICT, codes.SERVICE_UNAVAILABLE))
 
 
 class TestExceptionHandlers:
@@ -73,6 +80,22 @@ class TestExceptionHandlers:
         assert expected_uuid in log_message
         assert "DELETE" in log_message
         assert expected_route in log_message
+
+    def test_Given_route_raises_http_exception_with_a_non_string_detail__Then_detail_is_json_encoded(self):
+        expected_status_code = _random_error_status_code()
+        expected_detail = {"field": str(uuid4()), "codes": [random.randint(1, 100), random.randint(1, 100)]}
+        _ = self.mocker.patch.object(
+            HealthcheckResponse,
+            "__init__",
+            side_effect=HTTPException(status_code=expected_status_code, detail=expected_detail),
+        )
+
+        response = self.client.get("/api/healthcheck")
+
+        problem = ProblemDetails.model_validate(response.json())
+
+        assert response.status_code == expected_status_code
+        assert json.loads(problem.detail) == expected_detail
 
     def test_Given_route_mocked_to_error_and_error_details_should_be_displayed__Then_uuid_in_log_and_response__and_details_in_response_and_log__and_cors_headers_in_response(
         self,

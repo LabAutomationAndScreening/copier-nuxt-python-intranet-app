@@ -1,3 +1,4 @@
+import json
 import logging
 from functools import partial
 from typing import Any
@@ -107,11 +108,17 @@ class ExceptionHandler:
             f"{exc.__class__.__name__} on {request.method} {request.url.path} [urn:uuid:{error_trace_id}]",
             exc_info=exc,
         )
+        # starlette annotates HTTPException.detail as str, but FastAPI's subclass widens it to Any, so a route
+        # can raise one carrying a dict or list. RFC 9457 requires detail to be a string, and json.dumps keeps
+        # such a payload readable as JSON rather than rendering it as a Python repr.
+        if isinstance(exc.detail, str):
+            detail = exc.detail
+        else:
+            detail = json.dumps(exc.detail)
         body = _problem_dict(
             title="HTTP Error",
             status=exc.status_code,
-            # pyrefly: ignore[unnecessary-type-conversion] # starlette annotates HTTPException.detail as str, but FastAPI's subclass accepts Any, so a route can put a dict/list here at runtime
-            detail=str(exc.detail),
+            detail=detail,
             trace_id=str(error_trace_id),
             exc_type=exc.__class__.__name__,
         )
