@@ -23,8 +23,8 @@ _SERVICE_MANAGEMENT_COMMANDS = frozenset({"install", "start", "stop", "remove", 
 
 
 class AppService(win32serviceutil.ServiceFramework):
-    _svc_name_ = APP_NAME
-    _svc_display_name_ = HUMAN_FRIENDLY_APP_NAME
+    _svc_name_ = WINDOWS_SERVICE_NAME
+    _svc_display_name_ = WINDOWS_SERVICE_DISPLAY_NAME
     _exe_args_ = ""  # set by dispatch_windows_service before install; pywin32 reads this to build ImagePath
 
     def __init__(self, args: tuple[str, ...]) -> None:
