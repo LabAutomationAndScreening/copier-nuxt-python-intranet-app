@@ -1,0 +1,74 @@
+{% raw %}<#
+.SYNOPSIS
+    Stages the {% endraw %}{{ human_friendly_app_name }}{% raw %} build artifacts for the WiX MSI.
+
+.DESCRIPTION
+    Builds the frontend, folds it into the backend static dir, runs PyInstaller
+    to produce the one-folder {% endraw %}{{ repo_name }}{% raw %} bundle, and arranges everything into
+    $StagingDir in the layout the MSI harvest expects:
+
+      app/        {% endraw %}{{ repo_name }}{% raw %}.exe + _internal/ (the PyInstaller bundle)
+      scripts/    install-time PowerShell helpers (service lifecycle)
+
+    With -SkipAppBuild the frontend and PyInstaller steps are skipped and the
+    existing backend/dist/{% endraw %}{{ repo_name }}{% raw %} bundle is staged as-is. CI and release pass
+    this after downloading the same bundle the test suite ran against, so the
+    shipped MSI wraps the exact tested binary instead of a fresh rebuild.
+#>
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory)] [string] $StagingDir,
+    [Parameter(Mandatory)] [string] $RepoRoot,
+    [switch] $SkipAppBuild
+)
+
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+
+$ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$FrontendDir = Join-Path $RepoRoot 'frontend'
+$BackendDir = Join-Path $RepoRoot 'backend'
+$StaticDir = Join-Path $BackendDir 'src\static'
+$FrontendOutput = Join-Path $FrontendDir '.output\public'
+$DistDir = Join-Path $BackendDir 'dist\{% endraw %}{{ repo_name }}{% raw %}'
+
+if (Test-Path $StagingDir) {
+    Remove-Item -Recurse -Force $StagingDir
+}
+New-Item -ItemType Directory -Path $StagingDir -Force | Out-Null
+
+if ($SkipAppBuild) {
+    Write-Host "  Skipping app build, staging existing $DistDir" -ForegroundColor Yellow
+} else {
+    Write-Host "  Building frontend (pnpm generate)" -ForegroundColor Cyan
+    & pnpm --dir $FrontendDir generate
+    if ($LASTEXITCODE -ne 0) { throw "pnpm generate failed" }
+    if (-not (Test-Path $FrontendOutput)) { throw "Frontend build did not produce $FrontendOutput" }
+
+    Write-Host "  Folding frontend into backend static dir" -ForegroundColor Cyan
+    New-Item -ItemType Directory -Path $StaticDir -Force | Out-Null
+    # Clear stale generated content but keep the tracked .gitignore that excludes it.
+    Get-ChildItem -Path $StaticDir -Force | Where-Object { $_.Name -ne '.gitignore' } | Remove-Item -Recurse -Force
+    Copy-Item -Recurse -Force -Path (Join-Path $FrontendOutput '*') -Destination $StaticDir
+
+    Write-Host "  Building {% endraw %}{{ repo_name }}{% raw %}.exe (PyInstaller)" -ForegroundColor Cyan
+    Push-Location $BackendDir
+    try {
+        & uv run pyinstaller pyinstaller.spec --noconfirm
+        if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed" }
+    }
+    finally {
+        Pop-Location
+    }
+}
+if (-not (Test-Path (Join-Path $DistDir '{% endraw %}{{ repo_name }}{% raw %}.exe'))) {
+    throw "$DistDir\{% endraw %}{{ repo_name }}{% raw %}.exe not found - build it (omit -SkipAppBuild) or download the bundle into $DistDir first."
+}
+
+Write-Host "  Arranging staging tree" -ForegroundColor Cyan
+$AppStaging = Join-Path $StagingDir 'app'
+Copy-Item -Recurse -Force -Path $DistDir -Destination $AppStaging
+Copy-Item -Recurse -Force -Path (Join-Path $ScriptRoot 'scripts') -Destination (Join-Path $StagingDir 'scripts')
+
+Write-Host "  Done. Staging at $StagingDir" -ForegroundColor Green
+{% endraw %}

@@ -1,0 +1,66 @@
+{%- set company_id = installer_manufacturer | replace(' ', '') | replace('-', '') -%}
+{%- set product_id = human_friendly_app_name | replace(' ', '') | replace('-', '') -%}
+{%- set service_name = windows_service_org_prefix ~ repo_name -%}
+{% raw %}# Installer Architecture
+
+## Why this shape
+
+{% endraw %}{{ human_friendly_app_name }}{% raw %} ships as a single PyInstaller one-folder bundle (`{% endraw %}{{ repo_name }}{% raw %}.exe` +
+`_internal/`) that is SCM-compliant on its own (the exe implements the Windows service protocol via
+pywin32).
+
+## Build pipeline (`build.ps1` -> `stage.ps1`)
+
+1. `stage.ps1` runs the normal app build — `pnpm generate` the frontend, fold it into
+   `backend/src/static`, `pyinstaller` the backend — then copies `backend/dist/{% endraw %}{{ repo_name }}{% raw %}/` into
+   `build/staging/app/` and the lifecycle scripts into `build/staging/scripts/`.
+2. `build.ps1` compiles `wix/Product.wxs` into the MSI (harvesting the staging tree). The MSI is
+   the deliverable — a `WixUI_InstallDir` flow with a custom **Service account** dialog and a
+   post-install "open the app" checkbox. No Burn bundle: there are no prerequisites to chain, and
+   a plain MSI gives both an interactive dialog and clean silent install (`msiexec /qn` with the
+   account/port set as properties).
+
+### Rebuild vs. consume the tested bundle
+
+Local and manual (`workflow_dispatch`) builds run the full pipeline above. CI and release instead
+pass `build.ps1 -SkipAppBuild`, which makes `stage.ps1` skip `pnpm generate` + `pyinstaller` and
+stage the existing `backend/dist/{% endraw %}{{ repo_name }}{% raw %}/` bundle. The reusable `build-installer.yaml`
+downloads that bundle (the one the test suite ran against) so the MSI wraps the exact tested binary
+rather than a fresh rebuild. CI builds it unsigned as a build-breakage check; release builds + signs
+it from the guarded CI run's bundle, then zips `{% endraw %}{{ product_id }}{% raw %}-<version>.msi` + `INSTALL.txt`
+as the Windows release asset.
+
+## Service registration
+
+The MSI does **not** use a native `<ServiceInstall>`. Instead a deferred, elevated custom action
+runs `scripts/install-service.ps1`, which calls the exe's own
+`{% endraw %}{{ repo_name }}{% raw %}.exe service [...] install -- --port {% endraw %}{{ backend_deployed_port_number }}{% raw %} --log-folder <dir>` verb.
+This is deliberate:
+
+- It keeps `{% endraw %}{{ repo_name }}{% raw %}.exe` inside the `<Files>` harvest (a native `<ServiceInstall>` would need
+  the exe declared in its own component, colliding with the harvest — WiX 7 `<Files>` has no
+  Exclude).
+- It reuses the app's own, tested install path (which bakes the runtime args into the service
+  ImagePath).
+- It puts the LocalSystem-vs-custom-account branching in one PowerShell script instead of
+  conditional WiX components.
+
+Uninstall mirrors this via `remove-service.ps1` (`service stop` + `service remove`).
+
+## Service account
+
+The **Service account** dialog offers two choices:
+
+- **LocalSystem** (default). Runs with full local privileges; no credentials to manage.
+- A **low-privilege account**. `install-service.ps1` grants it `Log on as a service` (plus any
+  extra privileges configured via the template's `extra_windows_service_rights`) through the exe's
+  `grant-service-rights` verb, and Modify on the writable data dir, because a session-0 service
+  cannot prompt for elevation at runtime.
+
+## Data layout
+
+Binaries live under `Program Files\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}\`. The service log dir lives under
+`ProgramData\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}\logs\` so it survives upgrades and is reachable by a
+non-admin service account; the MSI ACLs it for SYSTEM/Administrators and `install-service.ps1` adds
+Modify for a custom account at install time.
+{% endraw %}

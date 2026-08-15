@@ -1,4 +1,4 @@
-from uuid import uuid4
+{% raw %}from uuid import uuid4
 
 from backend_api.entrypoint import grant_rights
 from backend_api.entrypoint.grant_rights import SERVICE_ACCOUNT_RIGHTS
@@ -11,10 +11,10 @@ from pytest_mock import MockerFixture
 class TestServiceAccountRights:
     def test_Then_service_logon_right_always_granted(self):
         assert "SeServiceLogonRight" in SERVICE_ACCOUNT_RIGHTS
-{% for right in extra_windows_service_rights %}
-    def test_Then_extra_right_{{ loop.index }}_granted(self):
-        assert "{{ right }}" in SERVICE_ACCOUNT_RIGHTS
-{% endfor %}
+{% endraw %}{% for right in extra_windows_service_rights %}{% raw %}
+    def test_Then_extra_right_{% endraw %}{{ loop.index }}{% raw %}_granted(self):
+        assert "{% endraw %}{{ right }}{% raw %}" in SERVICE_ACCOUNT_RIGHTS
+{% endraw %}{% endfor %}{% raw %}
 
 class TestResolvableAccountName:
     def test_Given_dot_backslash_prefix__Then_stripped_to_bare_local_name(self):
@@ -67,3 +67,4 @@ class TestDispatchGrantRights:
 
         assert exit_code == 0
         run_mock.assert_called_once_with(account=account)
+{% endraw %}

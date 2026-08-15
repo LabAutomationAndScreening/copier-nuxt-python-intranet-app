@@ -1,0 +1,83 @@
+{% raw %}<#
+.SYNOPSIS
+    Registers and starts the {% endraw %}{{ human_friendly_app_name }}{% raw %} Windows service. Run by the MSI
+    as a deferred (elevated, SYSTEM) custom action after files are installed.
+
+.DESCRIPTION
+    The exe is SCM-compliant (pywin32), so the service is registered by invoking
+    the exe's own `service install` verb rather than a native WiX ServiceInstall.
+    This keeps the exe inside the file harvest and lets the account choice
+    (LocalSystem vs a supplied low-privilege account) live in one place.
+
+    For a custom account the script also grants that account the rights it needs
+    (Log on as a service, plus any app-specific privileges, via the exe's
+    grant-service-rights verb) and Modify on the writable data dir, since a
+    session-0 service cannot prompt for elevation at runtime.
+#>
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory)] [string] $ExePath,
+    [Parameter(Mandatory)] [string] $Port,
+    [Parameter(Mandatory)] [string] $LogDir,
+    [string] $ServiceAccount = 'LocalSystem',
+    [string] $User = '',
+    [string] $Password = ''
+)
+
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+
+$ServiceName = '{% endraw %}{{ windows_service_org_prefix }}{{ repo_name }}{% raw %}'
+
+if (-not (Test-Path $LogDir)) {
+    New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
+}
+
+$installArgs = @('service')
+
+if ($ServiceAccount -ieq 'custom') {
+    if ([string]::IsNullOrWhiteSpace($User)) {
+        throw "A custom service account was selected but no user name was supplied."
+    }
+    if ([string]::IsNullOrWhiteSpace($Password)) {
+        throw "A custom service account was selected but no password was supplied."
+    }
+    $account = if ($User.Contains('\')) { $User } else { ".\$User" }
+    # LookupAccountName and icacls cannot resolve the ".\" logon shorthand; strip it for them.
+    # SCM still wants the ".\name" form for --username.
+    $rightsAccount = if ($account.StartsWith('.\')) { $account.Substring(2) } else { $account }
+
+    Write-Host "Granting service rights to $rightsAccount"
+    & $ExePath grant-service-rights --account $rightsAccount
+    if ($LASTEXITCODE -ne 0) { throw "grant-service-rights failed for $rightsAccount" }
+
+    Write-Host "Granting $rightsAccount Modify on $LogDir"
+    & icacls $LogDir /grant "${rightsAccount}:(OI)(CI)M" /T | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "icacls failed to grant Modify on $LogDir for $rightsAccount (exit $LASTEXITCODE)" }
+
+    $installArgs += @('--username', $account, '--password', $Password)
+}
+
+$installArgs += @('--startup', 'auto', 'install', '--', '--port', $Port, '--log-folder', $LogDir)
+
+$logArgs = @()
+$maskNext = $false
+foreach ($arg in $installArgs) {
+    if ($maskNext) {
+        $logArgs += '***'
+        $maskNext = $false
+        continue
+    }
+    $logArgs += $arg
+    if ($arg -eq '--password') { $maskNext = $true }
+}
+Write-Host "Installing service: $ExePath $($logArgs -join ' ')"
+& $ExePath @installArgs
+if ($LASTEXITCODE -ne 0) { throw "Service install failed (exit $LASTEXITCODE)" }
+
+Write-Host "Starting service $ServiceName"
+Start-Service -Name $ServiceName
+
+Write-Host "install-service.ps1 complete"
+exit 0
+{% endraw %}
