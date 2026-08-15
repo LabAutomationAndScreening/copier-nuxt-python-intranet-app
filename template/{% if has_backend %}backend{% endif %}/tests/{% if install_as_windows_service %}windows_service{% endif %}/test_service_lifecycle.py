@@ -89,14 +89,14 @@ def installed_service(tmp_path: Path):
 
 @pytest.mark.usefixtures(installed_service.__name__)
 def test_Given_service_installed__Then_registered_in_scm():
-    result = _run_sc("query", APP_NAME)
+    result = _run_sc("query", WINDOWS_SERVICE_NAME)
 
     assert result.returncode == 0
 
 
 @pytest.mark.usefixtures(installed_service.__name__)
 def test_When_service_installed__Then_imagepath_contains_service_token():
-    result = _run_sc("qc", APP_NAME, check=True)
+    result = _run_sc("qc", WINDOWS_SERVICE_NAME, check=True)
 
     binary_path_line = next(
         (line for line in result.stdout.decode().splitlines() if "BINARY_PATH_NAME" in line),
@@ -150,7 +150,7 @@ def _log_crash_dump_diagnostics(*, log_folder: Path, start_result: subprocess.Co
     logger.error("service start returncode=%d", start_result.returncode)
     logger.error("service start stdout:\n%s", start_result.stdout.decode(errors="replace"))
     logger.error("service start stderr:\n%s", start_result.stderr.decode(errors="replace"))
-    sc_query = _run_sc("query", APP_NAME)
+    sc_query = _run_sc("query", WINDOWS_SERVICE_NAME)
     logger.error("sc query returncode=%d output:\n%s", sc_query.returncode, sc_query.stdout.decode(errors="replace"))
     if log_folder.exists():
         logger.error("log_folder contents: %s", sorted(p.name for p in log_folder.iterdir()))
@@ -208,7 +208,7 @@ class TestServiceWorkerCrash:
         # clean admin stops.
         assert crashed_service.crash_dump_path.exists()
 
-        result = _run_sc("query", APP_NAME, check=True)
+        result = _run_sc("query", WINDOWS_SERVICE_NAME, check=True)
 
         output = result.stdout.decode()
         assert "STOPPED" in output, f"service not in STOPPED state; sc query output:\n{output}"
@@ -240,7 +240,7 @@ def test_When_install_with_startup_option_before_subcommand__Then_service_regist
             "0.0.0.0",  # noqa: S104 # match e2e pattern
         )
 
-        result = _run_sc("qc", APP_NAME, check=True)
+        result = _run_sc("qc", WINDOWS_SERVICE_NAME, check=True)
 
         output = result.stdout.decode()
         # sc qc reports `START_TYPE         : 2   AUTO_START` for auto-start services
@@ -259,7 +259,7 @@ def test_Given_service_stopped_cleanly__When_scm_query_called__Then_exit_code_is
     wait_for_backend_to_be_healthy(port=installed_service.port)
     _ = _run_app("service", "stop")
 
-    result = _run_sc("query", APP_NAME, check=True)
+    result = _run_sc("query", WINDOWS_SERVICE_NAME, check=True)
 
     output = result.stdout.decode()
     assert "STOPPED" in output, f"service not in STOPPED state; sc query output:\n{output}"
