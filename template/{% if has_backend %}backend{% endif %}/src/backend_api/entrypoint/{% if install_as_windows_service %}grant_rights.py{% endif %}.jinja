@@ -1,4 +1,4 @@
-import argparse
+{% raw %}import argparse
 import os
 import sys
 from collections.abc import Sequence
@@ -6,11 +6,11 @@ from collections.abc import Sequence
 # SeServiceLogonRight (log-on-as-service) is required by ANY custom service
 # account. Additional privileges are app-specific and come from the template's
 # extra_windows_service_rights answer (e.g. SeCreateSymbolicLinkPrivilege).
-SERVICE_ACCOUNT_RIGHTS = ["SeServiceLogonRight"{% for right in extra_windows_service_rights %}, "{{ right }}"{% endfor %}]
+SERVICE_ACCOUNT_RIGHTS = ["SeServiceLogonRight"{% endraw %}{% for right in extra_windows_service_rights %}, "{{ right }}"{% endfor %}{% raw %}]
 
 _parser = argparse.ArgumentParser(prog="grant-service-rights")
 _ = _parser.add_argument(
-    "--account", type=str, required=True, help="The account to grant the {{ human_friendly_app_name }} service rights to"
+    "--account", type=str, required=True, help="The account to grant the {% endraw %}{{ human_friendly_app_name }}{% raw %} service rights to"
 )
 
 
@@ -45,3 +45,4 @@ def grant_service_rights(*, account: str) -> int:
 def dispatch_grant_rights(argv: Sequence[str]) -> int:
     args = _parser.parse_args(argv)
     return grant_service_rights(account=args.account)
+{% endraw %}
