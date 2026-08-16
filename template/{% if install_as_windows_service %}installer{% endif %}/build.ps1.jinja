@@ -83,7 +83,7 @@ $DistDir = Join-Path $ScriptRoot 'dist'
 $WixDir = Join-Path $ScriptRoot 'wix'
 # Directory (relative to the repo root) holding the installer icon; it must contain favicon.ico.
 # Frontend apps reuse frontend/public; apps without a frontend point this elsewhere (e.g. installer/).
-$BrandingDir = Join-Path $RepoRoot '{% endraw %}{{ installer_branding_dir | replace('/', '\\') }}{% raw %}'
+$BrandingDir = Join-Path $RepoRoot '{% endraw %}{{ installer_branding_dir | replace('/', '\\') | replace("'", "''") }}{% raw %}'
 $LicenseRtf = Join-Path $ScriptRoot 'license.rtf'
 
 if (-not $Version) {
