@@ -55,24 +55,25 @@ if ($ServiceAccount -ieq 'custom') {
     & icacls $LogDir /grant "${rightsAccount}:(OI)(CI)M" /T | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "icacls failed to grant Modify on $LogDir for $rightsAccount (exit $LASTEXITCODE)" }
 
-    $installArgs += @('--username', $account, '--password', $Password)
+    # The password is NOT passed on the command line: the exe's process command line is
+    # readable by any local process (Win32_Process) for the install window. It travels via
+    # an environment variable instead, which win_service.py reads and splices into pywin32's
+    # in-memory HandleCommandLine arg list. The var name must match SERVICE_INSTALL_PASSWORD_ENV
+    # in backend_api.entrypoint.service_install_password.
+    $installArgs += @('--username', $account)
+    $env:WINDOWS_SERVICE_INSTALL_PASSWORD = $Password
 }
 
 $installArgs += @('--startup', 'auto', 'install', '--', '--port', $Port, '--log-folder', $LogDir)
 
-$logArgs = @()
-$maskNext = $false
-foreach ($arg in $installArgs) {
-    if ($maskNext) {
-        $logArgs += '***'
-        $maskNext = $false
-        continue
-    }
-    $logArgs += $arg
-    if ($arg -eq '--password') { $maskNext = $true }
+# $installArgs no longer carries the password, so it is safe to log verbatim.
+Write-Host "Installing service: $ExePath $($installArgs -join ' ')"
+try {
+    & $ExePath @installArgs
 }
-Write-Host "Installing service: $ExePath $($logArgs -join ' ')"
-& $ExePath @installArgs
+finally {
+    Remove-Item Env:\WINDOWS_SERVICE_INSTALL_PASSWORD -ErrorAction SilentlyContinue
+}
 if ($LASTEXITCODE -ne 0) { throw "Service install failed (exit $LASTEXITCODE)" }
 
 Write-Host "Starting service $ServiceName"
