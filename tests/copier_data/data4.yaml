@@ -37,6 +37,7 @@ windows_service_org_prefix: destroyer-
 extra_windows_service_rights:
   - SeCreateSymbolicLinkPrivilege
 installer_manufacturer: Foo Corp
+installer_branding_dir: frontend/public
 installer_upgrade_code: 3b9d1f6a-2c84-4e7b-9a1f-6d5c4b3a2e10
 sign_installer: true
 signing_account: foo-signing
