@@ -1,19 +1,29 @@
 import sys
+from random import randint
+from uuid import uuid4
 
 import pytest
+from backend_api.entrypoint import grant_rights
 from backend_api.entrypoint.cli import entrypoint
 from pytest_mock import MockerFixture
 
 from .fixtures import restore_logging_levels  # noqa: F401 # autouse fixture imported for side effect
 
 
-def test_Given_grant_service_rights_subcommand__Then_dispatched_to_grant_rights(mocker: MockerFixture):
-    dispatch = mocker.patch("backend_api.entrypoint.grant_rights.dispatch_grant_rights", return_value=0)
+def test_Given_grant_service_rights_subcommand__Then_remaining_argv_forwarded_unparsed(mocker: MockerFixture):
+    expected_exit_code = randint(1, 255)
+    # Opaque tokens (not real flags) prove the entrypoint forwards whatever follows
+    # the subcommand verbatim to the dispatcher, so new grant-service-rights flags
+    # ride along without a change here. Flag parsing is covered in test_grant_rights.
+    remaining_argv = [str(uuid4()), str(uuid4())]
+    dispatch_mock = mocker.patch.object(
+        grant_rights, grant_rights.dispatch_grant_rights.__name__, return_value=expected_exit_code
+    )
 
-    exit_code = entrypoint(["grant-service-rights", "--account", ".\\svc"])
+    exit_code = entrypoint(["grant-service-rights", *remaining_argv])
 
-    assert exit_code == 0
-    dispatch.assert_called_once_with(["--account", ".\\svc"])
+    assert exit_code == expected_exit_code
+    dispatch_mock.assert_called_once_with(remaining_argv)
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="tests the non-Windows platform guard")
