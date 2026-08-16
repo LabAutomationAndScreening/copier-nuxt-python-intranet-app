@@ -94,7 +94,12 @@
                  Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -ExecutionPolicy Bypass -NoProfile -File &quot;[INSTALLFOLDER]scripts\install-service.ps1&quot; -ExePath &quot;[INSTALLFOLDER]app\{% endraw %}{{ exe_name }}{% raw %}&quot; -Port &quot;[PORT]&quot; -LogDir &quot;[CommonAppDataFolder]{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}\logs&quot; -ServiceAccount &quot;[SERVICE_ACCOUNT]&quot; -User &quot;[SERVICE_USER]&quot; -Password &quot;[SERVICE_PASSWORD]&quot;"
                  Before="CA_InstallService"
                  Sequence="execute" />
-    <CustomAction Id="CA_InstallService" DllEntry="WixQuietExec" BinaryRef="Wix4UtilCA_X64" Execute="deferred" Impersonate="no" Return="check" />
+    <!-- WixSilentExec (not WixQuietExec) so the util CA does not log the command line it runs:
+         that command line contains -Password "[SERVICE_PASSWORD]", which MsiHiddenProperties
+         alone would not suppress (it hides property/custom-action-data logging, not the exec's
+         own command logging). Hidden="yes" (the WiX v4+ spelling of v3's HideTarget) additionally
+         keeps the deferred custom-action data out of the log. -->
+    <CustomAction Id="CA_InstallService" DllEntry="WixSilentExec" BinaryRef="Wix4UtilCA_X64" Execute="deferred" Impersonate="no" Return="check" Hidden="yes" />
 
     <SetProperty Id="CA_RemoveService"
                  Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -ExecutionPolicy Bypass -NoProfile -File &quot;[INSTALLFOLDER]scripts\remove-service.ps1&quot; -ExePath &quot;[INSTALLFOLDER]app\{% endraw %}{{ exe_name }}{% raw %}&quot;"
