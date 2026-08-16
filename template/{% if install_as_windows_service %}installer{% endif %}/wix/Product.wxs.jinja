@@ -1,6 +1,8 @@
 {%- set company_id = installer_manufacturer | replace(' ', '') | replace('-', '') -%}
 {%- set product_id = human_friendly_app_name | replace(' ', '') | replace('-', '') -%}
 {%- set exe_name = repo_name ~ '.exe' -%}
+{%- set bind_configurable = windows_service_bind_policy in ['configurable_loopback_default', 'configurable_all_default'] -%}
+{%- set bind_default_all = windows_service_bind_policy == 'configurable_all_default' -%}
 {% raw %}<?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
@@ -42,6 +44,11 @@
          derived deferred-CA command line that embeds [SERVICE_PASSWORD]; Hidden keeps its value
          out of the log (WiX builds MsiHiddenProperties from these Hidden flags). -->
     <Property Id="CA_InstallService" Hidden="yes" />
+{% endraw %}{% if bind_configurable %}{% raw %}
+    <!-- Network bind address: "1" => 0.0.0.0 (reachable from other computers), "0" => 127.0.0.1.
+         The BindAddressDlg sets this interactively; a silent install sets ALLOW_REMOTE on the command line. -->
+    <Property Id="ALLOW_REMOTE" Value="{% endraw %}{{ '1' if bind_default_all else '0' }}{% raw %}" Secure="yes" />
+{% endraw %}{% endif %}{% raw %}
 
     <!-- WixUI plumbing: install-dir target, post-install launch checkbox. -->
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
@@ -90,7 +97,7 @@
     <!-- "Wix4" in Wix4UtilCA_X64 is the WixToolset.Util schema generation, not the
          toolset version; the id must match the schema, so it stays "Wix4" under WiX 7. -->
     <SetProperty Id="CA_InstallService"
-                 Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -ExecutionPolicy Bypass -NoProfile -File &quot;[INSTALLFOLDER]scripts\install-service.ps1&quot; -ExePath &quot;[INSTALLFOLDER]app\{% endraw %}{{ exe_name }}{% raw %}&quot; -Port &quot;[PORT]&quot; -LogDir &quot;[CommonAppDataFolder]{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}\logs&quot; -ServiceAccount &quot;[SERVICE_ACCOUNT]&quot; -User &quot;[SERVICE_USER]&quot; -Password &quot;[SERVICE_PASSWORD]&quot;"
+                 Value="&quot;[System64Folder]WindowsPowerShell\v1.0\powershell.exe&quot; -ExecutionPolicy Bypass -NoProfile -File &quot;[INSTALLFOLDER]scripts\install-service.ps1&quot; -ExePath &quot;[INSTALLFOLDER]app\{% endraw %}{{ exe_name }}{% raw %}&quot; -Port &quot;[PORT]&quot; -LogDir &quot;[CommonAppDataFolder]{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}\logs&quot; -ServiceAccount &quot;[SERVICE_ACCOUNT]&quot; -User &quot;[SERVICE_USER]&quot; -Password &quot;[SERVICE_PASSWORD]&quot;{% endraw %}{% if bind_configurable %} -AllowRemote &quot;[ALLOW_REMOTE]&quot;{% endif %}{% raw %}"
                  Before="CA_InstallService"
                  Sequence="execute" />
     <!-- WixSilentExec (not WixQuietExec) so the util CA does not log the command line it runs;
@@ -120,11 +127,16 @@
       <ProgressText Action="CA_InstallService" Message="Registering and starting the {% endraw %}{{ human_friendly_app_name }}{% raw %} service..." />
       <ProgressText Action="CA_RemoveService" Message="Stopping and removing the {% endraw %}{{ human_friendly_app_name }}{% raw %} service..." />
 
-      <!-- Insert ServiceAccountDlg between InstallDirDlg and VerifyReadyDlg. -->
+      <!-- Wizard order: InstallDirDlg -> ServiceAccountDlg{% endraw %}{% if bind_configurable %} -> BindAddressDlg{% endif %}{% raw %} -> VerifyReadyDlg. -->
       <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="ServiceAccountDlg" Order="999" Condition="1" />
       <Publish Dialog="ServiceAccountDlg" Control="Back" Event="NewDialog" Value="InstallDirDlg" Condition="1" />
-      <Publish Dialog="ServiceAccountDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Condition="1" />
+{% endraw %}{% if bind_configurable %}{% raw %}      <Publish Dialog="ServiceAccountDlg" Control="Next" Event="NewDialog" Value="BindAddressDlg" Condition="1" />
+      <Publish Dialog="BindAddressDlg" Control="Back" Event="NewDialog" Value="ServiceAccountDlg" Condition="1" />
+      <Publish Dialog="BindAddressDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Condition="1" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="BindAddressDlg" Order="999" Condition="1" />
+{% endraw %}{% else %}{% raw %}      <Publish Dialog="ServiceAccountDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Condition="1" />
       <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="ServiceAccountDlg" Order="999" Condition="1" />
+{% endraw %}{% endif %}{% raw %}
 
       <!-- Launch the app on Finish when the optional checkbox is ticked. -->
       <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchApplication" Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed" />
@@ -163,4 +175,32 @@
       </Dialog>
     </UI>
   </Fragment>
+{% endraw %}{% if bind_configurable %}{% raw %}
+  <Fragment>
+    <UI>
+      <Dialog Id="BindAddressDlg" Width="370" Height="270" Title="[ProductName] Setup">
+        <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="WixUI_Bmp_Banner" />
+        <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
+        <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+        <Control Id="Title" Type="Text" X="15" Y="6" Width="220" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Network access" />
+        <Control Id="Description" Type="Text" X="25" Y="23" Width="330" Height="15" Transparent="yes" NoPrefix="yes" Text="Choose which computers may reach the {% endraw %}{{ human_friendly_app_name }}{% raw %} service." />
+
+        <Control Id="BindGroup" Type="RadioButtonGroup" Property="ALLOW_REMOTE" X="20" Y="55" Width="335" Height="60">
+          <RadioButtonGroup Property="ALLOW_REMOTE">
+            <RadioButton Value="0" X="0" Y="0" Width="330" Height="16" Text="Local connections only (127.0.0.1)" />
+            <RadioButton Value="1" X="0" Y="24" Width="330" Height="16" Text="Allow connections from other computers (0.0.0.0)" />
+          </RadioButtonGroup>
+        </Control>
+
+        <Control Id="Hint" Type="Text" X="35" Y="120" Width="315" Height="60" Transparent="yes" NoPrefix="yes" Text="Local only is the safest choice. Allow connections from other computers if this service must be reachable across the network (for example, remote health checks or access to attached devices). The installer opens the required firewall rules automatically." />
+
+        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="!(loc.WixUIBack)" />
+        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="!(loc.WixUINext)" />
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="!(loc.WixUICancel)">
+          <Publish Event="SpawnDialog" Value="CancelDlg" />
+        </Control>
+      </Dialog>
+    </UI>
+  </Fragment>
+{% endraw %}{% endif %}{% raw %}
 </Wix>{% endraw %}

@@ -193,6 +193,21 @@ extra_windows_service_rights:
     default: []
     when: "{{ install_as_windows_service }}"
 
+windows_service_bind_policy:
+    type: str
+    help: >-
+        Which network address should the service listen on, and may the operator change it at install time?
+        loopback (127.0.0.1) is safe but only reachable from the same PC; all-interfaces (0.0.0.0) is reachable
+        from other computers on the network. "configurable_*" adds an installer page (and an ALLOW_REMOTE silent
+        property) letting the operator choose, defaulting to the named side; "*_only" forces the address with no choice.
+    choices:
+        - loopback_only
+        - configurable_loopback_default
+        - configurable_all_default
+        - all_interfaces_only
+    default: configurable_loopback_default
+    when: "{{ install_as_windows_service }}"
+
 installer_manufacturer:
     type: str
     help: "What is the human-friendly manufacturer/company name to show in the MSI installer and Add/Remove Programs (e.g. Acme Corp)?"

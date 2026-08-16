@@ -1,3 +1,4 @@
+{%- set bind_firewall_managed = windows_service_bind_policy in ['configurable_loopback_default', 'configurable_all_default', 'all_interfaces_only'] -%}
 {% raw %}<#
 .SYNOPSIS
     Stops and unregisters the {% endraw %}{{ human_friendly_app_name }}{% raw %} Windows service. Run by the MSI
@@ -27,5 +28,8 @@ if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
 } else {
     Write-Host "Service $ServiceName not present; nothing to remove"
 }
-
+{% endraw %}{% if bind_firewall_managed %}{% raw %}
+# Remove the inbound firewall rule install-service.ps1 may have created (no-op if absent).
+Get-NetFirewallRule -DisplayName "$ServiceName (HTTP-In)" -ErrorAction SilentlyContinue | Remove-NetFirewallRule -ErrorAction SilentlyContinue
+{% endraw %}{% endif %}{% raw %}
 exit 0{% endraw %}

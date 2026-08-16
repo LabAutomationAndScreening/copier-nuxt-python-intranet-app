@@ -1,7 +1,8 @@
+{%- set bind_all_interfaces = (not deploy_as_executable) or (install_as_windows_service and windows_service_bind_policy == 'all_interfaces_only') -%}
 {% raw %}APP_NAME = "{% endraw %}{{ repo_name }}{% raw %}"
 DEPLOYED_PORT_NUMBER = {% endraw %}{{ backend_deployed_port_number }}{% raw %}
 HUMAN_FRIENDLY_APP_NAME = "{% endraw %}{{ human_friendly_app_name }}{% raw %}"
-DEFAULT_DEPLOYED_HOST = "{% endraw %}{{ '127.0.0.1"' if deploy_as_executable else '0.0.0.0"  # noqa: S104 # this is intentionally allowing connections from all hosts' }}{% raw %}{% endraw %}{% if install_as_windows_service %}{% raw %}
+DEFAULT_DEPLOYED_HOST = "{% endraw %}{{ '0.0.0.0"  # noqa: S104 # this is intentionally allowing connections from all hosts' if bind_all_interfaces else '127.0.0.1"' }}{% raw %}{% endraw %}{% if install_as_windows_service %}{% raw %}
 
 # Windows service identity. The registered name is org-prefixed to avoid
 # colliding with any other service already on the machine; kept separate from

@@ -1,3 +1,5 @@
+{%- set bind_configurable = windows_service_bind_policy in ['configurable_loopback_default', 'configurable_all_default'] -%}
+{%- set bind_forced_all = windows_service_bind_policy == 'all_interfaces_only' -%}
 {% raw %}<#
 .SYNOPSIS
     Registers and starts the {% endraw %}{{ human_friendly_app_name }}{% raw %} Windows service. Run by the MSI
@@ -21,7 +23,9 @@ param(
     [Parameter(Mandatory)] [string] $LogDir,
     [string] $ServiceAccount = 'LocalSystem',
     [string] $User = '',
-    [string] $Password = ''
+    [string] $Password = ''{% endraw %}{% if bind_configurable %}{% raw %},
+    # '1' => bind 0.0.0.0 (reachable from other computers), anything else => 127.0.0.1.
+    [string] $AllowRemote = '0'{% endraw %}{% endif %}{% raw %}
 )
 
 $ErrorActionPreference = 'Stop'
@@ -65,6 +69,11 @@ if ($ServiceAccount -ieq 'custom') {
 }
 
 $installArgs += @('--startup', 'auto', 'install', '--', '--port', $Port, '--log-folder', $LogDir)
+{% endraw %}{% if bind_configurable %}{% raw %}
+# Operator-selected bind address (see the installer's network-access page / ALLOW_REMOTE property).
+$bindHost = if ($AllowRemote -eq '1') { '0.0.0.0' } else { '127.0.0.1' }
+$installArgs += @('--host', $bindHost)
+{% endraw %}{% endif %}{% raw %}
 
 # $installArgs no longer carries the password, so it is safe to log verbatim.
 Write-Host "Installing service: $ExePath $($installArgs -join ' ')"
@@ -75,7 +84,19 @@ finally {
     Remove-Item Env:\WINDOWS_SERVICE_INSTALL_PASSWORD -ErrorAction SilentlyContinue
 }
 if ($LASTEXITCODE -ne 0) { throw "Service install failed (exit $LASTEXITCODE)" }
-
+{% endraw %}{% if bind_configurable or bind_forced_all %}{% raw %}
+# Windows Firewall: open the service port for remote access, scoped to this exe and the local
+# subnet. The template opens only the single defined port; apps that need more (extra ports,
+# UDP/mDNS, etc.) add their own rules. Rebuilt idempotently so toggling remote access off removes it.
+$FirewallRuleName = "$ServiceName (HTTP-In)"
+Get-NetFirewallRule -DisplayName $FirewallRuleName -ErrorAction SilentlyContinue | Remove-NetFirewallRule -ErrorAction SilentlyContinue
+{% endraw %}{% if bind_configurable %}{% raw %}$openFirewall = ($AllowRemote -eq '1')
+{% endraw %}{% else %}{% raw %}$openFirewall = $true
+{% endraw %}{% endif %}{% raw %}if ($openFirewall) {
+    Write-Host "Opening firewall rule '$FirewallRuleName' (TCP $Port, LocalSubnet)"
+    $null = New-NetFirewallRule -DisplayName $FirewallRuleName -Direction Inbound -Action Allow -Protocol TCP -LocalPort $Port -RemoteAddress LocalSubnet -Program $ExePath
+}
+{% endraw %}{% endif %}{% raw %}
 Write-Host "Starting service $ServiceName"
 Start-Service -Name $ServiceName
 

@@ -1,6 +1,8 @@
 {%- set company_id = installer_manufacturer | replace(' ', '') | replace('-', '') -%}
 {%- set product_id = human_friendly_app_name | replace(' ', '') | replace('-', '') -%}
 {%- set service_name = windows_service_org_prefix ~ repo_name -%}
+{%- set bind_configurable = windows_service_bind_policy in ['configurable_loopback_default', 'configurable_all_default'] -%}
+{%- set bind_default_all = windows_service_bind_policy == 'configurable_all_default' -%}
 {% raw %}{% endraw %}{{ human_friendly_app_name | upper }}{% raw %} - INSTALLATION GUIDE
 ===============================
 
@@ -39,8 +41,16 @@ INTERACTIVE INSTALL
    - A specific low-privilege account. Enter the user as .\name (local) or
      DOMAIN\name, plus the password. The installer grants that account the
      "Log on as a service" right.
+{% endraw %}{% if bind_configurable %}{% raw %}
+4. On the "Network access" page, choose which computers may reach the service:
 
-4. Finish the install. Leave "Open {% endraw %}{{ human_friendly_app_name }}{% raw %}" checked to open
+   - Local connections only (127.0.0.1){% endraw %}{% if not bind_default_all %} - the default{% endif %}{% raw %}.
+
+   - Allow connections from other computers (0.0.0.0){% endraw %}{% if bind_default_all %} - the default{% endif %}{% raw %}. The
+     installer opens the required Windows Firewall rules automatically.
+
+5. Finish the install. Leave "Open {% endraw %}{{ human_friendly_app_name }}{% raw %}" checked to open{% endraw %}{% else %}{% raw %}
+4. Finish the install. Leave "Open {% endraw %}{{ human_friendly_app_name }}{% raw %}" checked to open{% endraw %}{% endif %}{% raw %}
    http://127.0.0.1:{% endraw %}{{ backend_deployed_port_number }}{% raw %}/ in your browser.
 
 
@@ -58,7 +68,9 @@ Set any of these properties on the command line:
    SERVICE_USER       Account name when SERVICE_ACCOUNT=custom, e.g. .\svcaccount
    SERVICE_PASSWORD   Password for that account.
    PORT               Default {% endraw %}{{ backend_deployed_port_number }}{% raw %}. TCP port the service listens on.
-
+{% endraw %}{% if bind_configurable %}{% raw %}   ALLOW_REMOTE       Default {% endraw %}{{ '1' if bind_default_all else '0' }}{% raw %}. "1" binds 0.0.0.0 (reachable from other
+                      computers); "0" binds 127.0.0.1 (local connections only).
+{% endraw %}{% endif %}{% raw %}
 Examples:
 
    LocalSystem, default port:
@@ -66,7 +78,10 @@ Examples:
 
    Dedicated low-privilege account:
       msiexec /i {% endraw %}{{ product_id }}{% raw %}-1.2.3.msi /qn SERVICE_ACCOUNT=custom SERVICE_USER=.\svcaccount SERVICE_PASSWORD=YourPassword
-
+{% endraw %}{% if bind_configurable %}{% raw %}
+   Reachable from other computers on the network:
+      msiexec /i {% endraw %}{{ product_id }}{% raw %}-1.2.3.msi /qn ALLOW_REMOTE=1
+{% endraw %}{% endif %}{% raw %}
    Capture a log of the install for troubleshooting:
       msiexec /i {% endraw %}{{ product_id }}{% raw %}-1.2.3.msi /qn /l*v install.log
 
