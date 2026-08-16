@@ -36,7 +36,6 @@ _INSTALLER_ANSWERS: dict[str, object] = {
 
 
 def validate_installer_answers(**overrides: object) -> None:
-    """Render with ``overrides`` on the installer answer set; raises ``ValueError`` if a validator rejects an answer."""
     data = {**_INSTALLER_ANSWERS, **overrides}
     with tempfile.TemporaryDirectory() as tmp:
         copier.run_copy(
