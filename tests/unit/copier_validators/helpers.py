@@ -55,7 +55,6 @@ def validate_installer_answers(**overrides: object) -> None:
 
 @contextlib.contextmanager
 def render_installer_project(**overrides: object) -> Iterator[Path]:
-    """Fully render the template to a temp dir (files written) and yield its root, for asserting rendered content."""
     data = {**_INSTALLER_ANSWERS, **overrides}
     with tempfile.TemporaryDirectory() as tmp:
         copier.run_copy(
