@@ -196,6 +196,12 @@ installer_manufacturer:
     help: "What is the human-friendly manufacturer/company name to show in the MSI installer and Add/Remove Programs (e.g. Acme Corp)?"
     when: "{{ install_as_windows_service }}"
 
+installer_branding_dir:
+    type: str
+    help: "Directory (relative to the repo root) holding the installer icon favicon.ico. Frontend apps can use frontend/public; apps whose frontend has no favicon should point this at a dir they own (e.g. installer)."
+    default: "frontend/public"
+    when: "{{ install_as_windows_service }}"
+
 installer_upgrade_code:
     type: str
     help: "A fixed-for-life UpgradeCode GUID for this app's MSI (generate once, NEVER change it - it identifies upgrades across versions). Format: 8-4-4-4-12 hex, e.g. 3b9d1f6a-2c84-4e7b-9a1f-6d5c4b3a2e10."
