@@ -34,6 +34,7 @@ deploy_as_executable: true
 use_upx_for_executable: true
 install_as_windows_service: true
 windows_service_org_prefix: destroyer-
+windows_service_bind_policy: configurable_all_default
 extra_windows_service_rights:
   - SeCreateSymbolicLinkPrivilege
 installer_manufacturer: Foo Corp
