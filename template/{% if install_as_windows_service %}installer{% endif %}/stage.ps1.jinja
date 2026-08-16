@@ -70,5 +70,4 @@ $AppStaging = Join-Path $StagingDir 'app'
 Copy-Item -Recurse -Force -Path $DistDir -Destination $AppStaging
 Copy-Item -Recurse -Force -Path (Join-Path $ScriptRoot 'scripts') -Destination (Join-Path $StagingDir 'scripts')
 
-Write-Host "  Done. Staging at $StagingDir" -ForegroundColor Green
-{% endraw %}
+Write-Host "  Done. Staging at $StagingDir" -ForegroundColor Green{% endraw %}
