@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import tempfile
 from pathlib import Path
-from typing import Any
 
 import copier
 
@@ -16,7 +15,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 # Minimal answers that turn the Windows-service questions on and satisfy every
 # no-default question in that branch; tests override the single field under test.
-_INSTALLER_ANSWERS: dict[str, Any] = {
+_INSTALLER_ANSWERS: dict[str, object] = {
     "repo_name": "baz",
     "repo_org_name": "foo",
     "description": "Installer validator test fixture",
@@ -36,7 +35,7 @@ _INSTALLER_ANSWERS: dict[str, Any] = {
 }
 
 
-def validate_installer_answers(**overrides: Any) -> None:
+def validate_installer_answers(**overrides: object) -> None:
     """Render with ``overrides`` on the installer answer set; raises ``ValueError`` if a validator rejects an answer."""
     data = {**_INSTALLER_ANSWERS, **overrides}
     with tempfile.TemporaryDirectory() as tmp:
