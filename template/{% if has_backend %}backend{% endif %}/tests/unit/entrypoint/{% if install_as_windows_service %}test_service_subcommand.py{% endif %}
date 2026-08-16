@@ -2,8 +2,18 @@ import sys
 
 import pytest
 from backend_api.entrypoint.cli import entrypoint
+from pytest_mock import MockerFixture
 
 from .fixtures import restore_logging_levels  # noqa: F401 # autouse fixture imported for side effect
+
+
+def test_Given_grant_service_rights_subcommand__Then_dispatched_to_grant_rights(mocker: MockerFixture):
+    dispatch = mocker.patch("backend_api.entrypoint.grant_rights.dispatch_grant_rights", return_value=0)
+
+    exit_code = entrypoint(["grant-service-rights", "--account", ".\\svc"])
+
+    assert exit_code == 0
+    dispatch.assert_called_once_with(["--account", ".\\svc"])
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="tests the non-Windows platform guard")
