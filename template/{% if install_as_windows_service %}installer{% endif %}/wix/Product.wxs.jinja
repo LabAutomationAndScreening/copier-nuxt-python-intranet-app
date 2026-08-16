@@ -38,6 +38,12 @@
     <Property Id="SERVICE_USER" Secure="yes" />
     <Property Id="SERVICE_PASSWORD" Secure="yes" Hidden="yes" />
 
+    <!-- Keep the service password out of the verbose MSI log (/l*v). SERVICE_PASSWORD
+         is already Hidden above; CA_InstallService is the derived deferred-CA command
+         line that embeds [SERVICE_PASSWORD], so it must be hidden too or the secret
+         leaks through the custom-action data even though the source property is hidden. -->
+    <Property Id="MsiHiddenProperties" Value="SERVICE_PASSWORD;CA_InstallService" />
+
     <!-- WixUI plumbing: install-dir target, post-install launch checkbox. -->
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
