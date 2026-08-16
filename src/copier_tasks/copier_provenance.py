@@ -56,6 +56,12 @@ custom_file_handling: dict[str, CommentFormat] = {
     ".jsonc": CommentFormat("block", "top"),
     ".yaml": CommentFormat("hash", "top"),
     ".yml": CommentFormat("hash", "top"),
+    # XML/RTF cannot carry a leading '#' provenance header (a '#' before the
+    # <?xml?> declaration is invalid XML and corrupts RTF), and the plain-text
+    # install guide is user-facing, so these carry no provenance marker.
+    ".wxs": CommentFormat("none", "none"),
+    ".rtf": CommentFormat("none", "none"),
+    ".txt": CommentFormat("none", "none"),
 }
 # Per-filename overrides for dotfiles/extensionless files where suffix alone is insufficient.
 custom_filename_handling: dict[str, CommentFormat] = {

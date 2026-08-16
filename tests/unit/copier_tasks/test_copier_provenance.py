@@ -213,6 +213,11 @@ class TestFileExtensionComments:
             # none — by extension (no comment syntax available)
             ("data.json", "none", ""),
             ("biome.jsonc", "top", expected_block_comment),
+            # none — installer markup/text where a leading '#' header is invalid
+            # (XML/RTF) or user-facing clutter (the plain-text install guide)
+            ("Product.wxs", "none", ""),
+            ("license.rtf", "none", ""),
+            ("INSTALL.txt", "none", ""),
             # none — by filename (extensionless dotfiles with structured content)
             (".copier-answers.yml", "none", ""),
             (".coveragerc", "bottom", expected_hash_comment),
@@ -238,6 +243,9 @@ class TestFileExtensionComments:
             "md-markdown-bottom",
             "json-none",
             "jsonc-block-top",
+            "wxs-none",
+            "rtf-none",
+            "txt-none",
             "copier-answers-none",
             "coveragerc-hash-bottom",
             "python-version-none",
