@@ -184,6 +184,8 @@ windows_service_org_prefix:
     help: What prefix should the Windows service name use? The service registers as <prefix><app-name> (e.g. "lab-sync-" gives "lab-sync-my-app"). Leave blank for no prefix.
     default: "{{ repo_org_name }}-"
     when: "{{ install_as_windows_service }}"
+    validator: |-
+      {% if '/' in windows_service_org_prefix or '\\' in windows_service_org_prefix %}The service-name prefix must not contain / or \ (they are illegal in a Windows service name).{% elif "'" in windows_service_org_prefix %}The service-name prefix must not contain a single quote (it breaks the generated PowerShell $ServiceName literal).{% elif (windows_service_org_prefix ~ repo_name) | length > 256 %}The resulting service name "{{ windows_service_org_prefix }}{{ repo_name }}" exceeds the 256-character Windows service-name limit.{% endif %}
 
 extra_windows_service_rights:
     type: yaml
@@ -195,6 +197,8 @@ installer_manufacturer:
     type: str
     help: "What is the human-friendly manufacturer/company name to show in the MSI installer and Add/Remove Programs (e.g. Acme Corp)?"
     when: "{{ install_as_windows_service }}"
+    validator: |-
+      {% if not installer_manufacturer %}A manufacturer name is required.{% elif installer_manufacturer | regex_search('["\\\\<>&]') %}The manufacturer name must not contain " \ < > or & (they break the MSI XML attribute, the generated Python f-string, or the license RTF).{% endif %}
 
 installer_branding_dir:
     type: str
