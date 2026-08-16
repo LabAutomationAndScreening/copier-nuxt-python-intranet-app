@@ -135,8 +135,11 @@ if ($Sign) {
 
 if (-not $SkipStage) {
     Write-Host "Staging artifacts" -ForegroundColor Cyan
+    # stage.ps1 is a PowerShell script, not a native command: it signals failure by
+    # throwing, which $ErrorActionPreference = 'Stop' already propagates. $LASTEXITCODE
+    # here would hold the last *native* command's code (e.g. wix extension add), not
+    # stage.ps1's result, so checking it is misleading — rely on the thrown exception.
     & (Join-Path $ScriptRoot 'stage.ps1') -StagingDir $StagingDir -RepoRoot $RepoRoot -SkipAppBuild:$SkipAppBuild
-    if ($LASTEXITCODE -ne 0) { throw "stage.ps1 failed" }
 } else {
     Write-Host "Skipping stage (using existing $StagingDir)" -ForegroundColor Yellow
     if (-not (Test-Path $StagingDir)) { throw "-SkipStage set but $StagingDir does not exist" }
