@@ -44,5 +44,4 @@ def grant_service_rights(*, account: str) -> int:
 
 def dispatch_grant_rights(argv: Sequence[str]) -> int:
     args = _parser.parse_args(argv)
-    return grant_service_rights(account=args.account)
-{% endraw %}
+    return grant_service_rights(account=args.account){% endraw %}

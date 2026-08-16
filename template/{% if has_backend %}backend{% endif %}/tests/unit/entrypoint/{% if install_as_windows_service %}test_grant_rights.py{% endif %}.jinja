@@ -66,5 +66,4 @@ class TestDispatchGrantRights:
         exit_code = dispatch_grant_rights(["--account", account])
 
         assert exit_code == 0
-        run_mock.assert_called_once_with(account=account)
-{% endraw %}
+        run_mock.assert_called_once_with(account=account){% endraw %}
