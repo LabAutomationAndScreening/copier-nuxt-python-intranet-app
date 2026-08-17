@@ -21,8 +21,9 @@ class AddErrorTrace(SchemaExtension):
     def _process_result(self, result: ExecutionResult) -> None:
         assert isinstance(result, ExecutionResult), f"Expected ExecutionResult, got {type(result)}"
 
-        if not result.errors:
-            return
+        assert result.errors is not None, (
+            "Strawberry is expected to populate an empty list rather than None when a query succeeds"
+        )
         for error in result.errors:
             trace_id = str(uuid7())
             error.message += f" (Error trace id: {trace_id})"

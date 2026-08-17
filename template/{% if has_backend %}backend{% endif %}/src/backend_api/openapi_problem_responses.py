@@ -12,7 +12,7 @@ def problem_response(
     description: str,
     *,
     instance: str = "about:blank",
-) -> dict[int | str, dict[str, Any]]:
+) -> dict[int | str, dict[str, Any]]:  # pyrefly: ignore[explicit-any] # OpenAPI response fragments are heterogeneous nested JSON; JsonValue would force every consumer to narrow through the union to reach a leaf
     """Build an OpenAPI ``responses`` entry documenting a ``ProblemDetails`` error.
 
     Holds the ~80% that every error response shares (the ``application/problem+json`` media type and the
@@ -27,7 +27,7 @@ def problem_response(
     example = ProblemDetails(
         title=HTTPStatus(status_code).phrase, status=status_code, detail=description, instance=instance
     )
-    content: dict[str, Any] = {
+    content: dict[str, Any] = {  # pyrefly: ignore[explicit-any] # matches the return type above
         "schema": {"$ref": PROBLEM_DETAILS_REF},
         "example": example.model_dump(mode="json", by_alias=True),
     }

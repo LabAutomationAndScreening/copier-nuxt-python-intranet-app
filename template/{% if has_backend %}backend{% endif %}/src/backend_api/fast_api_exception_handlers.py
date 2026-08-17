@@ -1,3 +1,4 @@
+import json
 import logging
 from functools import partial
 from typing import Any
@@ -68,7 +69,7 @@ def _problem_dict(
     detail: str,
     trace_id: str,
     exc_type: str,
-) -> dict[str, Any]:
+) -> dict[str, JsonValue]:
     return ProblemDetails(
         type="about:blank",
         title=title,
@@ -107,10 +108,17 @@ class ExceptionHandler:
             f"{exc.__class__.__name__} on {request.method} {request.url.path} [urn:uuid:{error_trace_id}]",
             exc_info=exc,
         )
+        # starlette annotates HTTPException.detail as str, but FastAPI's subclass widens it to Any, so a route
+        # can raise one carrying a dict or list. RFC 9457 requires detail to be a string, and json.dumps keeps
+        # such a payload readable as JSON rather than rendering it as a Python repr.
+        if isinstance(exc.detail, str):
+            detail = exc.detail
+        else:
+            detail = json.dumps(exc.detail)
         body = _problem_dict(
             title="HTTP Error",
             status=exc.status_code,
-            detail=str(exc.detail),
+            detail=detail,
             trace_id=str(error_trace_id),
             exc_type=exc.__class__.__name__,
         )
@@ -121,7 +129,7 @@ class ExceptionHandler:
         self._app.add_exception_handler(RequestValidationError, self.handle_validation_exception)
         self._app.add_exception_handler(Exception, self.handle_unhandled_exception)
 
-    def _json_response(self, *, status_code: int, body: dict[str, Any]) -> JSONResponse:
+    def _json_response(self, *, status_code: int, body: dict[str, JsonValue]) -> JSONResponse:
         return JSONResponse(
             status_code=status_code,
             content=body,
@@ -161,12 +169,12 @@ class ExceptionHandler:
         return self._json_response(status_code=500, body=body)
 
 
-def custom_openapi(app: FastAPI) -> dict[str, Any]:
+def custom_openapi(app: FastAPI) -> dict[str, Any]:  # pyrefly: ignore[explicit-any] # this wraps FastAPI's get_openapi(), which is annotated as returning dict[str, Any]
     """Modify the OpenAPI schema to be more explicit about the generic errors that any route can throw.
 
     This helps with codegen tools such as Kiota.
     """
-    if app.openapi_schema:  # don't regenerate the schema on subsequent API calls if it's already been done
+    if app.openapi_schema is not None:  # don't regenerate the schema on subsequent API calls if it's already been done
         return app.openapi_schema
     oas = get_openapi(
         title=app.title,
@@ -178,8 +186,11 @@ def custom_openapi(app: FastAPI) -> dict[str, Any]:
     )
 
     # Ensure ProblemDetails schema exists
-    comps = oas.setdefault("components", {}).setdefault("schemas", {})
-    comps.setdefault(
+    # get_openapi() is annotated as returning dict[str, Any], so every value walked out of it is an implicit
+    # Any. These annotations state the shape the OpenAPI spec guarantees, which is the only way to keep the
+    # rest of this function type-checked.
+    comps: dict[str, dict[str, JsonValue]] = oas.setdefault("components", {}).setdefault("schemas", {})
+    _ = comps.setdefault(
         "ProblemDetails",
         ProblemDetails.model_json_schema(ref_template="#/components/schemas/{model}"),
     )
@@ -215,16 +226,22 @@ def custom_openapi(app: FastAPI) -> dict[str, Any]:
     def problem_content() -> dict[str, JsonValue]:
         return {"application/problem+json": {"schema": problem_ref()}}
 
-    paths = oas.get("paths", {})
+    # annotated for the same reason as `comps` above; from here on the walk is checked against the shape the
+    # OpenAPI spec guarantees: paths map to operations, and an operation maps keys to JSON values
+    paths: dict[str, dict[str, dict[str, JsonValue]]] = oas.get("paths", {})
     for methods in paths.values():
         for method, op in list(methods.items()):
             if method not in ("get", "put", "post", "delete", "options", "head", "patch", "trace"):
                 continue  # pragma: no cover # Most schemas we create will only have those types of methods, so this line will never be hit.  But there are others that are possible (it seems), such as summary/description/servers
-            responses = op.setdefault("responses", {})
+            assert "responses" in op, (
+                f"Expected FastAPI to have generated a responses object for the {method} operation"
+            )
+            responses = op["responses"]
+            assert isinstance(responses, dict), f"Expected the responses object to be a dict, got {type(responses)}"
 
             # Do NOT touch 422 if FastAPI added it, only add additional responses:
             # 500 should never be present in any defined route, so always add it
-            responses.setdefault(
+            _ = responses.setdefault(
                 "500",
                 {
                     "description": "Internal Server Error",
@@ -233,7 +250,7 @@ def custom_openapi(app: FastAPI) -> dict[str, Any]:
             )
 
             # Optional but recommended for Kiota: add default catch-all.  'default' should never be present in a route, so no need to check for it before adding it
-            responses.setdefault(
+            _ = responses.setdefault(
                 "default",
                 {
                     "description": "Error",

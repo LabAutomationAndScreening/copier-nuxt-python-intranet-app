@@ -2,6 +2,7 @@ import time
 
 from backend_api import app_def
 from backend_api import fast_api_exception_handlers
+from backend_api.app_def import HealthcheckResponse
 from backend_api.app_def import app
 from fastapi.testclient import TestClient
 from httpx import codes
@@ -15,9 +16,7 @@ def test_Given_healthy__When_healthcheck__Then_version_in_response():
     response = client.get("/api/healthcheck")
 
     assert response.status_code == codes.OK
-    response_json = response.json()
-    assert "version" in response_json
-    actual_version = response_json["version"]
+    actual_version = HealthcheckResponse.model_validate(response.json()).version
 
     assert actual_version.startswith("v") is False
     assert len(actual_version) > 2  # noqa: PLR2004 # just asserting there's some content that isn't just the period
@@ -30,9 +29,7 @@ def test_Given_healthy__When_healthcheck_with_prepend_v__Then_version_in_respons
     response = client.get("/api/healthcheck?prependV=true")
 
     assert response.status_code == codes.OK
-    response_json = response.json()
-    assert "version" in response_json
-    actual_version = response_json["version"]
+    actual_version = HealthcheckResponse.model_validate(response.json()).version
 
     assert actual_version.startswith("v") is True
     assert len(actual_version) > 2  # noqa: PLR2004 # just asserting there's some content that isn't just the period

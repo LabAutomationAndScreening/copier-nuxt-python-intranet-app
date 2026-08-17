@@ -14,7 +14,7 @@ from backend_api.background_tasks import background_tasks_set
 
 async def _wait_for_tasks(tasks_list: list[asyncio.Task[None]]):
     _, pending = await asyncio.wait(tasks_list, timeout=5.0)
-    if pending:
+    if len(pending) > 0:
         raise RuntimeError(f"There are still pending tasks: {pending}")
 
 
@@ -26,7 +26,7 @@ def fail_on_background_task_errors():
     yield
 
     # Wait for background tasks to complete (using asyncio.run for sync fixture)
-    if background_tasks_set:
+    if len(background_tasks_set) > 0:
         tasks_list = list(background_tasks_set)
         try:
             loop = asyncio.get_running_loop()
@@ -36,7 +36,7 @@ def fail_on_background_task_errors():
             loop.run_until_complete(_wait_for_tasks(tasks_list))
 
     # Fail if any exceptions occurred
-    if background_task_exceptions:
+    if len(background_task_exceptions) > 0:
         pytest.fail(
             f"Background tasks raised {len(background_task_exceptions)} exception(s):\n"
             + "\n\n".join(f"{type(e).__name__}: {e}" for e in background_task_exceptions)
