@@ -31,6 +31,7 @@ class AppService(win32serviceutil.ServiceFramework):
         super().__init__(args)
         self._stop_event = threading.Event()
         self._worker: threading.Thread | None = None
+        self._worker_crash_dump_written = False
 
     def SvcStop(self) -> None:  # noqa: N802 # pywin32 mandates this exact method name
         self.ReportServiceStatus(win32service.SERVICE_STOP_PENDING)
@@ -47,12 +48,14 @@ class AppService(win32serviceutil.ServiceFramework):
         # fallback on ANY unhandled exception, then re-raise so pywin32 still surfaces the failure to SCM
         # as ERROR_SERVICE_SPECIFIC_ERROR (1066). Skip the write when SvcDoRun already captured the real
         # crash: the escaping exception is then the invalid-handle ReportServiceStatus race, whose
-        # traceback would otherwise clobber the genuine worker traceback already on disk.
+        # traceback would otherwise clobber the genuine worker traceback already on disk. The flag tracks
+        # what THIS invocation wrote — the dump filename is fixed, so a file left by an earlier crashed
+        # run must not suppress capturing the current one.
         crash_dump_path = resolve_crash_dump_path(sys.argv[2:])
         try:
             super().SvcRun()
         except BaseException:
-            if not crash_dump_path.exists():
+            if not self._worker_crash_dump_written:
                 _ = write_crash_dump(crash_dump_path=crash_dump_path, traceback_text=traceback.format_exc())
             raise
 
@@ -89,7 +92,10 @@ class AppService(win32serviceutil.ServiceFramework):
         if crash_traceback is not None:
             # Write the dump FIRST and unconditionally — before any event-log or status-reporting call —
             # so a failing ReportServiceStatus (invalid SCM handle) can never prevent the dump file.
-            if not write_crash_dump(crash_dump_path=crash_dump_path, traceback_text=crash_traceback):
+            self._worker_crash_dump_written = write_crash_dump(
+                crash_dump_path=crash_dump_path, traceback_text=crash_traceback
+            )
+            if not self._worker_crash_dump_written:
                 servicemanager.LogErrorMsg(f"{APP_NAME}: failed to write crash dump to {crash_dump_path}")
             servicemanager.LogErrorMsg(f"{APP_NAME}: worker crashed\n{crash_traceback}")
             # ERROR_SERVICE_SPECIFIC_ERROR (1066) signals to SCM that the service stopped due to an
