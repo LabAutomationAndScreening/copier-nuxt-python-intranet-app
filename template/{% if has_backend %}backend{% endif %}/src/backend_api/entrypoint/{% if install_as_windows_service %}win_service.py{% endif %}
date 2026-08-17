@@ -1,8 +1,6 @@
-import argparse
 import os
 import subprocess
 import sys
-import tempfile
 import threading
 import traceback
 from collections.abc import Sequence
@@ -17,28 +15,11 @@ import winerror  # pyrefly: ignore[missing-import,unused-ignore] # pywin32 has n
 from .. import app_runner
 from ..jinja_constants import APP_NAME
 from ..jinja_constants import HUMAN_FRIENDLY_APP_NAME
+from .crash_dump import resolve_crash_dump_path
+from .crash_dump import write_crash_dump
 from .parser import parser
 
-CRASH_DUMP_FILENAME = "service-crash.log"
 _SERVICE_MANAGEMENT_COMMANDS = frozenset({"install", "start", "stop", "remove", "debug"})
-
-
-def _resolve_crash_dump_path(service_argv: Sequence[str]) -> Path:
-    """Pick a writable dir for the crash dump.
-
-    Preference order: --log-folder from service_argv (already writable, captured by CI artifact),
-    then the system temp dir (LocalSystem-writable fallback for production installs in
-    Program Files where the exe dir is read-only).
-    """
-    try:
-        args, _ = parser.parse_known_args(service_argv)
-        log_folder = args.log_folder
-        assert log_folder is None or isinstance(log_folder, str)
-    except (argparse.ArgumentError, SystemExit):
-        log_folder = None
-    if log_folder is not None:
-        return Path(log_folder) / CRASH_DUMP_FILENAME
-    return Path(tempfile.gettempdir()) / f"{APP_NAME}-{CRASH_DUMP_FILENAME}"
 
 
 class AppService(win32serviceutil.ServiceFramework):
@@ -59,6 +40,22 @@ class AppService(win32serviceutil.ServiceFramework):
             if self._worker.is_alive():
                 servicemanager.LogErrorMsg(f"{APP_NAME}: worker did not stop within 30s; SCM will force-terminate")
 
+    def SvcRun(self) -> None:  # noqa: N802 # pywin32 mandates this exact method name
+        # Outermost guard pywin32 hands control to. On a slow SCM startup the status handle can already
+        # be invalid by the time ReportServiceStatus runs, so a crash anywhere — startup, status
+        # reporting, or SvcDoRun itself — could escape before any dump was written. Write the dump as a
+        # fallback on ANY unhandled exception, then re-raise so pywin32 still surfaces the failure to SCM
+        # as ERROR_SERVICE_SPECIFIC_ERROR (1066). Skip the write when SvcDoRun already captured the real
+        # crash: the escaping exception is then the invalid-handle ReportServiceStatus race, whose
+        # traceback would otherwise clobber the genuine worker traceback already on disk.
+        crash_dump_path = resolve_crash_dump_path(sys.argv[2:])
+        try:
+            super().SvcRun()
+        except BaseException:
+            if not crash_dump_path.exists():
+                _ = write_crash_dump(crash_dump_path=crash_dump_path, traceback_text=traceback.format_exc())
+            raise
+
     def SvcDoRun(self) -> None:  # noqa: N802 # pywin32 mandates this exact method name
         # TODO: stop reading sys.argv here — couples runtime to global argv layout and the magic [2:] offset.
         # pywin32 passes the command-line args to __init__ via the `args` tuple (args[0] = service name,
@@ -66,13 +63,11 @@ class AppService(win32serviceutil.ServiceFramework):
         # Non-breaking refactor: ImagePath format and installed services unaffected. Also fixes the
         # `service debug` foreground path, which currently feeds "debug" into argparse and crashes.
         service_argv = sys.argv[2:]  # sys.argv[0] = exe path, sys.argv[1] = 'service', sys.argv[2:] = runtime args
-        # SCM runs the service from C:\Windows\System32; daemon-thread exceptions die silently,
-        # so capture any worker crash to a writable file and to the Windows Event Log.
-        crash_dump_path = _resolve_crash_dump_path(service_argv)
-        crashed = False
+        crash_dump_path = resolve_crash_dump_path(service_argv)
+        crash_traceback: str | None = None
 
         def _run() -> None:
-            nonlocal crashed
+            nonlocal crash_traceback
             try:
                 # SCM detaches stdio: sys.stdout/sys.stderr are None. uvicorn's DefaultFormatter
                 # calls sys.stdout.isatty() during __init__ and crashes. Redirect to devnull;
@@ -82,24 +77,21 @@ class AppService(win32serviceutil.ServiceFramework):
                 cli_args = parser.parse_args(service_argv)
                 _ = app_runner.start_app(cli_args, stop_event=self._stop_event)
             except BaseException:  # noqa: BLE001 # service-of-last-resort: must also catch SystemExit from argparse (--version/--help/parse errors) so the failure surfaces to SCM + crash dump instead of silently exiting
-                crashed = True
-                tb = traceback.format_exc()
-                servicemanager.LogErrorMsg(f"{APP_NAME}: worker crashed\n{tb}")
-                try:
-                    _ = crash_dump_path.write_text(tb, encoding="utf-8")
-                except OSError as write_err:
-                    servicemanager.LogErrorMsg(
-                        f"{APP_NAME}: failed to write crash dump to {crash_dump_path}: {write_err}"
-                    )
+                crash_traceback = traceback.format_exc()
                 self._stop_event.set()
-                # don't re-raise: daemon-thread exceptions die silently anyway, and SvcDoRun
-                # reports the non-zero status to SCM below after the worker exits.
+                # don't re-raise: daemon-thread exceptions die silently anyway, so the crash is
+                # captured here and handled on the main service thread below after the worker exits.
 
         self._worker = threading.Thread(target=_run, daemon=True)
         self._worker.start()
         self._worker.join()
 
-        if crashed:
+        if crash_traceback is not None:
+            # Write the dump FIRST and unconditionally — before any event-log or status-reporting call —
+            # so a failing ReportServiceStatus (invalid SCM handle) can never prevent the dump file.
+            if not write_crash_dump(crash_dump_path=crash_dump_path, traceback_text=crash_traceback):
+                servicemanager.LogErrorMsg(f"{APP_NAME}: failed to write crash dump to {crash_dump_path}")
+            servicemanager.LogErrorMsg(f"{APP_NAME}: worker crashed\n{crash_traceback}")
             # ERROR_SERVICE_SPECIFIC_ERROR (1066) signals to SCM that the service stopped due to an
             # app-defined failure; SCM then exposes svcExitCode for the specific failure code. Non-zero
             # exit lets `sc failure` recovery actions fire and lets monitoring distinguish a worker
