@@ -23,7 +23,7 @@ class ContextUpdater(ContextHook):
         context["pnpm_version"] = "11.21.0"
         context["npm_version"] = "11.13.0"
         context["nvm_version"] = "0.40.5"
-        context["pre_commit_version"] = "4.5.1"
+        context["pre_commit_version"] = "4.6.2"
         context["pytest_version"] = ">=9.1.1"
         context["pytest_randomly_version"] = ">=4.1.0"
         context["pytest_cov_version"] = ">=7.1.0"
@@ -103,7 +103,7 @@ class ContextUpdater(ContextHook):
 
         context["gha_checkout"] = "v6.0.2"
         context["gha_setup_python"] = "v6.2.0"
-        context["gha_cache"] = "v5.0.5"
+        context["gha_cache"] = "v6.1.0"
         context["gha_upload_artifact"] = "v7.0.1"
         context["gha_download_artifact"] = "v8.0.1"
         context["gha_github_script"] = "v7.0.1"
