@@ -7,6 +7,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from backend_api.entrypoint.crash_dump import CRASH_DUMP_FILENAME
 from backend_api.jinja_constants import APP_NAME
 
 from ..e2e.app_bootup import EXE_FILE_PATH
@@ -19,9 +20,6 @@ _SC_TIMEOUT = 10
 _STOP_TIMEOUT = 30
 _CRASH_DUMP_POLL_TIMEOUT = 60
 _EXE = str(EXE_FILE_PATH)
-# Mirrors CRASH_DUMP_FILENAME in backend_api.win_service; not imported because win_service.py
-# imports pywin32 at module top-level, which is not installed on Linux dev machines.
-_CRASH_DUMP_FILENAME = "service-crash.log"
 _ERROR_SERVICE_SPECIFIC_ERROR = "1066"  # Windows WIN32_EXIT_CODE indicating app-specific failure
 
 
@@ -79,7 +77,7 @@ def installed_service(tmp_path: Path):
     port = get_random_open_port()
     log_folder = tmp_path / "service-logs"
     log_folder.mkdir()
-    crash_dump_path = log_folder / _CRASH_DUMP_FILENAME
+    crash_dump_path = log_folder / CRASH_DUMP_FILENAME
     _install_service(port=port, log_folder=log_folder)
     try:
         yield InstalledService(port=port, log_folder=log_folder, crash_dump_path=crash_dump_path)
@@ -179,7 +177,7 @@ class TestServiceWorkerCrash:
         port = get_random_open_port()
         log_folder = tmp_path / "service-logs"
         log_folder.mkdir()
-        crash_dump_path = log_folder / _CRASH_DUMP_FILENAME
+        crash_dump_path = log_folder / CRASH_DUMP_FILENAME
         _install_service(port=port, log_folder=log_folder, extra_runtime_args=["--log-level", bad_log_level])
         try:
             # SCM may report start success briefly before the worker thread crashes; ignore returncode.
