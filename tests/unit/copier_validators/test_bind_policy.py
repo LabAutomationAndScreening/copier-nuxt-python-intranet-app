@@ -55,6 +55,7 @@ def test_loopback_only_binds_local_and_has_no_bind_ui_or_firewall():
 
     assert 'DEFAULT_DEPLOYED_HOST = "127.0.0.1"' in consts
     assert "$AllowRemote" not in install_ps
+    assert "@('--host', '127.0.0.1')" in install_ps
     assert "New-NetFirewallRule" not in install_ps
     assert "Remove-NetFirewallRule" not in remove_ps
     assert "ALLOW_REMOTE" not in wxs
@@ -65,10 +66,9 @@ def test_all_interfaces_only_forces_bind_all_and_opens_firewall_without_ui():
     with render_installer_project(windows_service_bind_policy="all_interfaces_only") as root:
         consts, install_ps, remove_ps, wxs = _read(root)
 
-    # forced: bind address is baked into the parser default; no --host, no dialog, no property
     assert 'DEFAULT_DEPLOYED_HOST = "0.0.0.0"' in consts
     assert "$AllowRemote" not in install_ps
-    assert "--host" not in install_ps
+    assert "@('--host', '0.0.0.0')" in install_ps
     assert "New-NetFirewallRule" in install_ps  # always opened when forced remote
     assert "Remove-NetFirewallRule" in remove_ps
     assert "ALLOW_REMOTE" not in wxs
