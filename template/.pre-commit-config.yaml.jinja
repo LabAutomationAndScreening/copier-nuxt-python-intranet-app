@@ -298,10 +298,13 @@ repos:
     hooks:
       - id: pylint
         name: pylint
+        # exclude any generated code
+        # flagging duplicate code for __all__ lists is a false positive
         exclude: |
           (?x)^(
               .*/generated/graphql/.*|
               .*/generated/open[-_]api/.*|
+              .*__init__\.py|
           )$
         args:
           - --rcfile=./.config/pylintrc.toml
