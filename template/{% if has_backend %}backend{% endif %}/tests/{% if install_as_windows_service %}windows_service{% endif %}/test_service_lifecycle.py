@@ -8,7 +8,7 @@ from pathlib import Path
 import httpx
 import pytest
 from backend_api.entrypoint.crash_dump import CRASH_DUMP_FILENAME
-from backend_api.jinja_constants import APP_NAME
+from backend_api.jinja_constants import WINDOWS_SERVICE_NAME
 
 from ..e2e.app_bootup import EXE_FILE_PATH
 from ..e2e.app_bootup import get_random_open_port
