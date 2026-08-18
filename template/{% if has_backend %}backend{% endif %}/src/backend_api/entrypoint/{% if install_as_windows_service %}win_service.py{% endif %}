@@ -14,7 +14,6 @@ import winerror  # pyrefly: ignore[missing-import,unused-ignore] # pywin32 has n
 
 from .. import app_runner
 from ..jinja_constants import APP_NAME
-from ..jinja_constants import HUMAN_FRIENDLY_APP_NAME
 from ..jinja_constants import WINDOWS_SERVICE_DISPLAY_NAME
 from ..jinja_constants import WINDOWS_SERVICE_NAME
 from .crash_dump import resolve_crash_dump_path
