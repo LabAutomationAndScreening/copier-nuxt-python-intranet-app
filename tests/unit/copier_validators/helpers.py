@@ -38,7 +38,7 @@ _INSTALLER_ANSWERS: dict[str, object] = {
 def validate_installer_answers(**overrides: object) -> None:
     data = {**_INSTALLER_ANSWERS, **overrides}
     with tempfile.TemporaryDirectory() as tmp:
-        copier.run_copy(
+        _ = copier.run_copy(
             str(PROJECT_ROOT),
             tmp,
             data=data,
