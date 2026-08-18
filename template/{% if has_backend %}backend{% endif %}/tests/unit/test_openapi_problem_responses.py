@@ -1,5 +1,8 @@
+from uuid import uuid4
+
 from backend_api.openapi_problem_responses import PROBLEM_DETAILS_REF
 from backend_api.openapi_problem_responses import PROBLEM_JSON_MEDIA_TYPE
+from backend_api.openapi_problem_responses import ProblemExample
 from backend_api.openapi_problem_responses import problem_response
 from httpx import codes
 
@@ -35,3 +38,37 @@ def test_Given_explicit_instance__Then_example_points_at_it() -> None:
     ][PROBLEM_JSON_MEDIA_TYPE]["example"]
 
     assert example["instance"] == "/api/widgets/7"
+
+
+def test_Given_named_examples__Then_content_carries_an_entry_per_name() -> None:
+    examples = {
+        "missing_widget": ProblemExample(summary=str(uuid4()), detail=str(uuid4())),
+        "missing_bin": ProblemExample(summary=str(uuid4()), detail=str(uuid4())),
+    }
+
+    responses = problem_response(codes.NOT_FOUND, "Widget not found", examples=examples)
+
+    content = responses[codes.NOT_FOUND]["content"][PROBLEM_JSON_MEDIA_TYPE]
+
+    assert set(content["examples"]) == set(examples)
+    assert content["examples"]["missing_widget"]["summary"] == examples["missing_widget"].summary
+    assert content["examples"]["missing_bin"]["summary"] == examples["missing_bin"].summary
+
+
+def test_Given_named_examples_and_an_explicit_instance__Then_each_value_is_a_complete_problem_details_body() -> None:
+    detail = str(uuid4())
+    instance = f"/api/widgets/{uuid4()}"
+
+    responses = problem_response(
+        codes.CONFLICT,
+        "Widget conflicts with another widget",
+        instance=instance,
+        examples={"conflicting_widget": ProblemExample(summary=str(uuid4()), detail=detail)},
+    )
+
+    value = responses[codes.CONFLICT]["content"][PROBLEM_JSON_MEDIA_TYPE]["examples"]["conflicting_widget"]["value"]
+
+    assert value["title"] == "Conflict"
+    assert value["status"] == codes.CONFLICT
+    assert value["detail"] == detail
+    assert value["instance"] == instance

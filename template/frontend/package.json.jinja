@@ -6,7 +6,7 @@
   "packageManager": "pnpm@{% endraw %}{{ pnpm_version }}{% raw %}",
   "scripts": {
     "type-check": "vue-tsc --noEmit",
-    "lint": "eslint . --fix",
+    "lint": "eslint . --fix --fix-type problem,suggestion,layout",
     "build": "nuxt build",
     "comment-about-dev-no-fork": "sometimes it seems needed, other times it seems to work with it...more info https://github.com/nuxt/cli/issues/181",
     "dev": "nuxt dev --no-fork",{% endraw %}{% if has_backend %}{% raw %}
