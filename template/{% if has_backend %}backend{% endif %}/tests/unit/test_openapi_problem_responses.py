@@ -1,9 +1,10 @@
+from uuid import uuid4
+
 from backend_api.openapi_problem_responses import PROBLEM_DETAILS_REF
 from backend_api.openapi_problem_responses import PROBLEM_JSON_MEDIA_TYPE
 from backend_api.openapi_problem_responses import ProblemExample
 from backend_api.openapi_problem_responses import problem_response
 from httpx import codes
-from uuid import uuid4
 
 
 def test_Given_status_and_description__Then_responses_entry_is_keyed_by_status_code() -> None:
