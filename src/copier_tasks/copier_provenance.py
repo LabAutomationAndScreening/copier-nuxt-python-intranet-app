@@ -57,14 +57,15 @@ custom_file_handling: dict[str, CommentFormat] = {
     ".yaml": CommentFormat("hash", "top"),
     ".yml": CommentFormat("hash", "top"),
     # XML/RTF cannot carry a leading '#' provenance header (a '#' before the
-    # <?xml?> declaration is invalid XML and corrupts RTF), and the plain-text
-    # install guide is user-facing, so these carry no provenance marker.
+    # <?xml?> declaration is invalid XML and corrupts RTF), so these carry no
+    # provenance marker. The plain-text install guide is exempted by exact
+    # filename (INSTALL.txt) below so regular .txt files still get provenance.
     ".wxs": CommentFormat("none", "none"),
     ".rtf": CommentFormat("none", "none"),
-    ".txt": CommentFormat("none", "none"),
 }
 # Per-filename overrides for dotfiles/extensionless files where suffix alone is insufficient.
 custom_filename_handling: dict[str, CommentFormat] = {
+    "INSTALL.txt": CommentFormat("none", "none"),
     ".copier-answers.yml": CommentFormat("none", "none"),
     ".coveragerc": CommentFormat("hash", "bottom"),
     ".python-version": CommentFormat("none", "none"),
