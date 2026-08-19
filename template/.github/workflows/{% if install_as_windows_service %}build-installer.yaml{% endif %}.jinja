@@ -5,12 +5,6 @@ on:
   workflow_dispatch:
   workflow_call:
     inputs:
-      app-source:
-        type: string
-        required: false
-        # build: rebuild the frontend + PyInstaller bundle from source.
-        # artifact: stage the prebuilt bundle from a CI run.
-        default: build
       artifact-run-id:
         type: string
         required: false
@@ -43,14 +37,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install dependencies
-        if: ${{ inputs.app-source != 'artifact' }}
-        uses: ./.github/actions/install_deps
-        with:
-          python-version: {% endraw %}{{ python_version }}{% raw %}
-          node-version: {% endraw %}{{ node_version }}{% raw %}
-          skip-installing-ssm-plugin-manager: true
-
       - name: Set up .NET SDK
         uses: actions/setup-dotnet@{% endraw %}{{ gha_setup_dotnet }}{% raw %}
         with:
@@ -64,7 +50,6 @@ jobs:
           & "$env:USERPROFILE\.dotnet\tools\wix.exe" eula accept wix7
 
       - name: Resolve CI run id for the bundle
-        if: ${{ inputs.app-source == 'artifact' }}
         id: resolve-run
         shell: bash
         env:
@@ -100,7 +85,6 @@ jobs:
           echo "run-id=$RUN_ID" >> "$GITHUB_OUTPUT"
 
       - name: Download built bundle
-        if: ${{ inputs.app-source == 'artifact' }}
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
           name: built-{% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}
@@ -116,11 +100,8 @@ jobs:
 
       - name: Build installer
         shell: pwsh
-        env:
-          APP_SOURCE: ${{ inputs.app-source }}
         run: |
-          $buildArgs = @{}
-          if ($env:APP_SOURCE -eq 'artifact') { $buildArgs['SkipAppBuild'] = $true }{% endraw %}{% if sign_installer %}{% raw %}
+          $buildArgs = @{}{% endraw %}{% if sign_installer %}{% raw %}
           if ($env:SIGN -eq 'true') { $buildArgs['Sign'] = $true }{% endraw %}{% endif %}{% raw %}
           ./installer/build.ps1 @buildArgs
 

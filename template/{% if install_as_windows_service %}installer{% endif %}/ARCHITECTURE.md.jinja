@@ -11,24 +11,24 @@ pywin32).
 
 ## Build pipeline (`build.ps1` -> `stage.ps1`)
 
-1. `stage.ps1` runs the normal app build — `pnpm generate` the frontend, fold it into
-   `backend/src/static`, `pyinstaller` the backend — then copies `backend/dist/{% endraw %}{{ repo_name }}{% raw %}/` into
-   `build/staging/app/` and the lifecycle scripts into `build/staging/scripts/`.
+1. `stage.ps1` stages the prebuilt `backend/dist/{% endraw %}{{ repo_name }}{% raw %}/` bundle — copying it into
+   `build/staging/app/` and the lifecycle scripts into `build/staging/scripts/`. The bundle must
+   already exist (it never rebuilds the app itself).
 2. `build.ps1` compiles `wix/Product.wxs` into the MSI (harvesting the staging tree). The MSI is
    the deliverable — a `WixUI_InstallDir` flow with a custom **Service account** dialog and a
    post-install "open the app" checkbox. No Burn bundle: there are no prerequisites to chain, and
    a plain MSI gives both an interactive dialog and clean silent install (`msiexec /qn` with the
    account/port set as properties).
 
-### Rebuild vs. consume the tested bundle
+### Always consume the tested bundle
 
-Local and manual (`workflow_dispatch`) builds run the full pipeline above. CI and release instead
-pass `build.ps1 -SkipAppBuild`, which makes `stage.ps1` skip `pnpm generate` + `pyinstaller` and
-stage the existing `backend/dist/{% endraw %}{{ repo_name }}{% raw %}/` bundle. The reusable `build-installer.yaml`
-downloads that bundle (the one the test suite ran against) so the MSI wraps the exact tested binary
-rather than a fresh rebuild. CI builds it unsigned as a build-breakage check; release builds + signs
-it from the guarded CI run's bundle, then zips `{% endraw %}{{ product_id }}{% raw %}-<version>.msi` + `INSTALL.txt`
-as the Windows release asset.
+The installer never rebuilds the app — `stage.ps1` stages whatever bundle is already in
+`backend/dist/{% endraw %}{{ repo_name }}{% raw %}/`. The reusable `build-installer.yaml` downloads that bundle (the one
+the test suite ran against) so the MSI wraps the exact tested binary. To build locally, produce the
+bundle first (`pnpm generate` + `pyinstaller`, or download a CI artifact) into
+`backend/dist/{% endraw %}{{ repo_name }}{% raw %}/`, then run `build.ps1`. CI builds the MSI unsigned as a
+build-breakage check; release builds + signs it from the guarded CI run's bundle, then zips
+`{% endraw %}{{ product_id }}{% raw %}-<version>.msi` + `INSTALL.txt` as the Windows release asset.
 
 ## Service registration
 
