@@ -19,8 +19,8 @@ class ContextUpdater(ContextHook):
     def hook(  # noqa: PLR0915 # yes, this is a lot of statements, but it's all just creating the dict
         self, context: dict[Any, Any]
     ) -> dict[Any, Any]:
-        context["uv_version"] = "0.12.3"
-        context["pnpm_version"] = "11.21.0"
+        context["uv_version"] = "0.12.5"
+        context["pnpm_version"] = "11.22.0"
         context["npm_version"] = "11.13.0"
         context["nvm_version"] = "0.40.5"
         context["pre_commit_version"] = "4.6.2"
@@ -39,12 +39,12 @@ class ContextUpdater(ContextHook):
         context["boto3_version"] = ">=1.42.92"
         context["ephemeral_pulumi_deploy_version"] = ">=0.0.7"
         context["pydantic_version"] = ">=2.13.4"
-        context["pyinstaller_version"] = ">=6.20.0"
+        context["pyinstaller_version"] = ">=6.22.2"
         context["setuptools_version"] = "80.7.1"
         context["strawberry_graphql_version"] = "==0.298.0"
         context["fastapi_version"] = ">=0.141.1"
         context["fastapi_offline_version"] = ">=1.7.7"
-        context["starlette_version"] = ">=1.3.1"
+        context["starlette_version"] = ">=1.6.0"
         context["uvicorn_version"] = ">=0.52.3"
         context["lab_auto_pulumi_version"] = ">=0.2.3"
         context["ariadne_codegen_version"] = ">=0.18.0"
@@ -113,6 +113,7 @@ class ContextUpdater(ContextHook):
         context["gha_configure_aws_credentials"] = "v6.1.0"
         context["gha_amazon_ecr_login"] = "v2.1.5"
         context["gha_setup_node"] = "v6.4.0"
+        context["gha_pnpm_setup"] = "v2.0.2"
         context["gha_action_gh_release"] = "v3.0.0"
         context["gha_codecov"] = "v7.0.0"
         context["gha_mutex"] = "1ebad517141198e08d47cf72f3c0975316620a65 # v1.0.0-alpha.10"
