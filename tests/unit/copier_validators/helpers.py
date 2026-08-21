@@ -6,10 +6,15 @@ auto-includes dirty working-tree changes, so uncommitted validator edits are pic
 
 from __future__ import annotations
 
+import contextlib
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import copier
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
@@ -48,3 +53,19 @@ def validate_installer_answers(**overrides: object) -> None:
             vcs_ref="HEAD",
             pretend=True,
         )
+
+
+@contextlib.contextmanager
+def render_installer_project(**overrides: object) -> Generator[Path]:
+    data = {**_INSTALLER_ANSWERS, **overrides}
+    with tempfile.TemporaryDirectory() as tmp:
+        _ = copier.run_copy(
+            str(PROJECT_ROOT),
+            tmp,
+            data=data,
+            defaults=True,
+            unsafe=True,
+            quiet=True,
+            vcs_ref="HEAD",
+        )
+        yield Path(tmp)
