@@ -1,4 +1,10 @@
 {% raw %}APP_NAME = "{% endraw %}{{ repo_name }}{% raw %}"
 DEPLOYED_PORT_NUMBER = {% endraw %}{{ backend_deployed_port_number }}{% raw %}
 HUMAN_FRIENDLY_APP_NAME = "{% endraw %}{{ human_friendly_app_name }}{% raw %}"
-DEFAULT_DEPLOYED_HOST = "{% endraw %}{{ '127.0.0.1"' if deploy_as_executable else '0.0.0.0"  # noqa: S104 # this is intentionally allowing connections from all hosts' }}{% raw %}{% endraw %}
+DEFAULT_DEPLOYED_HOST = "{% endraw %}{{ '127.0.0.1"' if deploy_as_executable else '0.0.0.0"  # noqa: S104 # this is intentionally allowing connections from all hosts' }}{% raw %}{% endraw %}{% if install_as_windows_service %}{% raw %}
+
+# Windows service identity. The registered name is org-prefixed to avoid
+# colliding with any other service already on the machine; kept separate from
+# APP_NAME (which also names crash dumps, templates, etc.).
+WINDOWS_SERVICE_NAME = f"{% endraw %}{{ windows_service_org_prefix }}{% raw %}{APP_NAME}"
+WINDOWS_SERVICE_DISPLAY_NAME = f"{% endraw %}{{ installer_manufacturer }}{% raw %} {HUMAN_FRIENDLY_APP_NAME}"{% endraw %}{% endif %}

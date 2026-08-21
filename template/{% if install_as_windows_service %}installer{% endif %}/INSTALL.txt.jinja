@@ -1,0 +1,109 @@
+{%- set company_id = installer_manufacturer | replace(' ', '') | replace('-', '') -%}
+{%- set product_id = human_friendly_app_name | replace(' ', '') | replace('-', '') -%}
+{%- set service_name = windows_service_org_prefix ~ repo_name -%}
+{% raw %}{% endraw %}{{ human_friendly_app_name | upper }}{% raw %} - INSTALLATION GUIDE
+===============================
+
+{% endraw %}{{ product_id }}{% raw %}-<version>.msi installs {% endraw %}{{ human_friendly_app_name }}{% raw %} as a Windows service.
+
+
+WHAT IT INSTALLS
+----------------
+
+- The {% endraw %}{{ human_friendly_app_name }}{% raw %} application under:
+      C:\Program Files\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}\
+- A Windows service named "{% endraw %}{{ service_name }}{% raw %}" that serves the app at:
+      http://127.0.0.1:{% endraw %}{{ backend_deployed_port_number }}{% raw %}
+- A log directory (kept on upgrade and uninstall) under:
+      C:\ProgramData\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}\logs\
+
+
+REQUIREMENTS
+------------
+
+- Windows 10/11 or Windows Server, 64-bit.
+- Administrator rights to install (it registers a system service).
+
+
+INTERACTIVE INSTALL
+-------------------
+
+1. Double-click {% endraw %}{{ product_id }}{% raw %}-<version>.msi and accept the elevation prompt.
+
+2. Accept the license and confirm the install location.
+
+3. On the "Service account" page, choose how the service runs:
+
+   - LocalSystem (default, recommended).
+
+   - A specific low-privilege account. Enter the user as .\name (local) or
+     DOMAIN\name, plus the password. The installer grants that account the
+     "Log on as a service" right.
+
+4. Finish the install. Leave "Open {% endraw %}{{ human_friendly_app_name }}{% raw %}" checked to open
+   http://127.0.0.1:{% endraw %}{{ backend_deployed_port_number }}{% raw %}/ in your browser.
+
+
+SILENT / UNATTENDED INSTALL
+---------------------------
+
+   msiexec /i {% endraw %}{{ product_id }}{% raw %}-<version>.msi /qn
+
+/qn = no UI; /qb = progress bar only. Silent installs never open a browser.
+
+Set any of these properties on the command line:
+
+   SERVICE_ACCOUNT    Default LocalSystem. Use "custom" to run as a supplied
+                      account.
+   SERVICE_USER       Account name when SERVICE_ACCOUNT=custom, e.g. .\svcaccount
+   SERVICE_PASSWORD   Password for that account.
+   PORT               Default {% endraw %}{{ backend_deployed_port_number }}{% raw %}. TCP port the service listens on.
+
+Examples:
+
+   LocalSystem, default port:
+      msiexec /i {% endraw %}{{ product_id }}{% raw %}-1.2.3.msi /qn
+
+   Dedicated low-privilege account:
+      msiexec /i {% endraw %}{{ product_id }}{% raw %}-1.2.3.msi /qn SERVICE_ACCOUNT=custom SERVICE_USER=.\svcaccount SERVICE_PASSWORD=YourPassword
+
+   Capture a log of the install for troubleshooting:
+      msiexec /i {% endraw %}{{ product_id }}{% raw %}-1.2.3.msi /qn /l*v install.log
+
+
+AFTER INSTALL
+-------------
+
+- Service status:  Get-Service {% endraw %}{{ service_name }}{% raw %}   (should be Running)
+- App:             http://127.0.0.1:{% endraw %}{{ backend_deployed_port_number }}{% raw %}/
+- Logs:            C:\ProgramData\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}\logs\
+
+
+UPGRADE
+-------
+
+Run a newer {% endraw %}{{ product_id }}{% raw %}-<version>.msi. It replaces the installed version in
+place and keeps the data under C:\ProgramData\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}\.
+
+
+UNINSTALL
+---------
+
+Settings > Apps (or Control Panel > Programs) > {% endraw %}{{ human_friendly_app_name }}{% raw %} > Uninstall, or:
+
+   msiexec /x {% endraw %}{{ product_id }}{% raw %}-<version>.msi /qn
+
+This stops and removes the service and the program files. The data directory
+(C:\ProgramData\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}\) is left in place.
+
+
+TROUBLESHOOTING
+---------------
+
+- Service will not start: check C:\ProgramData\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}\logs\ and
+  the Windows Event Log (Application).
+
+- Custom account install fails to start the service: confirm the account
+  name/password and that it was granted "Log on as a service".
+
+- Port {% endraw %}{{ backend_deployed_port_number }}{% raw %} already in use: reinstall with a different PORT.{% endraw %}

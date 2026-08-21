@@ -127,13 +127,25 @@ jobs:
       push-role-name: {% endraw %}{{ backend_ecr_push_role_name }}{% raw %}
       release-tag: ${{ needs.guard.outputs.docker-image-tag }}
 
-{% endraw %}{% endif %}{% endif %}{% raw %}
+{% endraw %}{% endif %}{% endif %}{% if install_as_windows_service %}{% raw %}
+  build-installer:
+    needs:
+      - guard
+    permissions:
+      contents: read
+      actions: read # download-artifact pulls the tested bundle from the guarded CI run
+    uses: ./.github/workflows/build-installer.yaml{% endraw %}{% if sign_installer %}{% raw %}
+    secrets: inherit{% endraw %}{% endif %}{% raw %}
+    with:
+      artifact-run-id: ${{ needs.guard.outputs.ci-run-id }} # the windows bundle the suite validated
+{% endraw %}{% endif %}{% raw %}
   release:
     name: Create GitHub Release
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     timeout-minutes: {% endraw %}{{ gha_short_timeout_minutes }}{% raw %}
     needs:
-      - guard{% endraw %}{% if not deploy_as_executable and push_to_ecr %}{% raw %}
+      - guard{% endraw %}{% if install_as_windows_service %}{% raw %}
+      - build-installer{% endraw %}{% endif %}{% if not deploy_as_executable and push_to_ecr %}{% raw %}
       - tag-frontend-image{% endraw %}{% if has_backend %}{% raw %}
       - tag-backend-image{% endraw %}{% endif %}{% endif %}{% raw %}
     permissions:
@@ -150,7 +162,15 @@ jobs:
           github-token: ${{ github.token }}
       - name: Prepare release asset ({% endraw %}{{ runner }}{% raw %})
         run: {% endraw %}{% if runner == gha_linux_runner %}mv artifacts/{{ runner }}/app.tar {{ repo_name }}-{{ runner }}-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.{{ ext }}{% else %}(cd artifacts/{{ runner }} && zip -r ../../{{ repo_name }}-{{ runner }}-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.{{ ext }} .){% endif %}
-{% endfor %}{% endif %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
+{% endfor %}{% endif %}{% if install_as_windows_service %}{% raw %}
+      - name: Download Windows installer (MSI + install guide)
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: {% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}-installer
+          path: artifacts/windows-installer
+      - name: Prepare release asset (Windows installer)
+        run: (cd artifacts/windows-installer && zip -r ../../{% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}-installer-v${{ needs.guard.outputs.version }}.zip .)
+{% endraw %}{% endif %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
       - name: Find firmware artifact name
         id: find-firmware-artifact
         env:
@@ -182,5 +202,6 @@ jobs:
           generate_release_notes: true{% endraw %}{% if deploy_as_executable or has_circuit_python_backend_template_been_instantiated %}{% raw %}
           fail_on_unmatched_files: true
           files: |{% endraw %}{% if deploy_as_executable %}{% for runner in ([gha_linux_runner] + ([gha_windows_runner] if use_windows_in_ci else [])) %}{% set ext = "tar" if runner == gha_linux_runner else "zip" %}
-            {{ repo_name }}-{{ runner }}-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.{{ ext }}{% endfor %}{% endif %}{% if has_circuit_python_backend_template_been_instantiated %}
+            {{ repo_name }}-{{ runner }}-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.{{ ext }}{% endfor %}{% endif %}{% if install_as_windows_service %}
+            {{ repo_name }}-{{ gha_windows_runner }}-installer-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.zip{% endif %}{% if has_circuit_python_backend_template_been_instantiated %}
             {% raw %}${{ steps.find-firmware-artifact.outputs.artifact-name }}{% endraw %}.zip{% endif %}{% endif %}

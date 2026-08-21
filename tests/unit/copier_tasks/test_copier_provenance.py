@@ -192,6 +192,8 @@ class TestFileExtensionComments:
             ("script.py", "top", expected_hash_comment),
             ("config.yaml", "top", expected_hash_comment),
             ("config.yml", "top", expected_hash_comment),
+            # a regular .txt is not exempt — only the exact INSTALL.txt filename is
+            ("notes.txt", "top", expected_hash_comment),
             # hash bottom (shebang-sensitive extension default)
             ("deploy.sh", "bottom", expected_hash_comment),
             # batch bottom (REM comments, @echo off at top)
@@ -213,6 +215,11 @@ class TestFileExtensionComments:
             # none — by extension (no comment syntax available)
             ("data.json", "none", ""),
             ("biome.jsonc", "top", expected_block_comment),
+            # none — installer markup where a leading '#' header is invalid (XML/RTF),
+            # or the exact INSTALL.txt install guide (user-facing plain text)
+            ("Product.wxs", "none", ""),
+            ("license.rtf", "none", ""),
+            ("INSTALL.txt", "none", ""),
             # none — by filename (extensionless dotfiles with structured content)
             (".copier-answers.yml", "none", ""),
             (".coveragerc", "bottom", expected_hash_comment),
@@ -223,6 +230,7 @@ class TestFileExtensionComments:
             "py-hash-top",
             "yaml-hash-top",
             "yml-hash-top",
+            "txt-hash-top",
             "sh-hash-bottom",
             "bat-batch-bottom",
             "mjs-block-top",
@@ -238,6 +246,9 @@ class TestFileExtensionComments:
             "md-markdown-bottom",
             "json-none",
             "jsonc-block-top",
+            "wxs-none",
+            "rtf-none",
+            "txt-none",
             "copier-answers-none",
             "coveragerc-hash-bottom",
             "python-version-none",

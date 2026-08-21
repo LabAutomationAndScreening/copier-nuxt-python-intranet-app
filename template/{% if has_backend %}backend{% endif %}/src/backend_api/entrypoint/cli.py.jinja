@@ -16,6 +16,10 @@ def entrypoint(argv: Sequence[str], *, stop_event: threading.Event | None = None
         if launched_by_uvicorn:
             app_runner.app_specific_setup()
             return 0{% endraw %}{% if install_as_windows_service %}{% raw %}
+        if len(argv) > 0 and argv[0] == "grant-service-rights":
+            from .grant_rights import dispatch_grant_rights  # noqa: PLC0415 # lazy import to match the service branch
+
+            return dispatch_grant_rights(argv[1:])
         if len(argv) > 0 and argv[0] == "service":
             if sys.platform != "win32":  # pragma: no cover — win32 path tested in Windows CI
                 print("Windows service management is only supported on Windows", file=sys.stderr)  # noqa: T201 # intentional user-facing output
