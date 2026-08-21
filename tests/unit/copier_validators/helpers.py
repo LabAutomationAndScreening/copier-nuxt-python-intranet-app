@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 import copier
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Generator
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
@@ -56,10 +56,10 @@ def validate_installer_answers(**overrides: object) -> None:
 
 
 @contextlib.contextmanager
-def render_installer_project(**overrides: object) -> Iterator[Path]:
+def render_installer_project(**overrides: object) -> Generator[Path]:
     data = {**_INSTALLER_ANSWERS, **overrides}
     with tempfile.TemporaryDirectory() as tmp:
-        copier.run_copy(
+        _ = copier.run_copy(
             str(PROJECT_ROOT),
             tmp,
             data=data,
