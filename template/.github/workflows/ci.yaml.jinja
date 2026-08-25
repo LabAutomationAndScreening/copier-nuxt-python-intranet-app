@@ -491,7 +491,8 @@ jobs:
     permissions:
       contents: read
       actions: read # build-installer.yaml downloads the built bundle artifact
-    # Consumes the windows bundle build-backend just produced; the installer never rebuilds the app.
+    # Intentionally no `secrets: inherit` here (unlike the release job, which passes it when
+    # signing is enabled): CI builds an unsigned MSI as a build-breakage check; release signs it.
     uses: ./.github/workflows/build-installer.yaml{% endraw %}{% endif %}{% raw %}
 
 
