@@ -6,13 +6,10 @@ auto-includes dirty working-tree changes, so uncommitted validator edits are pic
 
 import contextlib
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import copier
-
-if TYPE_CHECKING:
-    from collections.abc import Generator
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 

@@ -1,13 +1,8 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
 
 from .helpers import render_installer_project
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 _CONFIGURABLE = ["configurable_loopback_default", "configurable_all_default"]
 _FORCED = ["loopback_only", "all_interfaces_only"]
