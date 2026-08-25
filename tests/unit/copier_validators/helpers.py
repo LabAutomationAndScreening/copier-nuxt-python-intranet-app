@@ -4,8 +4,6 @@
 auto-includes dirty working-tree changes, so uncommitted validator edits are picked up.
 """
 
-from __future__ import annotations
-
 import tempfile
 from pathlib import Path
 
