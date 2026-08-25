@@ -13,7 +13,7 @@ pywin32).
 
 1. `stage.ps1` stages the prebuilt `backend/dist/{% endraw %}{{ repo_name }}{% raw %}/` bundle — copying it into
    `build/staging/app/` and the lifecycle scripts into `build/staging/scripts/`. The bundle must
-   already exist (it never rebuilds the app itself).
+   already exist.
 2. `build.ps1` compiles `wix/Product.wxs` into the MSI (harvesting the staging tree). The MSI is
    the deliverable — a `WixUI_InstallDir` flow with a custom **Service account** dialog and a
    post-install "open the app" checkbox. No Burn bundle: there are no prerequisites to chain, and
