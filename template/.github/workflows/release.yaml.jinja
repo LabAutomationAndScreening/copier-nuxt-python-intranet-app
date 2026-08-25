@@ -137,7 +137,7 @@ jobs:
     uses: ./.github/workflows/build-installer.yaml{% endraw %}{% if sign_installer %}{% raw %}
     secrets: inherit{% endraw %}{% endif %}{% raw %}
     with:
-      artifact-run-id: ${{ needs.guard.outputs.ci-run-id }} # the windows bundle the suite validated
+      artifact-run-id: ${{ needs.guard.outputs.ci-run-id }}
 {% endraw %}{% endif %}{% raw %}
   release:
     name: Create GitHub Release
