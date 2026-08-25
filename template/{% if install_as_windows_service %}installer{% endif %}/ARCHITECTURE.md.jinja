@@ -20,6 +20,9 @@ pywin32).
    a plain MSI gives both an interactive dialog and clean silent install (`msiexec /qn` with the
    account/port set as properties).
 
+`build.ps1` runs `stage.ps1` for you — you don't stage manually first. Pass `-SkipStage` to
+reuse an existing `build/staging/` tree when iterating on WiX.
+
 ### Always consume the tested bundle
 
 The installer never rebuilds the app — `stage.ps1` stages whatever bundle is already in
