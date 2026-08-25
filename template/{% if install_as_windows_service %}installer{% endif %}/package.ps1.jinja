@@ -1,10 +1,10 @@
 {%- set product_id = human_friendly_app_name | replace(' ', '') | replace('-', '') -%}
 {% raw %}<#
 .SYNOPSIS
-    Builds the {% endraw %}{{ human_friendly_app_name }}{% raw %} MSI installer.
+    Packages the {% endraw %}{{ human_friendly_app_name }}{% raw %} MSI installer.
 
 .DESCRIPTION
-    Orchestrates the full build:
+    Orchestrates the full packaging run:
       1. Stage artifacts (frontend + PyInstaller bundle + install scripts)
       2. Compile the MSI from wix/Product.wxs (WixUI account dialog + launch)
 

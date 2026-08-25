@@ -9,18 +9,18 @@
 `_internal/`) that is SCM-compliant on its own (the exe implements the Windows service protocol via
 pywin32).
 
-## Build pipeline (`stage.ps1` -> `build.ps1`)
+## Build pipeline (`stage.ps1` -> `package.ps1`)
 
 1. `stage.ps1` stages the prebuilt `backend/dist/{% endraw %}{{ repo_name }}{% raw %}/` bundle — copying it into
    `build/staging/app/` and the lifecycle scripts into `build/staging/scripts/`. The bundle must
    already exist.
-2. `build.ps1` compiles `wix/Product.wxs` into the MSI (harvesting the staging tree). The MSI is
+2. `package.ps1` compiles `wix/Product.wxs` into the MSI (harvesting the staging tree). The MSI is
    the deliverable — a `WixUI_InstallDir` flow with a custom **Service account** dialog and a
    post-install "open the app" checkbox. No Burn bundle: there are no prerequisites to chain, and
    a plain MSI gives both an interactive dialog and clean silent install (`msiexec /qn` with the
    account/port set as properties).
 
-`build.ps1` runs `stage.ps1` for you — you don't stage manually first. Pass `-SkipStage` to
+`package.ps1` runs `stage.ps1` for you — you don't stage manually first. Pass `-SkipStage` to
 reuse an existing `build/staging/` tree when iterating on WiX.
 
 ### Always consume the tested bundle
@@ -29,7 +29,7 @@ The installer never rebuilds the app — `stage.ps1` stages whatever bundle is a
 `backend/dist/{% endraw %}{{ repo_name }}{% raw %}/`. The reusable `build-installer.yaml` downloads that bundle (the one
 the test suite ran against) so the MSI wraps the exact tested binary. To build locally, produce the
 bundle first (`pnpm generate` + `pyinstaller`, or download a CI artifact) into
-`backend/dist/{% endraw %}{{ repo_name }}{% raw %}/`, then run `build.ps1`. CI builds the MSI unsigned as a
+`backend/dist/{% endraw %}{{ repo_name }}{% raw %}/`, then run `package.ps1`. CI builds the MSI unsigned as a
 build-breakage check; release builds + signs it from the guarded CI run's bundle, then zips
 `{% endraw %}{{ product_id }}{% raw %}-<version>.msi` + `INSTALL.txt` as the Windows release asset.
 

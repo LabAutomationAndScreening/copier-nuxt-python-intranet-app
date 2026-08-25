@@ -103,7 +103,7 @@ jobs:
         run: |
           $buildArgs = @{}{% endraw %}{% if sign_installer %}{% raw %}
           if ($env:SIGN -eq 'true') { $buildArgs['Sign'] = $true }{% endraw %}{% endif %}{% raw %}
-          ./installer/build.ps1 @buildArgs
+          ./installer/package.ps1 @buildArgs
 
       - name: Upload installer
         uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}

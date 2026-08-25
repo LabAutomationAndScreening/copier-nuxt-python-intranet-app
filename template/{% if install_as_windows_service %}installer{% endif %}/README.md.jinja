@@ -13,7 +13,7 @@ registration, data layout) see [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 `installer/dist/{% endraw %}{{ product_id }}{% raw %}-<version>.msi` — installs the app and starts the service on
 `http://127.0.0.1:{% endraw %}{{ backend_deployed_port_number }}{% raw %}`. Interactive installs offer an **Open {% endraw %}{{ human_friendly_app_name }}{% raw %}**
-checkbox on the final page. `build.ps1` also copies `INSTALL.txt` into `dist/` to ship alongside the
+checkbox on the final page. `package.ps1` also copies `INSTALL.txt` into `dist/` to ship alongside the
 MSI.
 
 ## Prerequisites (build machine)
@@ -27,10 +27,10 @@ MSI.
 
 ```powershell
 cd installer
-./build.ps1
+./package.ps1
 ```
 
-`build.ps1` checks tooling, ensures the required WiX extensions, stages artifacts via
+`package.ps1` checks tooling, ensures the required WiX extensions, stages artifacts via
 `stage.ps1` (frontend build -> fold into backend static -> PyInstaller -> staging tree), then
 compiles the MSI. Use `-SkipStage` to iterate on the WiX without rebuilding the app, and
 `-Version <x.y.z>` to override the version (defaults to `backend/pyproject.toml`). See
@@ -42,7 +42,7 @@ Pass `-Sign` to sign the app binaries (the exe plus the bundled `_internal\` DLL
 the final MSI via Azure Trusted Signing (the dotnet `sign` tool):
 
 ```powershell
-./build.ps1 -Sign
+./package.ps1 -Sign
 ```
 
 Requires an Azure identity holding the **Trusted Signing Certificate Profile Signer** role on the
@@ -56,13 +56,13 @@ unsigned MSI.
 
 ## Files
 
-- `build.ps1` — build orchestrator (MSI).
+- `package.ps1` — packaging orchestrator (MSI).
 - `stage.ps1` — produces the staging tree from the app build.
 - `wix/Product.wxs` — the MSI: files, data dirs, the service-account dialog, service lifecycle
   custom actions, and the post-install launch.
 - `scripts/install-service.ps1`, `scripts/remove-service.ps1` — invoked by the MSI's deferred
   custom actions to register/remove the service via the exe's `service ...` verbs.
 - `license.rtf` — shown on the license page.
-- `INSTALL.txt` — end-user/admin install guide; copied into `dist/` next to the MSI by `build.ps1`.
+- `INSTALL.txt` — end-user/admin install guide; copied into `dist/` next to the MSI by `package.ps1`.
 
 The installer icon reuses the app's own `frontend/public/favicon.ico`.{% endraw %}
