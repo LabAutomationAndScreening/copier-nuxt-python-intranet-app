@@ -9,7 +9,7 @@
 `_internal/`) that is SCM-compliant on its own (the exe implements the Windows service protocol via
 pywin32).
 
-## Build pipeline (`build.ps1` -> `stage.ps1`)
+## Build pipeline (`stage.ps1` -> `build.ps1`)
 
 1. `stage.ps1` stages the prebuilt `backend/dist/{% endraw %}{{ repo_name }}{% raw %}/` bundle — copying it into
    `build/staging/app/` and the lifecycle scripts into `build/staging/scripts/`. The bundle must
