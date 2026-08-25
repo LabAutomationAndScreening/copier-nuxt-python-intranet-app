@@ -98,6 +98,9 @@ Write-Host "Ensuring WiX extensions" -ForegroundColor Cyan
 $wixVersion = (wix --version 2>&1).Trim()
 if (-not $wixVersion) { throw "Could not read wix CLI version" }
 Write-Host "  wix CLI : $wixVersion"
+# Pin extensions to the exact CLI version (strip any +build metadata) so they
+# never drift from the toolset the workflow installed.
+$wixSemVer = ($wixVersion -split '\+')[0]
 $wixMajor = ($wixVersion -split '\.')[0]
 if ([int]$wixMajor -ge 7) {
     Write-Host "  Accepting WiX v$wixMajor EULA" -ForegroundColor DarkGray
@@ -105,9 +108,9 @@ if ([int]$wixMajor -ge 7) {
 }
 foreach ($ext in @('WixToolset.Util.wixext', 'WixToolset.UI.wixext')) {
     Write-Host "  $ext ... " -NoNewline
-    $existing = wix extension list -g 2>&1 | Select-String $ext
+    $existing = wix extension list -g 2>&1 | Select-String "$ext $wixSemVer"
     if ($existing) { Write-Host "present" -ForegroundColor Green; continue }
-    wix extension add -g $ext
+    wix extension add -g "$ext/$wixSemVer"
     if ($LASTEXITCODE -ne 0) { Write-Host "FAILED" -ForegroundColor Red; throw "wix extension add failed for $ext" }
     Write-Host "added" -ForegroundColor Yellow
 }

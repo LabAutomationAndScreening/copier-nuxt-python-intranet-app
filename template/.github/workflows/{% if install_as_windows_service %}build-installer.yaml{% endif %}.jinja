@@ -45,7 +45,7 @@ jobs:
       - name: Install WiX 7
         shell: pwsh
         run: |
-          dotnet tool install --global wix --version 7.*
+          dotnet tool install --global wix --version 7.0.0
           "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Append
           & "$env:USERPROFILE\.dotnet\tools\wix.exe" eula accept wix7
 
