@@ -113,4 +113,4 @@ jobs:
             installer/dist/{% endraw %}{{ product_id }}{% raw %}-*.msi
             installer/dist/INSTALL.txt
           if-no-files-found: error
-          retention-days: ${{ inputs.artifact-retention-days || 14 }}{% endraw %}
+          retention-days: ${{ inputs.artifact-retention-days }}{% endraw %}
