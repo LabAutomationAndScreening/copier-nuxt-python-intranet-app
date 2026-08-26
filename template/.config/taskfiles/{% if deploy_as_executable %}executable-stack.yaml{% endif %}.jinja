@@ -10,12 +10,28 @@ tasks:
     cmds:
       - cp -a ./frontend/.output/public/. ./backend/src/static/
 
+  bundle-executable:
+    # The single definition of the pyinstaller invocation. Callers supply PYINSTALLER_ARGS for whatever their
+    # context needs; keeping the base command here is what stops the local and CI builds from drifting apart.
+    internal: true
+    cmds:
+      - uv --directory=backend run pyinstaller pyinstaller.spec {{.PYINSTALLER_ARGS}}
+
   build-executable:
     desc: Generate the frontend, bundle it into the backend, and build the single-file executable
     cmds:
       - task: build-frontend
       - task: copy-frontend-static
-      - uv --directory=backend run pyinstaller pyinstaller.spec --noconfirm
+      - task: bundle-executable
+        vars:
+          PYINSTALLER_ARGS: --noconfirm
+
+  bundle-executable-from-staged-static:
+    desc: Build the executable from static assets already present in backend/src/static, with a verbose build log
+    cmds:
+      - task: bundle-executable
+        vars:
+          PYINSTALLER_ARGS: --log-level=DEBUG
 
   run-stack:
     desc: Build the full stack and run it

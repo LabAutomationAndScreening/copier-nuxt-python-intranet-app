@@ -9,7 +9,6 @@ from httpx import AsyncClient
 from httpx import Limits
 from kiota_abstractions.authentication.anonymous_authentication_provider import AnonymousAuthenticationProvider
 from kiota_http.httpx_request_adapter import HttpxRequestAdapter
-from pydantic import JsonValue
 
 from .app_bootup import BACKEND_E2E_PORT
 from .app_bootup import start_compose
@@ -33,7 +32,7 @@ def configure_log():
 
 
 @pytest.fixture(autouse=True)
-def vcr_config() -> dict[str, JsonValue]:
+def vcr_config() -> dict[str, object]:
     # disable any network blocking set up for unit tests
     return {"allowed_hosts": ["127.0.0.1", "localhost", "::1"]}
 
