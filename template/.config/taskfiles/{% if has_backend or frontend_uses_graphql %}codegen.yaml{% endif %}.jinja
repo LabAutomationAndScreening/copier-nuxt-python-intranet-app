@@ -28,13 +28,11 @@ tasks:
     desc: Regenerate the TypeScript Kiota client that the frontend imports
     deps: [gen-openapi-snapshot]
     cmds:
-      - pnpm --dir=frontend openapi-codegen
-{% endif %}{% if has_backend and backend_uses_graphql %}
+      - pnpm --dir=frontend openapi-codegen{% endif %}{% if has_backend and backend_uses_graphql %}
   gen-backend-graphql-client:
     desc: Regenerate the GraphQL client that the backend E2E tests import
     cmds:
-      - uv --directory=backend run ariadne-codegen
-{% endif %}{% if frontend_uses_graphql %}
+      - uv --directory=backend run ariadne-codegen{% endif %}{% if frontend_uses_graphql %}
   gen-frontend-graphql-client:
     desc: Regenerate the frontend GraphQL types and operations from the schema
     cmds:
