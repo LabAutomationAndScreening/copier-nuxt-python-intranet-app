@@ -147,6 +147,16 @@
     "deny": [
       // Exceptions to generally allowed AI tooling
       "Bash(bd init*)", // we need to control the init process, don't let AI do that in the background
+      // Github
+      // Claude should not ever interfere with the PR process, that is how we gate AI's work
+      "Bash(gh pr close *)",
+      "Bash(gh pr comment *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr edit *)",
+      "Bash(gh pr merge *)",
+      "Bash(gh pr ready *)",
+      "Bash(gh pr review *)",
+      "Bash(gh pr update-branch *)",
       // Task must run the repo's own taskfiles, which are the reviewed ones. These flags are the only ways to point it elsewhere (there is no environment variable equivalent -- https://github.com/go-task/task/issues/1721 was closed as a duplicate with nothing implemented), and `/tmp` is writable without a prompt, so without these denials `Bash(task *)` would be an allow-anything entry.
       "Bash(task -t *)",
       "Bash(task --taskfile *)",
@@ -158,16 +168,6 @@
       "Bash(task --dir=*)",
       "Bash(task -g *)",
       "Bash(task --global *)",
-      // Github
-      // Claude should not ever interfere with the PR process, that is how we gate AI's work
-      "Bash(gh pr close *)",
-      "Bash(gh pr comment *)",
-      "Bash(gh pr create *)",
-      "Bash(gh pr edit *)",
-      "Bash(gh pr merge *)",
-      "Bash(gh pr ready *)",
-      "Bash(gh pr review *)",
-      "Bash(gh pr update-branch *)",
 
       // Destructive File Operations
       "Bash(chmod -R *)",
