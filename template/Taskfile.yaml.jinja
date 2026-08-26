@@ -9,16 +9,16 @@ includes:
     flatten: true
   frontend:
     taskfile: ./.config/taskfiles/frontend.yaml
-    flatten: true
-{% endraw %}{% if has_backend %}{% raw %}  backend:
+    flatten: true{% endraw %}{% if has_backend %}{% raw %}
+  backend:
     taskfile: ./.config/taskfiles/backend.yaml
-    flatten: true
-{% endraw %}{% endif %}{% if has_backend or frontend_uses_graphql %}{% raw %}  codegen:
+    flatten: true{% endraw %}{% endif %}{% if has_backend or frontend_uses_graphql %}{% raw %}
+  codegen:
     taskfile: ./.config/taskfiles/codegen.yaml
-    flatten: true
-{% endraw %}{% endif %}{% if deploy_as_executable %}{% raw %}  stack:
+    flatten: true{% endraw %}{% endif %}{% if deploy_as_executable %}{% raw %}
+  stack:
     taskfile: ./.config/taskfiles/executable-stack.yaml
-    flatten: true
-{% endraw %}{% else %}{% raw %}  stack:
+    flatten: true{% endraw %}{% else %}{% raw %}
+stack:
     taskfile: ./.config/taskfiles/docker-stack.yaml
     flatten: true{% endraw %}{% endif %}
