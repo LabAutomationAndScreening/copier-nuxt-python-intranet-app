@@ -62,21 +62,16 @@ Start the app using the entrypoint to be able to supply CLI options and log to f
 task run-backend-entrypoint
 ```{% endraw %}{% endif %}{% if backend_makes_api_calls %}{% raw %}
 
-When running the unit test suite, the `pytest-recording` library records HTTP requests as cassettes. If you encounter errors about a missing cassette, pass `--record-mode=once` to the `pytest` command to perform a live HTTP request instead.{% endraw %}{% endif %}{% if has_backend %}{% raw %}
+When running the unit test suite, the `pytest-recording` library records HTTP requests as cassettes. If you encounter errors about a missing cassette, pass `--record-mode=once` to the `pytest` command to perform a live HTTP request instead.{% endraw %}{% endif %}{% if has_backend or frontend_uses_graphql %}{% raw %}
 
-
-To (re)generate the client code for this app for use in E2E tests of the backend, run:
+## Codegen
+To regenerate every generated client in this repo, run:
 
 ```bash
-task gen-backend-client
+task codegen
 ```
 
-That regenerates the openapi.json snapshot first (it is declared as a dependency of the Kiota step), then runs Kiota against the refreshed spec and applies the nullable fixer to its output. This is the only sanctioned way to update the client: nothing under a `generated/` folder should ever be hand-edited.{% endraw %}{% endif %}{% if has_backend and backend_uses_graphql %}{% raw %}
-
-To regenerate the GraphQL client code for the E2E test suite, run:
-```bash
-task gen-graphql-client
-```{% endraw %}{% endif %}{% raw %}
+That covers both sides of the app and both schema sources, refreshing the openapi.json snapshot before any client is generated from it. Run `task --list` for the individual tasks if you only need one of them. This is the only sanctioned way to update generated code: nothing under a `generated/` folder should ever be hand-edited.{% endraw %}{% endif %}{% raw %}
 
 ## Updating from the template
 This repository uses a copier template. To pull in the latest updates from the template, run `task copier-update`.{% endraw %}

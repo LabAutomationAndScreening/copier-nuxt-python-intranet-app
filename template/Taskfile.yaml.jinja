@@ -13,6 +13,9 @@ includes:
 {% endraw %}{% if has_backend %}{% raw %}  backend:
     taskfile: ./.config/taskfiles/backend.yaml
     flatten: true
+{% endraw %}{% endif %}{% if has_backend or frontend_uses_graphql %}{% raw %}  codegen:
+    taskfile: ./.config/taskfiles/codegen.yaml
+    flatten: true
 {% endraw %}{% endif %}{% if deploy_as_executable %}{% raw %}  stack:
     taskfile: ./.config/taskfiles/executable-stack.yaml
     flatten: true

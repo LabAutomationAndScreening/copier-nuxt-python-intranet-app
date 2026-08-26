@@ -9,15 +9,18 @@ import pytest
 from tests.unit.copier_generation.helpers import ANSWER_SET_DIR
 
 TASK_NAMES_BY_ANSWER_SET = {
-    # has_backend, backend_uses_graphql, not deploy_as_executable
+    # has_backend, backend_uses_graphql, frontend_uses_graphql, not deploy_as_executable
     "data1.yaml": frozenset(
         {
             "build-frontend",
+            "codegen",
             "copier-update",
             "dev-backend",
             "dev-frontend",
-            "gen-backend-client",
-            "gen-graphql-client",
+            "gen-backend-graphql-client",
+            "gen-backend-openapi-client",
+            "gen-frontend-graphql-client",
+            "gen-frontend-openapi-client",
             "gen-openapi-snapshot",
             "preview-frontend",
             "prune-copier-rejects",
@@ -35,30 +38,34 @@ TASK_NAMES_BY_ANSWER_SET = {
             "run-stack",
         }
     ),
-    # has_backend, no graphql, not deploy_as_executable
+    # has_backend, no graphql on either side, not deploy_as_executable
     "data3.yaml": frozenset(
         {
             "build-frontend",
+            "codegen",
             "copier-update",
             "dev-backend",
             "dev-frontend",
-            "gen-backend-client",
+            "gen-backend-openapi-client",
+            "gen-frontend-openapi-client",
             "gen-openapi-snapshot",
             "preview-frontend",
             "prune-copier-rejects",
             "run-stack",
         }
     ),
-    # has_backend, no graphql, deploy_as_executable
+    # has_backend, no graphql on either side, deploy_as_executable
     "data4.yaml": frozenset(
         {
             "build-executable",
             "build-frontend",
+            "codegen",
             "copier-update",
             "copy-frontend-static",
             "dev-backend",
             "dev-frontend",
-            "gen-backend-client",
+            "gen-backend-openapi-client",
+            "gen-frontend-openapi-client",
             "gen-openapi-snapshot",
             "preview-frontend",
             "prune-copier-rejects",
@@ -67,16 +74,18 @@ TASK_NAMES_BY_ANSWER_SET = {
             "run-stack",
         }
     ),
-    # has_backend, no graphql, deploy_as_executable
+    # has_backend, no graphql on either side, deploy_as_executable
     "data5.yaml": frozenset(
         {
             "build-executable",
             "build-frontend",
+            "codegen",
             "copier-update",
             "copy-frontend-static",
             "dev-backend",
             "dev-frontend",
-            "gen-backend-client",
+            "gen-backend-openapi-client",
+            "gen-frontend-openapi-client",
             "gen-openapi-snapshot",
             "preview-frontend",
             "prune-copier-rejects",

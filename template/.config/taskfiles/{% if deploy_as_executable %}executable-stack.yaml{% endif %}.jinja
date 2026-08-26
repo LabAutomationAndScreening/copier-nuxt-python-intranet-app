@@ -30,5 +30,4 @@ tasks:
       - rm -rf "{{.DIST_DIR}}/_internal/static"
       - task: copy-frontend-static
       - cp -a ./backend/src/static "{{.DIST_DIR}}/_internal/static"
-      - "{{.DIST_DIR}}/{{.APP_NAME}}"
-{% endraw %}
+      - "{{.DIST_DIR}}/{{.APP_NAME}}"{% endraw %}

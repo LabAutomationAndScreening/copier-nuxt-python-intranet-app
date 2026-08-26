@@ -9,23 +9,4 @@ tasks:
   run-backend-entrypoint:
     desc: Run the backend through its CLI entrypoint on port {{ backend_deployed_port_number }}, which accepts CLI options and logs to file
     cmds:
-      - uv --directory=backend run python src/entrypoint.py
-{% endif %}
-  gen-openapi-snapshot:
-    desc: Regenerate the openapi.json snapshot that the API client codegen reads
-    cmds:
-      - uv --directory=backend run pytest tests/unit/test_basic_server_functionality.py --snapshot-update
-
-  gen-backend-client:
-    desc: Regenerate the Kiota API client used by the backend E2E tests
-    deps: [gen-openapi-snapshot]
-    cmds:
-      - mkdir -p "./backend/tests/e2e/generated/open_api/backend"
-      - docker run --network host -v "./backend/tests/e2e/generated/open_api/backend:/app/output" -v "./backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json:/app/openapi.json" mcr.microsoft.com/openapi/kiota:{{ kiota_cli_version }} generate -l python -c BackendClient -n client -d openapi.json --exclude-backward-compatible --clean-output --additional-data false
-      - uv --directory=backend run python kiota_nullable_fixer.py "./tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json" "./tests/e2e/generated/open_api/backend"
-{% if backend_uses_graphql %}
-  gen-graphql-client:
-    desc: Regenerate the GraphQL client used by the backend E2E tests
-    cmds:
-      - uv --directory=backend run ariadne-codegen
-{% endif %}
+      - uv --directory=backend run python src/entrypoint.py{% endif %}
