@@ -1,0 +1,34 @@
+{% raw %}version: '3'
+
+vars:
+  APP_NAME: {% endraw %}{{ repo_name }}{% raw %}
+  DIST_DIR: ./backend/dist/{{.APP_NAME}}
+
+tasks:
+  copy-frontend-static:
+    desc: Copy the generated frontend bundle into the backend static directory it is served from
+    cmds:
+      - cp -a ./frontend/.output/public/. ./backend/src/static/
+
+  build-executable:
+    desc: Generate the frontend, bundle it into the backend, and build the single-file executable
+    cmds:
+      - task: build-frontend
+      - task: copy-frontend-static
+      - uv --directory=backend run pyinstaller pyinstaller.spec --noconfirm
+
+  run-stack:
+    desc: Build the full stack and run it
+    cmds:
+      - task: build-executable
+      - "{{.DIST_DIR}}/{{.APP_NAME}}"
+
+  reload-frontend-in-stack:
+    desc: Rebuild only the frontend, swap it into the already-built executable, and run it
+    cmds:
+      - task: build-frontend
+      - rm -rf "{{.DIST_DIR}}/_internal/static"
+      - task: copy-frontend-static
+      - cp -a ./backend/src/static "{{.DIST_DIR}}/_internal/static"
+      - "{{.DIST_DIR}}/{{.APP_NAME}}"
+{% endraw %}

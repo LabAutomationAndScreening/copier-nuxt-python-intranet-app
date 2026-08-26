@@ -1,0 +1,22 @@
+version: '3'
+
+vars:
+  REACT_VERSION: 18.2.0
+  JS_COOKIE_VERSION: 3.0.5
+  GRAPHIQL_VERSION: 3.8.3
+  PLUGIN_EXPLORER_VERSION: 1.0.2
+  # The path is a copier conditional-directory name, so the braces are literal here rather than rendered
+  GRAPHIQL_DIR: 'template/{% if has_backend %}backend{% endif %}/src/static/{% if frontend_uses_graphql %}static{% endif %}/graphiql'
+  CURL: curl --fail --location --silent --show-error --output
+
+tasks:
+  fetch-graphiql-assets:
+    desc: Download the pinned GraphiQL vendor assets that get bundled into a generated app
+    cmds:
+      - '{{.CURL}} "{{.GRAPHIQL_DIR}}/react.production.min.js" https://unpkg.com/react@{{.REACT_VERSION}}/umd/react.production.min.js'
+      - '{{.CURL}} "{{.GRAPHIQL_DIR}}/react-dom.production.min.js" https://unpkg.com/react-dom@{{.REACT_VERSION}}/umd/react-dom.production.min.js'
+      - '{{.CURL}} "{{.GRAPHIQL_DIR}}/js.cookie.min.js" https://unpkg.com/js-cookie@{{.JS_COOKIE_VERSION}}/dist/js.cookie.min.js'
+      - '{{.CURL}} "{{.GRAPHIQL_DIR}}/graphiql.min.css" https://unpkg.com/graphiql@{{.GRAPHIQL_VERSION}}/graphiql.min.css'
+      - '{{.CURL}} "{{.GRAPHIQL_DIR}}/graphiql.min.js" https://unpkg.com/graphiql@{{.GRAPHIQL_VERSION}}/graphiql.min.js'
+      - '{{.CURL}} "{{.GRAPHIQL_DIR}}/style.css" https://unpkg.com/@graphiql/plugin-explorer@{{.PLUGIN_EXPLORER_VERSION}}/dist/style.css'
+      - '{{.CURL}} "{{.GRAPHIQL_DIR}}/index.umd.js" https://unpkg.com/@graphiql/plugin-explorer@{{.PLUGIN_EXPLORER_VERSION}}/dist/index.umd.js'

@@ -19,6 +19,7 @@ PNPM_VERSION = "11.22.0"
 COPIER_VERSION = "==9.17.1"
 COPIER_TEMPLATE_EXTENSIONS_VERSION = "==0.3.3"
 PRE_COMMIT_VERSION = "4.6.2"
+TASK_VERSION = "3.53.1"
 GITHUB_WINDOWS_RUNNER_BIN_PATH = r"C:\Users\runneradmin\.local\bin"
 INSTALL_SSM_PLUGIN_BY_DEFAULT = False
 parser = argparse.ArgumentParser(description="Install CI tooling for the repo")
@@ -45,12 +46,22 @@ _ = parser.add_argument(
 )
 
 
+def run_node_cmds(cmds: list[str], *, pwsh: str | None) -> None:
+    for cmd in cmds:
+        if pwsh is None:
+            run_cmd = [cmd]
+        else:
+            run_cmd = [pwsh, "-NoProfile", "-NonInteractive", "-Command", cmd]
+        _ = subprocess.run(run_cmd, shell=True, check=True)  # noqa: S602 # we need shell=True for npm commands, and this is all our own input
+
+
 def main():
     args = parser.parse_args(sys.argv[1:])
     is_windows = platform.system() == "Windows"
     uv_env = dict(os.environ)
     uv_env.update({"UV_PYTHON": args.python_version, "UV_PYTHON_PREFERENCE": "only-system"})
     uv_path = ((GITHUB_WINDOWS_RUNNER_BIN_PATH + "\\") if is_windows else "") + "uv"
+    pwsh = None
     if is_windows:
         pwsh = shutil.which("pwsh") or shutil.which("powershell")
         if not pwsh:
@@ -110,20 +121,9 @@ def main():
             env=uv_env,
         )
     if not args.no_node:
-        pnpm_install_sequence = ["npm -v", f"npm install -g pnpm@{PNPM_VERSION}", "pnpm -v"]
-        for cmd in pnpm_install_sequence:
-            run_cmd = (
-                [
-                    pwsh,  # type: ignore[reportPossiblyUnboundVariable] # this matches the conditional above that defines pwsh
-                    "-NoProfile",
-                    "-NonInteractive",
-                    "-Command",
-                    cmd,
-                ]
-                if is_windows
-                else [cmd]
-            )
-            _ = subprocess.run(run_cmd, shell=True, check=True)  # noqa: S602 # we need shell=True for npm commands, and this is all our own input
+        run_node_cmds(["npm -v", f"npm install -g pnpm@{PNPM_VERSION}", "pnpm -v"], pwsh=pwsh)
+    # Task is installed outside the --no-node branch because CI always passes --no-node (pnpm/setup handles pnpm there), and every job still needs the task runner
+    run_node_cmds([f"npm install -g @go-task/cli@{TASK_VERSION}", "task --version"], pwsh=pwsh)
     if INSTALL_SSM_PLUGIN_BY_DEFAULT and not args.skip_installing_ssm_plugin:
         with tempfile.TemporaryDirectory() as tmp_dir:
             if is_windows:
