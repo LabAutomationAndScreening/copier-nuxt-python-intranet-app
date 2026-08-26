@@ -16,8 +16,6 @@ To create a new repository using this template:
 1. Commit the changes (optional)
 1. Rebuild your new devcontainer
 
-These steps stay as literal commands rather than tasks: the repository has no `Taskfile.yaml` until `copier copy` has run, and the task runner itself is installed by `install-ci-tooling.py`. Once the new repository exists, its own `task --list` covers the equivalent day-to-day workflows.
-
 
 
 # Development
@@ -29,7 +27,7 @@ Multi-step workflows are defined as [Task](https://taskfile.dev) tasks. Run `tas
 1. Run `task fetch-graphiql-assets`, which downloads all seven vendor files at their pinned versions into the bundled `graphiql` directory. Bump a version in `.config/taskfiles/graphiql.yaml`, where each one is declared exactly once.
 
 ## Updating from the template
-This repository uses a copier template. To pull in the latest updates from the template, run `task copier-update`, which performs the update and then deletes the `.rej` files whose target file turned out to be unchanged. It exits non-zero while any real conflict is still unresolved.
+This repository uses a copier template. To pull in the latest updates from the template, run `task copier-update`
 
 <!--
 ============== WARNING ==============================================================================
