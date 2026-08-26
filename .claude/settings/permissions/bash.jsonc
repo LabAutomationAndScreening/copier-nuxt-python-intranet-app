@@ -117,9 +117,6 @@
       "Bash(pnpm view *)",
       // Python
       "Bash(uv run pytest *)",
-      // Task runner
-      // Running any task is allowed, because the thing worth guarding is the taskfile content rather than the task name: the matcher only ever sees `task <name>` and cannot look inside. The taskfiles are pinned to `ask` in write.jsonc instead, and the taskfile-override flags are denied below so that this entry cannot be pointed at an arbitrary file. This is friction and reviewability, not containment -- a bash write primitive plus git can still reach the taskfiles.
-      "Bash(task *)",
       // Text Processing
       "Bash(awk *)",
       "Bash(cat *)",
