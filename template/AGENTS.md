@@ -91,8 +91,8 @@
 ## Tooling
 
 - ❌ Never chain commands (`&&`, `||`, `;`, `&`) — breaks permission allow-list matcher. ✅ One command per tool call. `cd` as separate prior call. Pipes (`|`) OK.
-- Before hand-assembling a multi-step workflow, run `task --list` — it is probably already a task. Because a task invocation is a single command, it is runnable under the never-chain-commands rule that would otherwise make the workflow unreachable. Definitions live in `.config/taskfiles/`; the root `Taskfile.yaml` only includes them. Running any task is pre-approved, but the `-t`/`--taskfile`, `--entrypoint`, `-d`/`--dir` and `-g`/`--global` flags are denied — Task must run this repo's own taskfiles. Editing a taskfile prompts, since that is what decides what a task actually runs.
-- The bans on `pnpm --prefix`, `uv --directory` and direct tool invocation apply to commands you type, not to task definitions: a task's commands always run with the repo root as their working directory, and the permission matcher sees `task <name>` rather than the commands inside. Prefer adding or extending a task over typing the long form.
+- Before hand-assembling a multi-step workflow, run `task --list` — it is probably already a task. Definitions live in `.config/taskfiles/`; the root `Taskfile.yaml` only includes them.
+- The bans on `pnpm --prefix`, `uv --directory` and direct tool invocation apply to commands you type, not to task definitions: a task's commands always run with the repo root as their working directory. Prefer adding or extending a task over typing the long form.
 - Linting and type-checking stay with `pre-commit run <hook-id>` rather than a task, so that what you run is exactly what CI runs.
 - Regenerating any generated client is `task codegen` (or an individual `gen-*-client` task from `task --list`) — never hand-edit anything under a `generated/` folder.
 - `cd` into a subdirectory is auto-approved; navigating up (`cd ..`) or to an absolute path (`cd /some/path`) requires a user permission prompt. Minimize such navigation: run `pre-commit` from whichever subdirectory you're already in (it walks up to find `.pre-commit-config.yaml`).
