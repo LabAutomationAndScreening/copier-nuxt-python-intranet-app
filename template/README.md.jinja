@@ -71,7 +71,7 @@ To regenerate every generated client in this repo, run:
 task codegen
 ```
 
-That covers both sides of the app and both schema sources, refreshing the openapi.json snapshot before any client is generated from it. Run `task --list` for the individual tasks if you only need one of them. This is the only sanctioned way to update generated code: nothing under a `generated/` folder should ever be hand-edited.{% endraw %}{% endif %}{% raw %}
+That covers both sides of the app and all schema sources, refreshing the openapi.json snapshot before any client is generated from it. Run `task --list` for the individual tasks if you only need one of them. This is the only sanctioned way to update generated code: nothing under a `generated/` folder should ever be hand-edited.{% endraw %}{% endif %}{% raw %}
 
 ## Updating from the template
 This repository uses a copier template. To pull in the latest updates from the template, run `task copier-update`.{% endraw %}
