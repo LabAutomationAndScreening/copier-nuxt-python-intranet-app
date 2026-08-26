@@ -173,9 +173,7 @@ repos:
       - id: check-github-workflows
       - id: check-jsonschema
         name: check taskfiles
-        # Task itself silently ignores unknown keys, so a typo'd key is only caught by the schema. The jinja-templated
-        # taskfiles under template/ are not valid YAML until copier renders them, so they are covered by the copier
-        # generation tests in tests/unit/copier_generation instead.
+        # Task itself silently ignores unknown keys, so a typo'd key is only caught by the schema.
         args: [--schemafile, 'https://taskfile.dev/schema.json']
         files: ^(Taskfile\.yaml|(template/)?\.config/taskfiles/[^/{]+\.yaml)$
 
