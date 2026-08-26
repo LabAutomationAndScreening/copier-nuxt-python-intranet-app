@@ -14,7 +14,10 @@ tasks:
     # `run: once` so the umbrella task refreshes the snapshot a single time rather than once per dependent client
     run: once
     cmds:
-      - uv --directory=backend run pytest tests/unit/test_basic_server_functionality.py --snapshot-update
+      # --no-cov because pytest.ini always adds --cov and .coveragerc sets fail_under=100, so a single-file run
+      # would exit 1 on coverage even though the snapshot was written; -p no:tach since module-boundary checking
+      # has nothing to say about regenerating a snapshot
+      - uv --directory=backend run pytest tests/unit/test_basic_server_functionality.py --snapshot-update --no-cov -p no:tach
 
   gen-backend-openapi-client:
     desc: Regenerate the Python Kiota client that the backend E2E tests import
