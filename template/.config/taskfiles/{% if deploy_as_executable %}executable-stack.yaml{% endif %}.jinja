@@ -8,6 +8,9 @@ tasks:
   copy-frontend-static:
     desc: Copy the generated frontend bundle into the backend static directory it is served from
     cmds:
+      # git clean rather than rm -rf: this directory also holds tracked files (favicon.ico, the .gitignore itself,
+      # the vendored GraphiQL assets) that must survive. -x covers the gitignored build output, which is the stale part.
+      - git clean -xdf ./backend/src/static
       - cp -a ./frontend/.output/public/. ./backend/src/static/
 
   bundle-executable:
