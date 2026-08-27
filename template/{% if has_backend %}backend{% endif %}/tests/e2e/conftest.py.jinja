@@ -1,6 +1,6 @@
-{% raw %}from collections.abc import AsyncGenerator
+{% raw %}import subprocess
+from collections.abc import AsyncGenerator
 from collections.abc import Generator
-from typing import TYPE_CHECKING
 
 import pytest
 import pytest_asyncio
@@ -9,7 +9,6 @@ from httpx import AsyncClient
 from httpx import Limits
 from kiota_abstractions.authentication.anonymous_authentication_provider import AnonymousAuthenticationProvider
 from kiota_http.httpx_request_adapter import HttpxRequestAdapter
-from pydantic import JsonValue
 
 from .app_bootup import BACKEND_E2E_PORT
 from .app_bootup import start_compose
@@ -19,10 +18,7 @@ from .app_bootup import stop_exe
 from .generated.open_api.backend.backend_client import BackendClient{% endraw %}{% if backend_uses_graphql %}{% raw %}
 from .graphql_fixtures import client{% endraw %}{% endif %}{% raw %}
 from .jinja_constants import APPLICATION_BOOTUP_MODE
-from .jinja_constants import ApplicationBootupModes
-
-if TYPE_CHECKING:
-    import subprocess{% endraw %}{% if backend_uses_graphql %}{% raw %}
+from .jinja_constants import ApplicationBootupModes{% endraw %}{% if backend_uses_graphql %}{% raw %}
 
 _imported_graphql_fixtures = (client,){% endraw %}{% endif %}{% raw %}
 
@@ -33,7 +29,7 @@ def configure_log():
 
 
 @pytest.fixture(autouse=True)
-def vcr_config() -> dict[str, JsonValue]:
+def vcr_config() -> dict[str, object]:
     # disable any network blocking set up for unit tests
     return {"allowed_hosts": ["127.0.0.1", "localhost", "::1"]}
 

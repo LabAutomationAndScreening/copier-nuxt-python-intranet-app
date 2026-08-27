@@ -18,69 +18,60 @@
 
 # Development
 
+Every multi-step workflow is defined as a [Task](https://taskfile.dev) task, so run `task --list` to see what is available. The definitions live in `.config/taskfiles/`; the root `Taskfile.yaml` only includes them.
+
 {% endraw %}{% if not deploy_as_executable %}{% raw %}To spin up the docker stack (frontend accessible on port {% endraw %}{{ frontend_deployed_port_number }}{% raw %}{% endraw %}{% if has_backend %}{% raw %}, backend accessible on port {% endraw %}{{ backend_deployed_port_number }}{% endif %}{% raw %}), run:
 ```bash
-docker compose up
+task run-stack
 ```{% endraw %}{% else %}{% raw %}To build and spin up the full stack (accessible on port {% endraw %}{{ backend_deployed_port_number }}{% raw %}), run:
 ```bash
-pnpm --dir=frontend generate && cp -a ./frontend/.output/public/. ./backend/src/static/ && uv --directory=backend run pyinstaller pyinstaller.spec --noconfirm && ./backend/dist/{% endraw %}{{ repo_name }}{% raw %}/{% endraw %}{{ repo_name }}{% raw %}
+task run-stack
 ```
+That generates the frontend, copies it into the backend static directory, builds the executable, and runs it.
 
-To just reload the frontend into the full stack, run:
+To just rebuild the frontend and swap it into the already-built executable, run:
 ```bash
-pnpm --dir=frontend generate && rm -rf ./backend/dist/{% endraw %}{{ repo_name }}{% raw %}/_internal/static && cp -a ./frontend/.output/public/. ./backend/src/static/ && cp -a ./backend/src/static ./backend/dist/{% endraw %}{{ repo_name }}{% raw %}/_internal/static && ./backend/dist/{% endraw %}{{ repo_name }}{% raw %}/{% endraw %}{{ repo_name }}{% raw %}
+task reload-frontend-in-stack
 ```{% endraw %}{% endif %}{% raw %}
 
 ## Frontend
 Start the development server on `http://localhost:3000`:
 ```bash
-pnpm --dir=frontend dev
+task dev-frontend
 ```
 
 Build the application for production:
 
 ```bash
-pnpm --dir=frontend generate
+task build-frontend
 ```
 
 Locally preview production build:
 ```bash
-pnpm --dir=frontend preview
+task preview-frontend
 ```{% endraw %}{% if has_backend %}{% raw %}
 
 ## Backend
 Start the API server on port 4000{% endraw %}{% if deploy_as_executable %}{% raw %} (will not generate log files){% endraw %}{% endif %}{% raw %}:
 ```bash
-uv --directory=backend run uvicorn src.entrypoint:app --reload --host '::' --port 4000
+task dev-backend
 ```{% endraw %}{% endif %}{% raw %}{% endraw %}{% if deploy_as_executable %}{% raw %}
 
 Start the app using the entrypoint to be able to supply CLI options and log to file (running by default on port {% endraw %}{{ backend_deployed_port_number }}{% raw %}):
 ```bash
-uv --directory=backend run python src/entrypoint.py
+task run-backend-entrypoint
 ```{% endraw %}{% endif %}{% if backend_makes_api_calls %}{% raw %}
 
-When running the unit test suite, the `pytest-recording` library records HTTP requests as cassettes. If you encounter errors about a missing cassette, pass `--record-mode=once` to the `pytest` command to perform a live HTTP request instead.{% endraw %}{% endif %}{% if has_backend %}{% raw %}
+When running the unit test suite, the `pytest-recording` library records HTTP requests as cassettes. If you encounter errors about a missing cassette, pass `--record-mode=once` to the `pytest` command to perform a live HTTP request instead.{% endraw %}{% endif %}{% if has_backend or frontend_uses_graphql %}{% raw %}
 
-
-To (re)generate the client code for this app for use in E2E tests of the backend:
-
-First, regenerate the openapi.json file that will be used in the next step to generate the Python models:
+## Codegen
+To regenerate every generated client in this repo, run:
 
 ```bash
-uv --directory=backend run pytest tests/unit/test_basic_server_functionality.py --snapshot-update
+task codegen
 ```
 
-Once created, use Kiota to regenerate all models based on the new openapi.json spec.
-
-```bash
-mkdir -p "./backend/tests/e2e/generated/open_api/backend" && docker run --network host -v "./backend/tests/e2e/generated/open_api/backend:/app/output" -v "./backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json:/app/openapi.json" mcr.microsoft.com/openapi/kiota:{% endraw %}{{ kiota_cli_version }}{% raw %} generate -l python -c BackendClient -n client -d openapi.json --exclude-backward-compatible --clean-output --additional-data false && uv --directory=backend run python kiota_nullable_fixer.py "./tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json" "./tests/e2e/generated/open_api/backend"
-```{% endraw %}{% endif %}{% if has_backend and backend_uses_graphql %}{% raw %}
-
-To regenerate the GraphQL client code for the E2E test suite, run:
-```bash
-uv --directory=backend run ariadne-codegen
-```{% endraw %}{% endif %}{% raw %}
+That covers both sides of the app and all schema sources, refreshing the openapi.json snapshot before any client is generated from it. Run `task --list` for the individual tasks if you only need one of them. This is the only sanctioned way to update generated code: nothing under a `generated/` folder should ever be hand-edited.{% endraw %}{% endif %}{% raw %}
 
 ## Updating from the template
-This repository uses a copier template. To pull in the latest updates from the template, use the command:
-`copier update --answers-file .config/.copier-answers.yml --trust --conflict rej --defaults`{% endraw %}
+This repository uses a copier template. To pull in the latest updates from the template, run `task copier-update`.{% endraw %}

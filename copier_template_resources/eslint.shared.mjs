@@ -16,6 +16,7 @@ export const ignoresConfig = {
   ],
 };
 
+/** @type {import("eslint").Linter.Config} */
 export const vueScriptLangConfig = {
   // Disallow <script lang="js"> in Vue files
   files: ["**/*.vue"],
@@ -31,6 +32,7 @@ export const vueScriptLangConfig = {
   },
 };
 
+/** @type {import("eslint").Linter.Config} */
 export const noJsConfig = {
   // Disallow .js files in favor of typescript
   files: ["**/*.js"],
@@ -45,6 +47,7 @@ export const noJsConfig = {
   },
 };
 
+/** @type {import("eslint").Linter.Config} */
 export const vitestConfig = {
   files: ["**/*.{test,spec}.ts"],
   plugins: {
@@ -80,6 +83,7 @@ export const vitestConfig = {
   },
 };
 
+/** @type {import("eslint").Linter.Config} */
 export const e2eConfig = {
   // E2E specs run under the @playwright/test runner,
   // importing test/expect from tests/e2e/fixtures, not vitest. The broad **/*.{test,spec}.ts block

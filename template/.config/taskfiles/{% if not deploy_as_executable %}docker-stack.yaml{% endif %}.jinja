@@ -1,0 +1,7 @@
+{% raw %}version: '3'
+
+tasks:
+  run-stack:
+    desc: Spin up the docker stack, serving the frontend on port {% endraw %}{{ frontend_deployed_port_number }}{% if has_backend %}{% raw %} and the backend on port {% endraw %}{{ backend_deployed_port_number }}{% endif %}{% raw %}
+    cmds:
+      - docker compose up{% endraw %}

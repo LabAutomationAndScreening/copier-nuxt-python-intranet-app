@@ -78,6 +78,9 @@ This project is a Copier template used to generate applications that are able to
 ## Tooling
 
 - ❌ Never chain commands (`&&`, `||`, `;`, `&`) — breaks permission allow-list matcher. ✅ One command per tool call. `cd` as separate prior call. Pipes (`|`) OK.
+- Before hand-assembling a multi-step workflow, run `task --list` — it is probably already a task. Definitions live in `.config/taskfiles/`; the root `Taskfile.yaml` only includes them.
+- The bans on `pnpm --prefix`, `uv --directory` and direct tool invocation apply to commands you type, not to task definitions: a task's commands run with the repo root as their working directory by default. Prefer adding or extending a task over typing the long form.
+- Linting and type-checking stay with `pre-commit run <hook-id>` rather than a task, so that what you run is exactly what CI runs.
 - `cd` into a subdirectory is auto-approved; navigating up (`cd ..`) or to an absolute path (`cd /some/path`) requires a user permission prompt. Minimize such navigation: run `pre-commit` from whichever subdirectory you're already in (it walks up to find `.pre-commit-config.yaml`).
 - ❌ Never use `python3` or `python` directly. ✅ Always use `uv run python` for Python commands.
 - ❌ Never use `python3`/`python` for one-off data tasks. ✅ Use `jq` for JSON parsing, standard shell builtins for string manipulation. Only reach for `uv run python` when no dedicated tool covers the need.
@@ -90,6 +93,7 @@ This project is a Copier template used to generate applications that are able to
 - Never use backslash line continuations in shell commands — always write the full command on a single line. Backslashes break the permission allow-list matcher.
 - **Never manually edit files in any `generated/` folder.** These files are produced by codegen tooling (typically Kiota) and any manual changes will be overwritten. If a generated file needs to change, update the source (e.g. the OpenAPI schema) and re-run the generator.
 - Leave `import` statement ordering and unused-import removal to pre-commit — don't edit them yourself.
+- In GitHub Codespaces, the injected `GITHUB_TOKEN` is a repo-scoped app token, so `gh`/`git` cannot reach other repos in the org. It lives in the container process environment (not any dotfile), so `unset` inside a Bash tool call does not persist. To grant broader access, ask the user to run `env -u GITHUB_TOKEN -u GH_TOKEN gh auth login --hostname github.com --git-protocol https --web` in their shell (the `--web` flags are required — `gh auth login` alone needs a TTY that the Bash tool does not provide, and it refuses to store credentials while `GITHUB_TOKEN` is set). Afterwards, prefix your own `gh`/`git` calls with `env -u GITHUB_TOKEN -u GH_TOKEN` so they use the stored GitHub CLI credentials instead of the app token — `GH_TOKEN` also has to be cleared because `gh` gives it precedence over both `GITHUB_TOKEN` and stored credentials. Where those credentials live depends on the environment (`gh` prefers the OS credential store and the config dir follows `GH_CONFIG_DIR`), but in these devcontainers they usually land in plain text at `~/.config/gh/hosts.yml`; `gh auth status` reports the active source.
 
 <!-- BEGIN BEADS INTEGRATION -->
 ## Issue Tracking with bd (beads)

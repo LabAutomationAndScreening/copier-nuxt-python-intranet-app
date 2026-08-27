@@ -1,0 +1,17 @@
+version: '3'
+
+tasks:
+  dev-frontend:
+    desc: Start the frontend development server on http://localhost:3000
+    cmds:
+      - pnpm --dir=frontend dev
+
+  build-frontend:
+    desc: Generate the production frontend bundle into frontend/.output/public
+    cmds:
+      - pnpm --dir=frontend generate
+
+  preview-frontend:
+    desc: Locally preview the generated production frontend bundle
+    cmds:
+      - pnpm --dir=frontend preview

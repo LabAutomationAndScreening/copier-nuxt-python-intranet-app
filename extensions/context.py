@@ -19,11 +19,12 @@ class ContextUpdater(ContextHook):
     def hook(  # noqa: PLR0915 # yes, this is a lot of statements, but it's all just creating the dict
         self, context: dict[Any, Any]
     ) -> dict[Any, Any]:
-        context["uv_version"] = "0.12.5"
+        context["uv_version"] = "0.12.6"
         context["pnpm_version"] = "11.22.0"
         context["npm_version"] = "11.13.0"
         context["nvm_version"] = "0.40.5"
         context["pre_commit_version"] = "4.6.2"
+        context["task_version"] = "3.53.1"
         context["pytest_version"] = ">=9.1.1"
         context["pytest_randomly_version"] = ">=4.1.0"
         context["pytest_cov_version"] = ">=7.1.0"
@@ -53,7 +54,7 @@ class ContextUpdater(ContextHook):
         context["syrupy_version"] = ">=5.5.3"
         context["structlog_version"] = ">=26.1.0"
         context["httpx_version"] = ">=0.28.1"
-        context["httpx2_version"] = ">=2.10.0"
+        context["httpx2_version"] = ">=2.12.0"
         context["python_kiota_bundle_version"] = ">=1.11.6"
         context["vcrpy_version"] = ">=8.3.0"
         context["pytest_recording_version"] = ">=0.13.4"

@@ -155,7 +155,7 @@ jobs:
           skip-installing-ssm-plugin-manager: true
 
       - name: Build frontend
-        run: pnpm --dir=frontend generate
+        run: task build-frontend
 
       - name: Upload build artifact
         uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
@@ -218,8 +218,7 @@ jobs:
           skip-installing-ssm-plugin-manager: true
 
       - name: Build application
-        working-directory: backend
-        run: uv run pyinstaller pyinstaller.spec --log-level=DEBUG
+        run: task bundle-executable-from-staged-static
       - name: Tar files to preserve permissions on Linux during artifact upload # https://github.com/actions/upload-artifact?tab=readme-ov-file#permission-loss
         run: tar -cvf app.tar backend/dist/{% endraw %}{{ repo_name }}{% raw %}
       - name: Upload application artifact (Windows)

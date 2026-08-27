@@ -20,20 +20,14 @@ To create a new repository using this template:
 
 # Development
 
+Multi-step workflows are defined as [Task](https://taskfile.dev) tasks. Run `task --list` to see them; the definitions live in `.config/taskfiles/`, and `Taskfile.yaml` in the repo root is only a shim that includes them.
+
 ## Obtaining the GraphiQL files to bundle
-1. Navigate into the static folder: `cd "template/{% if has_backend %}backend{% endif %}/src/static/{% if frontend_uses_graphql %}static{% endif %}/graphiql"`
-1. Confirm by viewing the source of a non-altered GraphiQL page that these are the files to download
-1. `curl https://unpkg.com/react@18.2.0/umd/react.production.min.js > react.production.min.js`
-1. `curl https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js > react-dom.production.min.js`
-1. `curl https://unpkg.com/js-cookie@3.0.5/dist/js.cookie.min.js > js.cookie.min.js`
-1. `curl https://unpkg.com/graphiql@3.8.3/graphiql.min.css > graphiql.min.css`
-1. `curl https://unpkg.com/@graphiql/plugin-explorer@1.0.2/dist/style.css > style.css`
-1. `curl https://unpkg.com/graphiql@3.8.3/graphiql.min.js > graphiql.min.js`
-1. `curl https://unpkg.com/@graphiql/plugin-explorer@1.0.2/dist/index.umd.js > index.umd.js`
+1. Confirm by viewing the source of a non-altered GraphiQL page that the bundled files are the ones to download
+1. Run `task fetch-graphiql-assets`, which downloads all seven vendor files at their pinned versions into the bundled `graphiql` directory. Bump a version in `.config/taskfiles/graphiql.yaml`, where each one is declared exactly once.
 
 ## Updating from the template
-This repository uses a copier template. To pull in the latest updates from the template, use the command:
-`copier update --answers-file .config/.copier-answers.yml --trust --conflict rej --defaults`
+This repository uses a copier template. To pull in the latest updates from the template, run `task copier-update`
 
 <!--
 ============== WARNING ==============================================================================

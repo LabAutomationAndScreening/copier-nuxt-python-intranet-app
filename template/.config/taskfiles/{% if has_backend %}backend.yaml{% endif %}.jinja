@@ -1,0 +1,12 @@
+{% raw %}version: '3'
+
+tasks:
+  dev-backend:
+    desc: Start the API server on port 4000 with autoreload{% endraw %}{% if deploy_as_executable %}{% raw %} (does not write log files){% endraw %}{% endif %}{% raw %}
+    cmds:
+      - uv --directory=backend run uvicorn src.entrypoint:app --reload --host '::' --port 4000{% endraw %}{% if deploy_as_executable %}{% raw %}
+
+  run-backend-entrypoint:
+    desc: Run the backend through its CLI entrypoint on port {% endraw %}{{ backend_deployed_port_number }}{% raw %}, which accepts CLI options and logs to file
+    cmds:
+      - uv --directory=backend run python src/entrypoint.py{% endraw %}{% endif %}

@@ -104,11 +104,10 @@
       "Bash(amp *)",
       "Bash(atuin *)",
       "Bash(bc *)",
-      "Bash(chezmoi *)",
       "Bash(diff *)",
       "Bash(jq *)",
-      "Bash(just *)",
       "Bash(lsof *)",
+      "Bash(task *)", // Task runner invocation is freely allowed.  Write access to the taskfiles themselves is protected by Ask.
       "Bash(test *)",
       "Bash(xxd)", // this invocation can be used to read, but not to write (so no " *" after it)
       "Bash(zk *)",
@@ -118,6 +117,9 @@
       "Bash(pnpm view *)",
       // Python
       "Bash(uv run pytest *)",
+      // Task runner
+      // Running any task is allowed, because the thing worth guarding is the taskfile content rather than the task name: the matcher only ever sees `task <name>` and cannot look inside. The taskfiles are pinned to `ask` in write.jsonc instead, and the taskfile-override flags are denied below so that this entry cannot be pointed at an arbitrary file. This is friction and reviewability, not containment -- a bash write primitive plus git can still reach the taskfiles.
+      "Bash(task *)",
       // Text Processing
       "Bash(awk *)",
       "Bash(cat *)",
@@ -145,6 +147,17 @@
     "deny": [
       // Exceptions to generally allowed AI tooling
       "Bash(bd init*)", // we need to control the init process, don't let AI do that in the background
+      // Task must run the repo's own taskfiles, which are the reviewed ones. These flags are the only ways to point it elsewhere (there is no environment variable equivalent -- https://github.com/go-task/task/issues/1721 was closed as a duplicate with nothing implemented), and `/tmp` is writable without a prompt, so without these denials `Bash(task *)` would be an allow-anything entry.
+      "Bash(task -t *)",
+      "Bash(task --taskfile *)",
+      "Bash(task --taskfile=*)",
+      "Bash(task --entrypoint *)",
+      "Bash(task --entrypoint=*)",
+      "Bash(task -d *)",
+      "Bash(task --dir *)",
+      "Bash(task --dir=*)",
+      "Bash(task -g *)",
+      "Bash(task --global *)",
       // Github
       // Claude should not ever interfere with the PR process, that is how we gate AI's work
       "Bash(gh pr close *)",
@@ -155,6 +168,17 @@
       "Bash(gh pr ready *)",
       "Bash(gh pr review *)",
       "Bash(gh pr update-branch *)",
+      // Task must run the repo's own taskfiles, which are the reviewed ones. These flags are the only ways to point it elsewhere (there is no environment variable equivalent -- https://github.com/go-task/task/issues/1721 was closed as a duplicate with nothing implemented), and `/tmp` is writable without a prompt, so without these denials `Bash(task *)` would be an allow-anything entry.
+      "Bash(task -t *)",
+      "Bash(task --taskfile *)",
+      "Bash(task --taskfile=*)",
+      "Bash(task --entrypoint *)",
+      "Bash(task --entrypoint=*)",
+      "Bash(task -d *)",
+      "Bash(task --dir *)",
+      "Bash(task --dir=*)",
+      "Bash(task -g *)",
+      "Bash(task --global *)",
 
       // Destructive File Operations
       "Bash(chmod -R *)",
