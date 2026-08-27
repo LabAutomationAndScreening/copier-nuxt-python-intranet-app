@@ -1,15 +1,15 @@
-version: '3'
+{% raw %}version: '3'
 
 tasks:
   codegen:
     desc: Regenerate every generated client in the repo
-    cmds:
-{% if has_backend %}      - task: gen-backend-openapi-client
-      - task: gen-frontend-openapi-client
-{% endif %}{% if has_backend and backend_uses_graphql %}      - task: gen-backend-graphql-client
-{% endif %}{% if frontend_uses_graphql %}      - task: gen-frontend-graphql-client
-{% endif %}
-{% if has_backend %}  gen-openapi-snapshot:
+    cmds:{% endraw %}{% if has_backend %}{% raw %}
+      - task: gen-backend-openapi-client
+      - task: gen-frontend-openapi-client{% endraw %}{% endif %}{% if has_backend and backend_uses_graphql %}{% raw %}
+      - task: gen-backend-graphql-client{% endraw %}{% endif %}{% if frontend_uses_graphql %}{% raw %}
+      - task: gen-frontend-graphql-client{% endraw %}{% endif %}{% raw %}
+{% endraw %}{% if has_backend %}{% raw %}
+  gen-openapi-snapshot:
     desc: Regenerate the openapi.json snapshot that both OpenAPI clients are generated from
     # `run: once` so the umbrella task refreshes the snapshot a single time rather than once per dependent client
     run: once
@@ -24,19 +24,19 @@ tasks:
     deps: [gen-openapi-snapshot]
     cmds:
       - mkdir -p "./backend/tests/e2e/generated/open_api/backend"
-      - docker run -v "./backend/tests/e2e/generated/open_api/backend:/app/output" -v "./backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json:/app/openapi.json" mcr.microsoft.com/openapi/kiota:{{ kiota_cli_version }} generate -l python -c BackendClient -n client -d openapi.json --exclude-backward-compatible --clean-output --additional-data false
+      - docker run -v "./backend/tests/e2e/generated/open_api/backend:/app/output" -v "./backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json:/app/openapi.json" mcr.microsoft.com/openapi/kiota:{% endraw %}{{ kiota_cli_version }}{% raw %} generate -l python -c BackendClient -n client -d openapi.json --exclude-backward-compatible --clean-output --additional-data false
       - uv --directory=backend run python kiota_nullable_fixer.py "./tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json" "./tests/e2e/generated/open_api/backend"
 
   gen-frontend-openapi-client:
     desc: Regenerate the TypeScript Kiota client that the frontend imports
     deps: [gen-openapi-snapshot]
     cmds:
-      - pnpm --dir=frontend openapi-codegen{% endif %}{% if has_backend and backend_uses_graphql %}
+      - pnpm --dir=frontend openapi-codegen{% endraw %}{% endif %}{% if has_backend and backend_uses_graphql %}{% raw %}
   gen-backend-graphql-client:
     desc: Regenerate the GraphQL client that the backend E2E tests import
     cmds:
-      - uv --directory=backend run ariadne-codegen{% endif %}{% if frontend_uses_graphql %}
+      - uv --directory=backend run ariadne-codegen{% endraw %}{% endif %}{% if frontend_uses_graphql %}{% raw %}
   gen-frontend-graphql-client:
     desc: Regenerate the frontend GraphQL types and operations from the schema
     cmds:
-      - pnpm --dir=frontend codegen{% endif %}
+      - pnpm --dir=frontend codegen{% endraw %}{% endif %}
