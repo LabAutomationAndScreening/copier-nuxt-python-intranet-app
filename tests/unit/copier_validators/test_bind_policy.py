@@ -27,7 +27,9 @@ def test_configurable_policies_expose_choice_and_firewall(policy: str):
     assert "$AllowRemote" in install_ps
     assert "--host" in install_ps
     assert "New-NetFirewallRule" in install_ps
+    assert 'throw "Failed to remove existing firewall rule' in install_ps
     assert "Remove-NetFirewallRule" in remove_ps
+    assert "Write-Warning" in remove_ps
     assert 'Id="ALLOW_REMOTE"' in wxs
     assert "BindAddressDlg" in wxs
 
@@ -65,6 +67,8 @@ def test_all_interfaces_only_forces_bind_all_and_opens_firewall_without_ui():
     assert "$AllowRemote" not in install_ps
     assert "@('--host', '0.0.0.0')" in install_ps
     assert "New-NetFirewallRule" in install_ps  # always opened when forced remote
+    assert 'throw "Failed to remove existing firewall rule' in install_ps
     assert "Remove-NetFirewallRule" in remove_ps
+    assert "Write-Warning" in remove_ps
     assert "ALLOW_REMOTE" not in wxs
     assert "BindAddressDlg" not in wxs

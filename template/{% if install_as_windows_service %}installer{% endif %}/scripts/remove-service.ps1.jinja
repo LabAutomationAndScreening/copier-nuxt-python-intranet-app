@@ -30,6 +30,14 @@ if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
 }
 {% endraw %}{% if bind_firewall_managed %}{% raw %}
 # Remove the inbound firewall rule install-service.ps1 may have created (no-op if absent).
-Get-NetFirewallRule -DisplayName "$ServiceName (HTTP-In)" -ErrorAction SilentlyContinue | Remove-NetFirewallRule -ErrorAction SilentlyContinue
+# Best-effort: surface a real removal failure but never fail the uninstall (see .DESCRIPTION).
+$firewallRule = Get-NetFirewallRule -DisplayName "$ServiceName (HTTP-In)" -ErrorAction SilentlyContinue
+if ($firewallRule) {
+    try {
+        $firewallRule | Remove-NetFirewallRule -ErrorAction Stop
+    } catch {
+        Write-Warning "Failed to remove firewall rule '$ServiceName (HTTP-In)' during uninstall: $_"
+    }
+}
 {% endraw %}{% endif %}{% raw %}
 exit 0{% endraw %}

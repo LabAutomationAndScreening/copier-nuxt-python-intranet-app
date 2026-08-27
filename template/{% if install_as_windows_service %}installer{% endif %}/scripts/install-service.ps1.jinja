@@ -95,7 +95,16 @@ if ($LASTEXITCODE -ne 0) { throw "Service install failed (exit $LASTEXITCODE)" }
 # subnet. The template opens only the single defined port; apps that need more (extra ports,
 # UDP/mDNS, etc.) add their own rules. Rebuilt idempotently so toggling remote access off removes it.
 $FirewallRuleName = "$ServiceName (HTTP-In)"
-Get-NetFirewallRule -DisplayName $FirewallRuleName -ErrorAction SilentlyContinue | Remove-NetFirewallRule -ErrorAction SilentlyContinue
+# Abort the install if a stale rule exists but cannot be removed: recreating over it would
+# leave a duplicate or wrongly-scoped rule. A missing rule is fine (nothing to remove).
+$existingFirewallRule = Get-NetFirewallRule -DisplayName $FirewallRuleName -ErrorAction SilentlyContinue
+if ($existingFirewallRule) {
+    try {
+        $existingFirewallRule | Remove-NetFirewallRule -ErrorAction Stop
+    } catch {
+        throw "Failed to remove existing firewall rule '$FirewallRuleName': $_"
+    }
+}
 {% endraw %}{% if bind_configurable %}{% raw %}$openFirewall = ($AllowRemote -eq '1')
 {% endraw %}{% else %}{% raw %}$openFirewall = $true
 {% endraw %}{% endif %}{% raw %}if ($openFirewall) {
