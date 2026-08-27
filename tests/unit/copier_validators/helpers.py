@@ -49,18 +49,3 @@ def validate_installer_answers(**overrides: object) -> None:
             pretend=True,
         )
 
-
-@contextlib.contextmanager
-def render_installer_project(**overrides: object) -> Generator[Path]:
-    data = {**_INSTALLER_ANSWERS, **overrides}
-    with tempfile.TemporaryDirectory() as tmp:
-        _ = copier.run_copy(
-            str(PROJECT_ROOT),
-            tmp,
-            data=data,
-            defaults=True,
-            unsafe=True,
-            quiet=True,
-            vcs_ref="HEAD",
-        )
-        yield Path(tmp)
