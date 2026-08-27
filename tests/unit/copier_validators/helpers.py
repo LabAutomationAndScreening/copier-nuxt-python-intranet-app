@@ -4,9 +4,7 @@
 auto-includes dirty working-tree changes, so uncommitted validator edits are picked up.
 """
 
-import contextlib
 import tempfile
-from collections.abc import Generator
 from pathlib import Path
 
 import copier
@@ -48,4 +46,3 @@ def validate_installer_answers(**overrides: object) -> None:
             vcs_ref="HEAD",
             pretend=True,
         )
-
