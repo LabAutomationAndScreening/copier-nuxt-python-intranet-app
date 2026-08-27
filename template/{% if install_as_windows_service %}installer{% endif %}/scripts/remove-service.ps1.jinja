@@ -1,0 +1,31 @@
+{% raw %}<#
+.SYNOPSIS
+    Stops and unregisters the {% endraw %}{{ human_friendly_app_name }}{% raw %} Windows service. Run by the MSI
+    as a deferred (elevated, SYSTEM) custom action on uninstall, before files are
+    removed.
+
+.DESCRIPTION
+    Mirror of install-service.ps1: uses the exe's own `service stop` / `service
+    remove` verbs. Best-effort - a missing or already-stopped service must not
+    fail the uninstall, so failures are swallowed.
+#>
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory)] [string] $ExePath
+)
+
+Set-StrictMode -Version Latest
+
+$ServiceName = '{% endraw %}{{ windows_service_org_prefix }}{{ repo_name }}{% raw %}'
+
+if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
+    Write-Host "Stopping service $ServiceName"
+    & $ExePath service stop 2>&1 | Out-Null
+
+    Write-Host "Removing service $ServiceName"
+    & $ExePath service remove 2>&1 | Out-Null
+} else {
+    Write-Host "Service $ServiceName not present; nothing to remove"
+}
+
+exit 0{% endraw %}

@@ -481,7 +481,19 @@ jobs:
           name: windows-service-logs
           path: backend/dist/pytest-tmp/**/service-logs/**
           if-no-files-found: warn
-          retention-days: 5{% endraw %}{% endif %}{% raw %}
+          retention-days: 5
+
+  build-installer:
+    needs:
+      - build-backend
+      - check-skip-duplicate
+    if: needs.check-skip-duplicate.outputs.should-run == 'true'
+    permissions:
+      contents: read
+      actions: read # build-installer.yaml downloads the built bundle artifact
+    # Intentionally no `secrets: inherit` here (unlike the release job, which passes it when
+    # signing is enabled): CI builds an unsigned MSI as a build-breakage check; release signs it.
+    uses: ./.github/workflows/build-installer.yaml{% endraw %}{% endif %}{% raw %}
 
 
   e2e-test:
@@ -659,7 +671,8 @@ jobs:
       - package-firmware{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
       - e2e-test-backend{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
       - e2e-test-k3d{% endraw %}{% endif %}{% raw %}{% endraw %}{% if install_as_windows_service %}{% raw %}
-      - e2e-test-windows-service{% endraw %}{% endif %}{% raw %}
+      - e2e-test-windows-service
+      - build-installer{% endraw %}{% endif %}{% raw %}
       - e2e-test
       - confirm-on-tagged-copier-template
     permissions:
@@ -682,7 +695,8 @@ jobs:
             [[ ! "${{ needs.package-firmware.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
             [[ ! "${{ needs.e2e-test-backend.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
             [[ ! "${{ needs.e2e-test-k3d.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}{% endraw %}{% if install_as_windows_service %}{% raw %}
-            [[ ! "${{ needs.e2e-test-windows-service.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}
+            [[ ! "${{ needs.e2e-test-windows-service.result }}" =~ $success_pattern ]] ||
+            [[ ! "${{ needs.build-installer.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}
             [[ ! "${{ needs.e2e-test.result }}" =~ $success_pattern ]] ||
             [[ ! "${{ needs.confirm-on-tagged-copier-template.result }}" =~ $success_pattern ]]; then
             echo "❌ One or more jobs did not finish with skipped or success"

@@ -1,0 +1,44 @@
+{% raw %}<#
+.SYNOPSIS
+    Stages the {% endraw %}{{ human_friendly_app_name }}{% raw %} build artifacts for the WiX MSI.
+
+.DESCRIPTION
+    Stages the prebuilt backend/dist/{% endraw %}{{ repo_name }}{% raw %} bundle and arranges everything
+    into $StagingDir in the layout the MSI harvest expects:
+
+      app/        {% endraw %}{{ repo_name }}{% raw %}.exe + _internal/ (the PyInstaller bundle)
+      scripts/    install-time PowerShell helpers (service lifecycle)
+
+    The bundle must already exist (downloaded from the CI run that produced and
+    tested it), so the shipped MSI wraps the exact tested binary. This script
+    never rebuilds the app itself.
+#>
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory)] [string] $StagingDir,
+    [Parameter(Mandatory)] [string] $RepoRoot
+)
+
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+
+$ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$BackendDir = Join-Path $RepoRoot 'backend'
+$DistDir = Join-Path $BackendDir 'dist\{% endraw %}{{ repo_name }}{% raw %}'
+
+if (Test-Path $StagingDir) {
+    Remove-Item -Recurse -Force $StagingDir
+}
+New-Item -ItemType Directory -Path $StagingDir -Force | Out-Null
+
+Write-Host "  Staging existing $DistDir" -ForegroundColor Yellow
+if (-not (Test-Path (Join-Path $DistDir '{% endraw %}{{ repo_name }}{% raw %}.exe'))) {
+    throw "$DistDir\{% endraw %}{{ repo_name }}{% raw %}.exe not found - download the tested bundle into $DistDir first."
+}
+
+Write-Host "  Arranging staging tree" -ForegroundColor Cyan
+$AppStaging = Join-Path $StagingDir 'app'
+Copy-Item -Recurse -Force -Path $DistDir -Destination $AppStaging
+Copy-Item -Recurse -Force -Path (Join-Path $ScriptRoot 'scripts') -Destination (Join-Path $StagingDir 'scripts')
+
+Write-Host "  Done. Staging at $StagingDir" -ForegroundColor Green{% endraw %}

@@ -1,9 +1,11 @@
-from uuid import uuid4
+{% if install_as_windows_service %}{% raw %}from random import randint
+{% endraw %}{% endif %}{% raw %}from uuid import uuid4
 
 import pytest
 from backend_api import app_runner
 from backend_api.entrypoint import cli
-from backend_api.entrypoint.cli import entrypoint
+{% endraw %}{% if install_as_windows_service %}{% raw %}from backend_api.entrypoint import grant_rights
+{% endraw %}{% endif %}{% raw %}from backend_api.entrypoint.cli import entrypoint
 from pytest_mock import MockerFixture
 
 from .fixtures import GENERIC_REQUIRED_CLI_ARGS
@@ -54,4 +56,20 @@ def test_Given_something_mocked_to_error__Then_error_logged(mocker: MockerFixtur
 def test_Given_launched_directly_via_uvicorn__Then_return_zero():
     exit_code = entrypoint(["src.entrypoint:app"])
 
-    assert exit_code == 0
+    assert exit_code == 0{% endraw %}{% if install_as_windows_service %}{% raw %}
+
+
+def test_Given_grant_service_rights_subcommand__Then_remaining_argv_forwarded_unparsed(mocker: MockerFixture):
+    expected_exit_code = randint(1, 255)
+    # Opaque tokens (not real flags) prove the entrypoint forwards whatever follows
+    # the subcommand verbatim to the dispatcher, so new grant-service-rights flags
+    # ride along without a change here. Flag parsing is covered in test_grant_rights.
+    remaining_argv = [str(uuid4()), str(uuid4())]
+    dispatch_mock = mocker.patch.object(
+        grant_rights, grant_rights.dispatch_grant_rights.__name__, return_value=expected_exit_code
+    )
+
+    exit_code = entrypoint(["grant-service-rights", *remaining_argv])
+
+    assert exit_code == expected_exit_code
+    dispatch_mock.assert_called_once_with(remaining_argv){% endraw %}{% endif %}

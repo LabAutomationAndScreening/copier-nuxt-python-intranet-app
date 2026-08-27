@@ -18,12 +18,13 @@ from .app_bootup import stop_exe
 from .generated.open_api.backend.backend_client import BackendClient{% endraw %}{% if backend_uses_graphql %}{% raw %}
 from .graphql_fixtures import client{% endraw %}{% endif %}{% raw %}
 from .jinja_constants import APPLICATION_BOOTUP_MODE
-from .jinja_constants import ApplicationBootupModes{% endraw %}{% if backend_uses_graphql %}{% raw %}
+from .jinja_constants import ApplicationBootupModes
 
-_imported_graphql_fixtures = (client,){% endraw %}{% endif %}{% raw %}
+{% endraw %}{% if backend_uses_graphql %}{% raw %}_imported_graphql_fixtures = (client,)
 
 
-@pytest.fixture(autouse=True, scope="session")
+{% endraw %}{% else %}{% raw %}
+{% endraw %}{% endif %}{% raw %}@pytest.fixture(autouse=True, scope="session")
 def configure_log():
     configure_logging(log_filename_prefix="logs/pytest-")
 

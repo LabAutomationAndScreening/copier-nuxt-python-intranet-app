@@ -14,17 +14,19 @@ import winerror  # pyrefly: ignore[missing-import,unused-ignore] # pywin32 has n
 
 from .. import app_runner
 from ..jinja_constants import APP_NAME
-from ..jinja_constants import HUMAN_FRIENDLY_APP_NAME
+from ..jinja_constants import WINDOWS_SERVICE_DISPLAY_NAME
+from ..jinja_constants import WINDOWS_SERVICE_NAME
 from .crash_dump import resolve_crash_dump_path
 from .crash_dump import write_crash_dump
 from .parser import parser
+from .service_install_password import inject_install_password
 
 _SERVICE_MANAGEMENT_COMMANDS = frozenset({"install", "start", "stop", "remove", "debug"})
 
 
 class AppService(win32serviceutil.ServiceFramework):
-    _svc_name_ = APP_NAME
-    _svc_display_name_ = HUMAN_FRIENDLY_APP_NAME
+    _svc_name_ = WINDOWS_SERVICE_NAME
+    _svc_display_name_ = WINDOWS_SERVICE_DISPLAY_NAME
     _exe_args_ = ""  # set by dispatch_windows_service before install; pywin32 reads this to build ImagePath
 
     def __init__(self, args: tuple[str, ...]) -> None:
@@ -131,6 +133,10 @@ def dispatch_windows_service(argv: Sequence[str]) -> int:
             # pywin32 reads _exe_args_ at install time and bakes the suffix into the ImagePath
             # registry value itself — no post-install registry patching needed.
             AppService._exe_args_ = subprocess.list2cmdline(["service", *runtime_args])
+            # The service password arrives via the environment, not the command line (which any
+            # local process can read); splice it into the in-memory arg list here so it reaches
+            # CreateService without ever appearing in the exe's process command line.
+            install_args = inject_install_password(install_args)
         win32serviceutil.HandleCommandLine(AppService, argv=[sys.argv[0], *install_args])
     else:
         servicemanager.Initialize()
