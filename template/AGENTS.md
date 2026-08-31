@@ -163,6 +163,7 @@ bd export -o [relative path to repository root]/.claude/.beads/issues-dump.jsonl
 - `task` - Work item (tests, docs, refactoring)
 - `epic` - Large feature with subtasks
 - `chore` - Maintenance (dependencies, tooling)
+- `decision` - An architectural decision (aliases: `dec`, `adr`)
 
 ### Priorities
 
@@ -192,7 +193,7 @@ bd export -o [relative path to repository root]/.claude/.beads/issues-dump.jsonl
 - ❌ Do NOT use external issue trackers
 - ❌ Do NOT duplicate tracking systems
 
-For more details, see README.md and docs/QUICKSTART.md.
+For more details, run `bd quickstart` or see <https://github.com/gastownhall/beads>.
 
 # Copier-Managed Files
 
