@@ -7,6 +7,12 @@
   "service": "devcontainer",
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   "features": {
+    "ghcr.io/devcontainers/features/git-lfs:1.2.5": {
+      // we are not using git-lfs right now, but its a transitive dep elsewhere. We want to configure auto pull to off since the feature will by default also try to install the git hook
+      // and it breaks creation of the devcontainer since pre-commit hooks are already in place. Probably a better way to fix this but until we use git-lfs we can leave it like this.
+      // https://github.com/devcontainers/features/blob/main/src/git-lfs/README.md
+      "autoPull": false
+    },
     // https://github.com/anthropics/devcontainer-features/blob/main/src/claude-code/devcontainer-feature.json
     "ghcr.io/anthropics/devcontainer-features/claude-code:1.0.5": {},
   },
