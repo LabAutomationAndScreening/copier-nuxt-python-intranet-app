@@ -61,7 +61,7 @@ class ContextUpdater(ContextHook):
         context["pytest_asyncio_version"] = ">=1.4.0"
         context["pytest_timeout_version"] = ">=2.4.0"
         context["pytest_reserial_version"] = ">=0.6.1"
-        context["python_faker_version"] = ">=40.36.0"
+        context["python_faker_version"] = ">=40.37.0"
         context["mutmut_version"] = ">=3.7.0"
         context["pyrefly_version"] = ">=1.2.0"
         context["vacuum_openapi_version"] = "0.30.0"
@@ -139,6 +139,9 @@ class ContextUpdater(ContextHook):
         context["debian_release_name"] = "trixie"
         context["alpine_image_version"] = "3.23"
         context["nginx_image_version"] = "1.30.1"
+
+        context["beads_version"] = "1.2.2"
+        context["dolt_image_version"] = "2.1.0"
 
         context["kiota_cli_version"] = "1.32.4"
 
