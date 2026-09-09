@@ -7,7 +7,26 @@
  * but if the change should be shared with other projects, please backport it to the template repo.
  * =====================================================================================================
  */
+// The rule module lives in its own file (rendered to `.config/eslint-rules/` at the repo root);
+// this path is resolved from the rendered location of eslint.shared.mjs (the frontend dir).
+
 import vitest from "@vitest/eslint-plugin";
+import istanbulIgnoreIfMustThrow from "../.config/eslint-rules/istanbul-ignore-if-must-throw.mjs";
+
+/** @type {import("eslint").Linter.Config} */
+export const istanbulIgnoreIfMustThrowConfig = {
+  files: ["**/*.{ts,vue}"],
+  plugins: {
+    local: {
+      rules: {
+        "istanbul-ignore-if-must-throw": istanbulIgnoreIfMustThrow,
+      },
+    },
+  },
+  rules: {
+    "local/istanbul-ignore-if-must-throw": "error",
+  },
+};
 
 export const ignoresConfig = {
   ignores: [
@@ -96,4 +115,11 @@ export const e2eConfig = {
   },
 };
 
-export const sharedConfigs = [ignoresConfig, vueScriptLangConfig, noJsConfig, vitestConfig, e2eConfig];
+export const sharedConfigs = [
+  ignoresConfig,
+  vueScriptLangConfig,
+  noJsConfig,
+  vitestConfig,
+  e2eConfig,
+  istanbulIgnoreIfMustThrowConfig,
+];

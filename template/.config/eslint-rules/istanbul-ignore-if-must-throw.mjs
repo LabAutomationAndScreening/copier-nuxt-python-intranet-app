@@ -1,0 +1,1 @@
+../../../copier_template_resources/eslint/istanbul-ignore-if-must-throw.mjs
