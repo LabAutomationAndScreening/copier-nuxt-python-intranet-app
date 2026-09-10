@@ -7,7 +7,6 @@
  * but if the change should be shared with other projects, please backport it to the template repo.
  * =====================================================================================================
  */
-
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -20,7 +19,10 @@ function findLocalRulesDir() {
   let dir = path.dirname(fileURLToPath(import.meta.url));
   for (;;) {
     const candidate = path.join(dir, ".config", "eslint-rules");
-    if (fs.existsSync(candidate)) return candidate;
+    if (fs.statSync(candidate, { throwIfNoEntry: false })?.isDirectory() === true) return candidate;
+    if (fs.existsSync(path.join(dir, ".git"))) {
+      throw new Error(`Could not find .config/eslint-rules under the project root ${dir}`);
+    }
     const parent = path.dirname(dir);
     if (parent === dir) {
       throw new Error(`Could not find .config/eslint-rules above ${import.meta.url}`);
@@ -36,6 +38,9 @@ async function loadLocalRules() {
   for (const entry of entries) {
     const ruleName = entry.slice(0, -".mjs".length);
     const module = await import(pathToFileURL(path.join(rulesDir, entry)).href);
+    if (module.default === undefined) {
+      throw new Error(`Local ESLint rule module ${entry} has no default export`);
+    }
     rules[ruleName] = module.default;
   }
   return rules;
