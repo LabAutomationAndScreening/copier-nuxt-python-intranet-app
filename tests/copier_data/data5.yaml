@@ -7,7 +7,8 @@ install_claude_cli: false
 ssh_port_number: 9988
 pull_from_ecr: false
 repo_names_for_codespaces_read_permissions: ''
-use_windows_in_ci: false
+target_platforms:
+  - linux-x64
 install_aws_ssm_port_forwarding_plugin: true
 configure_vcrpy: false
 configure_python_asyncio: true
