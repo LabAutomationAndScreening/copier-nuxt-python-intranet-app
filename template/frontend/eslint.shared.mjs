@@ -1,1 +1,1 @@
-../../copier_template_resources/eslint.shared.mjs
+../../copier_template_resources/eslint/eslint.shared.mjs
