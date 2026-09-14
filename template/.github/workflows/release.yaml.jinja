@@ -152,24 +152,24 @@ jobs:
       contents: write # needed to create GitHub releases
       actions: read # needed to download artifacts from CI runs
     steps:{% endraw %}{% if deploy_as_executable %}{% raw %}
-{% endraw %}{% set os_runners = [gha_linux_runner] + ([gha_windows_runner] if use_windows_in_ci else []) %}{% for runner in os_runners %}{% set ext = "tar" if runner == gha_linux_runner else "zip" %}{% raw %}
-      - name: Download executable artifact ({% endraw %}{{ runner }}{% raw %})
+{% endraw %}{% for platform in target_platforms %}{% set ext = "tar" if os_for_platform[platform] == "linux" else "zip" %}{% raw %}
+      - name: Download executable artifact ({% endraw %}{{ platform }}{% raw %})
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
-          name: built-{% endraw %}{{ repo_name }}-{{ runner }}{% raw %}
-          path: artifacts/{% endraw %}{{ runner }}{% raw %}
+          name: built-{% endraw %}{{ repo_name }}-{{ platform }}{% raw %}
+          path: artifacts/{% endraw %}{{ platform }}{% raw %}
           run-id: ${{ needs.guard.outputs.ci-run-id }}
           github-token: ${{ github.token }}
-      - name: Prepare release asset ({% endraw %}{{ runner }}{% raw %})
-        run: {% endraw %}{% if runner == gha_linux_runner %}mv artifacts/{{ runner }}/app.tar {{ repo_name }}-{{ runner }}-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.{{ ext }}{% else %}(cd artifacts/{{ runner }} && zip -r ../../{{ repo_name }}-{{ runner }}-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.{{ ext }} .){% endif %}
+      - name: Prepare release asset ({% endraw %}{{ platform }}{% raw %})
+        run: {% endraw %}{% if ext == "tar" %}mv artifacts/{{ platform }}/app.tar {{ repo_name }}-{{ platform }}-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.{{ ext }}{% else %}(cd artifacts/{{ platform }} && zip -r ../../{{ repo_name }}-{{ platform }}-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.{{ ext }} .){% endif %}
 {% endfor %}{% endif %}{% if install_as_windows_service %}{% raw %}
       - name: Download Windows installer (MSI + install guide)
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
-          name: {% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}-installer
+{% endraw %}{#- One MSI is produced, for the x64 Windows platform when the project has one. -#}{% set installer_platform = 'windows-x64' if 'windows-x64' in target_platforms else windows_platforms[0] %}{% raw %}          name: {% endraw %}{{ repo_name }}-{{ installer_platform }}{% raw %}-installer
           path: artifacts/windows-installer
       - name: Prepare release asset (Windows installer)
-        run: (cd artifacts/windows-installer && zip -r ../../{% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}-installer-v${{ needs.guard.outputs.version }}.zip .)
+        run: (cd artifacts/windows-installer && zip -r ../../{% endraw %}{{ repo_name }}-{{ installer_platform }}{% raw %}-installer-v${{ needs.guard.outputs.version }}.zip .)
 {% endraw %}{% endif %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
       - name: Find firmware artifact name
         id: find-firmware-artifact
@@ -201,7 +201,7 @@ jobs:
           name: {% endraw %}{{ repo_name }}{% raw %} v${{ needs.guard.outputs.version }}
           generate_release_notes: true{% endraw %}{% if deploy_as_executable or has_circuit_python_backend_template_been_instantiated %}{% raw %}
           fail_on_unmatched_files: true
-          files: |{% endraw %}{% if deploy_as_executable %}{% for runner in ([gha_linux_runner] + ([gha_windows_runner] if use_windows_in_ci else [])) %}{% set ext = "tar" if runner == gha_linux_runner else "zip" %}
-            {{ repo_name }}-{{ runner }}-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.{{ ext }}{% endfor %}{% endif %}{% if install_as_windows_service %}
-            {{ repo_name }}-{{ gha_windows_runner }}-installer-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.zip{% endif %}{% if has_circuit_python_backend_template_been_instantiated %}
+          files: |{% endraw %}{% if deploy_as_executable %}{% for platform in target_platforms %}{% set ext = "tar" if os_for_platform[platform] == "linux" else "zip" %}
+            {{ repo_name }}-{{ platform }}-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.{{ ext }}{% endfor %}{% endif %}{% if install_as_windows_service %}
+            {{ repo_name }}-{{ installer_platform }}-installer-v{% raw %}${{ needs.guard.outputs.version }}{% endraw %}.zip{% endif %}{% if has_circuit_python_backend_template_been_instantiated %}
             {% raw %}${{ steps.find-firmware-artifact.outputs.artifact-name }}{% endraw %}.zip{% endif %}{% endif %}
