@@ -6,10 +6,6 @@
 {% macro platform_matrix(platforms) %}
     strategy:
       matrix:
-        platform:
-{%- for platform in platforms %}
-          - {{ platform }}
-{%- endfor %}
         include:
 {%- for platform in platforms %}
           - platform: {{ platform }}

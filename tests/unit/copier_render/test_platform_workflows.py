@@ -44,7 +44,16 @@ def _matrix_platforms(workflow: dict[str, object], job_name: str) -> list[str]:
     assert isinstance(strategy, dict)
     matrix = strategy["matrix"]
     assert isinstance(matrix, dict)
-    return [str(entry) for entry in matrix["platform"]]
+    # `include` is the only key: an explicit `platform:` axis alongside it would restate every platform
+    # a second time, and a typo in either copy silently yields an extra job with an empty `runs-on`
+    # instead of a parse error.
+    assert set(matrix) == {"include"}
+    platforms: list[str] = []
+    for entry in matrix["include"]:
+        assert isinstance(entry, dict)
+        assert set(entry) == {"platform", "runner"}
+        platforms.append(str(entry["platform"]))
+    return platforms
 
 
 class TestCiMatrices:
