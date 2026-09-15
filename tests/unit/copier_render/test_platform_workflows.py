@@ -131,3 +131,20 @@ def test_Given_a_linux_only_project__Then_no_windows_platform_reaches_ci_or_rele
     ci_text = (app / ".github" / "workflows" / "ci.yaml").read_text(encoding="utf-8")
     assert "windows-x64" not in ci_text
     assert "windows-arm64" not in ci_text
+
+
+def test_Given_a_project_answered_before_target_platforms_existed__When_it_had_windows_in_ci__Then_windows_is_kept(
+    tmp_path: Path,
+) -> None:
+    # `use_windows_in_ci` is the answer `target_platforms` replaced. The context hook derives a fresh
+    # `use_windows_in_ci` from `target_platforms`, and it runs while question defaults render too.
+    # If it overwrites the legacy answer before `target_platforms` is answered, the migration default
+    # sees False and every updating Windows project silently drops to Linux only.
+    app = render_app(
+        tmp_path,
+        omit=("target_platforms", "linux_arm64_runner_label", "windows_arm64_runner_label"),
+        use_windows_in_ci=True,
+    )
+    answers = yaml.safe_load((app / ".config" / ".copier-answers.yml").read_text(encoding="utf-8"))
+    assert answers["target_platforms"] == ["linux-x64", "windows-x64"]
+    assert answers["install_as_windows_service"] is True

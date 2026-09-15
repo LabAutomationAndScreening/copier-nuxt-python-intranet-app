@@ -32,16 +32,23 @@ _IGNORED_SOURCE_DIRS = shutil.ignore_patterns(
 )
 
 
-def render_app(tmp_path: Path, *, data_file: str = "data4.yaml", **overrides: object) -> Path:
+def render_app(
+    tmp_path: Path, *, data_file: str = "data4.yaml", omit: tuple[str, ...] = (), **overrides: object
+) -> Path:
     """Instantiate this template from the current working tree and return the rendered app.
 
     ``data4.yaml`` is the default because it is the fixture that deploys as an executable and
     installs as a Windows service, so it exercises every platform-shaped part of the workflows.
+
+    ``omit`` drops answers from the fixture so copier falls back to the question's default, which is
+    how a pre-existing project answers a question added since its last update.
     """
     source = tmp_path / "template-source"
     rendered = tmp_path / "rendered"
     _ = shutil.copytree(PROJECT_ROOT, source, symlinks=True, ignore=_IGNORED_SOURCE_DIRS)
     data: dict[str, object] = yaml.safe_load((COPIER_DATA_DIR / data_file).read_text(encoding="utf-8"))
+    for name in omit:
+        del data[name]
     data.update(overrides)
     _ = copier.run_copy(
         str(source),
