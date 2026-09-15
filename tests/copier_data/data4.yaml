@@ -7,7 +7,13 @@ install_claude_cli: true
 ssh_port_number: 54322
 pull_from_ecr: false
 repo_names_for_codespaces_read_permissions: ok-repo,awesome-stuff,super-repo
-use_windows_in_ci: true
+target_platforms:
+  - linux-x64
+  - linux-arm64
+  - windows-x64
+  - windows-arm64
+linux_arm64_runner_label: ubuntu-arm-2core
+windows_arm64_runner_label: windows-arm-8core
 install_aws_ssm_port_forwarding_plugin: false
 configure_vcrpy: true
 configure_python_asyncio: false

@@ -25,7 +25,7 @@ _INSTALLER_ANSWERS: dict[str, object] = {
     "is_circuit_python_driver": False,
     "backend_rest_api_description": "Test API",
     "deploy_as_executable": True,
-    "use_windows_in_ci": True,
+    "target_platforms": ["linux-x64", "windows-x64"],
     "install_as_windows_service": True,
     "installer_manufacturer": "Foo Corp",
     "installer_upgrade_code": "3b9d1f6a-2c84-4e7b-9a1f-6d5c4b3a2e10",

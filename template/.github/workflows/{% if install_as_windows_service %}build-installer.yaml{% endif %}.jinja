@@ -19,14 +19,15 @@ on:
       AZURE_CREDENTIALS:
         required: false{% endraw %}{% endif %}{% raw %}
 
-permissions:
+{% endraw %}{#- The MSI is built for the x64 Windows platform when the project has one, otherwise for
+    whichever Windows platform it does have. Only one installer is produced regardless. -#}{% set installer_platform = 'windows-x64' if 'windows-x64' in target_platforms else windows_platforms[0] %}{% raw %}permissions:
   contents: read
   actions: read # download-artifact needs this to pull a bundle from another run (release)
 
 jobs:
   build-installer:
     name: Build Windows Installer
-    runs-on: {% endraw %}{{ gha_windows_runner }}{% raw %}
+    runs-on: {% endraw %}{{ runner_for_platform[installer_platform] }}{% raw %}
     timeout-minutes: {% endraw %}{{ gha_xlong_timeout_minutes }}{% raw %}{% endraw %}{% if sign_installer %}{% raw %}
     # Sign only when the Azure credential secret is configured; the build still
     # works (unsigned) before signing is set up or on forks without the secret.
@@ -87,7 +88,7 @@ jobs:
       - name: Download built bundle
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
-          name: built-{% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}
+          name: built-{% endraw %}{{ repo_name }}-{{ installer_platform }}{% raw %}
           path: backend/dist/{% endraw %}{{ repo_name }}{% raw %}
           run-id: ${{ steps.resolve-run.outputs.run-id }}
           github-token: ${{ github.token }}{% endraw %}{% if sign_installer %}{% raw %}
@@ -108,7 +109,7 @@ jobs:
       - name: Upload installer
         uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
         with:
-          name: {% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}-installer
+          name: {% endraw %}{{ repo_name }}-{{ installer_platform }}{% raw %}-installer
           path: |
             installer/dist/{% endraw %}{{ product_id }}{% raw %}-*.msi
             installer/dist/INSTALL.txt
