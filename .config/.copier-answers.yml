@@ -1,5 +1,5 @@
 # Changes here will be overwritten by Copier
-_commit: v0.1.0-3-g2a7d8726
+_commit: v0.1.0-5-ge78f3340
 _src_path: gh:LabAutomationAndScreening/copier-base-template.git
 copier_answers_directory: .config
 description: A web app that is hosted within a local intranet. Nuxt frontend, python
