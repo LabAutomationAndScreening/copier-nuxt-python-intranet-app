@@ -20,7 +20,7 @@ class ContextUpdater(ContextHook):
         self, context: dict[Any, Any]
     ) -> dict[Any, Any]:
         context["uv_version"] = "0.12.15"
-        context["pnpm_version"] = "11.22.0"
+        context["pnpm_version"] = "12.4.2"
         context["npm_version"] = "11.13.0"
         context["nvm_version"] = "0.40.5"
         context["pre_commit_version"] = "4.6.2"
