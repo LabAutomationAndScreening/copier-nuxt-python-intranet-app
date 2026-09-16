@@ -81,7 +81,7 @@ runs:
 
     - name: Setup pnpm and node # this action installs both pnpm and the node runtime, so actions/setup-node is not needed
       if: ${{ inputs.node-version != 'notUsing' }}
-      uses: pnpm/setup@v2.0.2
+      uses: pnpm/setup@v2.1.0
       with:
         # an empty version makes pnpm/setup read it from package-json-file instead. Passing both a version and a package.json with a conflicting `packageManager` field is a hard error in pnpm/setup.
         version: ${{ inputs.package-json-file == 'notUsing' && '11.22.0' || '' }}
@@ -98,7 +98,7 @@ runs:
 
     - name: OIDC Auth for CodeArtifact
       if: ${{ inputs.code-artifact-auth-role-name != 'no-code-artifact' }}
-      uses: aws-actions/configure-aws-credentials@v6.2.3
+      uses: aws-actions/configure-aws-credentials@v6.3.0
       with:
         role-to-assume: arn:aws:iam::${{ inputs.code-artifact-auth-role-account-id }}:role/${{ inputs.code-artifact-auth-role-name }}
         aws-region: ${{ inputs.code-artifact-auth-region }}
