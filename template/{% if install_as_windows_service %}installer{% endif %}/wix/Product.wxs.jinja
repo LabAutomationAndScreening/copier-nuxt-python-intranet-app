@@ -66,6 +66,13 @@
     <SetProperty Id="SERVICE_USER" Action="SetServiceUserFromRemembered" Value="[REMEMBERED_SERVICE_USER]" After="AppSearch" Sequence="both" Condition="REMEMBERED_SERVICE_USER AND NOT SERVICE_USER" />
 
     <Property Id="SERVICE_PASSWORD" Secure="yes" Hidden="yes" />
+    <!-- A silent install supplies the password through the {% endraw %}{{ product_id | upper }}{% raw %}_INSTALL_PASSWORD environment
+         variable rather than on the msiexec command line. Windows Installer writes the raw command line
+         near the top of a /l*v log before any property masking applies, so a password passed as a
+         property lands in that log in clear text; an environment variable never reaches it. The UI path
+         is unaffected, since a typed password is never on the command line either. A property given
+         explicitly still wins, so an existing automation that passes SERVICE_PASSWORD keeps working. -->
+    <SetProperty Id="SERVICE_PASSWORD" Action="SetServicePasswordFromEnv" Value="[%{% endraw %}{{ product_id | upper }}{% raw %}_INSTALL_PASSWORD]" After="AppSearch" Sequence="both" Condition="NOT SERVICE_PASSWORD" />
 
     <!-- Keep the service password out of the verbose MSI log (/l*v). CA_InstallService is the
          derived deferred-CA command line that embeds [SERVICE_PASSWORD]; Hidden keeps its value
