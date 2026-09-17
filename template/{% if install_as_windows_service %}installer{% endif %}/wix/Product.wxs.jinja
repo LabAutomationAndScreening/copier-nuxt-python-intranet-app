@@ -47,8 +47,24 @@
     </Property>
     <SetProperty Id="PORT" Action="SetPortFromRemembered" Value="[REMEMBERED_PORT]" After="AppSearch" Sequence="both" Condition="REMEMBERED_PORT AND NOT PORT" />
     <SetProperty Id="PORT" Action="SetPortDefault" Value="{% endraw %}{{ backend_deployed_port_number }}{% raw %}" After="SetPortFromRemembered" Sequence="both" Condition="NOT PORT" />
-    <Property Id="SERVICE_ACCOUNT" Value="LocalSystem" Secure="yes" />
+    <!-- The account choice is remembered the same way, so an upgrade shows the operator the account
+         the service is actually running under instead of silently defaulting back to LocalSystem.
+         SERVICE_PASSWORD is deliberately never persisted: it would sit in the registry in clear text
+         for any local administrator to read. The operator retypes it on an upgrade, and the account
+         dialog keeps Next disabled until they do. -->
+    <Property Id="SERVICE_ACCOUNT" Secure="yes" />
+    <Property Id="REMEMBERED_SERVICE_ACCOUNT" Secure="yes">
+      <RegistrySearch Id="RememberedServiceAccount" Root="HKLM" Key="Software\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}" Name="ServiceAccount" Type="raw" />
+    </Property>
+    <SetProperty Id="SERVICE_ACCOUNT" Action="SetServiceAccountFromRemembered" Value="[REMEMBERED_SERVICE_ACCOUNT]" After="AppSearch" Sequence="both" Condition="REMEMBERED_SERVICE_ACCOUNT AND NOT SERVICE_ACCOUNT" />
+    <SetProperty Id="SERVICE_ACCOUNT" Action="SetServiceAccountDefault" Value="LocalSystem" After="SetServiceAccountFromRemembered" Sequence="both" Condition="NOT SERVICE_ACCOUNT" />
+
     <Property Id="SERVICE_USER" Secure="yes" />
+    <Property Id="REMEMBERED_SERVICE_USER" Secure="yes">
+      <RegistrySearch Id="RememberedServiceUser" Root="HKLM" Key="Software\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}" Name="ServiceUser" Type="raw" />
+    </Property>
+    <SetProperty Id="SERVICE_USER" Action="SetServiceUserFromRemembered" Value="[REMEMBERED_SERVICE_USER]" After="AppSearch" Sequence="both" Condition="REMEMBERED_SERVICE_USER AND NOT SERVICE_USER" />
+
     <Property Id="SERVICE_PASSWORD" Secure="yes" Hidden="yes" />
 
     <!-- Keep the service password out of the verbose MSI log (/l*v). CA_InstallService is the
@@ -101,8 +117,11 @@
           <util:PermissionEx User="Administrators" GenericAll="yes" />
         </CreateFolder>
         <RegistryValue Root="HKLM" Key="Software\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}" Name="DataStamped" Type="integer" Value="1" KeyPath="yes" />
-        <!-- Read back by RememberedPort on the next install so an upgrade keeps this port. -->
+        <!-- Read back by the RememberedPort and RememberedService* searches on the next install, so
+             an upgrade keeps this port and shows this account. No password is written here. -->
         <RegistryValue Root="HKLM" Key="Software\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}" Name="Port" Type="string" Value="[PORT]" />
+        <RegistryValue Root="HKLM" Key="Software\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}" Name="ServiceAccount" Type="string" Value="[SERVICE_ACCOUNT]" />
+        <RegistryValue Root="HKLM" Key="Software\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}" Name="ServiceUser" Type="string" Value="[SERVICE_USER]" />
       </Component>
     </ComponentGroup>
 
