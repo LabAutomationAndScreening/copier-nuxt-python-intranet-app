@@ -236,7 +236,26 @@ jobs:
           name: built-{% endraw %}{{ repo_name }}{% raw %}-${{ matrix.os }}
           path: app.tar
           if-no-files-found: error
-          retention-days: 5{% endraw %}{% endif %}{% raw %}{% endraw %}{% endif %}{% raw %}
+          retention-days: 5
+{% endraw %}{% if install_as_windows_service %}{% raw %}
+      - name: Rebuild at a bumped version for the installer upgrade test
+        if: runner.os == 'Windows'
+        # The upgrade test lays one build over another, so their versions have to differ.
+        # Bumping the project version keeps the MSI ProductVersion and the version the
+        # running app reports derived from the same place, which is what the test asserts.
+        run: |
+          # 9.9.9 sorts above any real project version and stays inside the 255.255.65535
+          # range MSI compares, so the upgrade always registers as an upgrade.
+          uv version --directory backend 9.9.9
+          task bundle-executable-from-staged-static
+      - name: Upload the bumped application artifact for the installer upgrade test
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
+        with:
+          name: built-{% endraw %}{{ repo_name }}{% raw %}-${{ matrix.os }}-upgrade
+          path: backend/dist/{% endraw %}{{ repo_name }}{% raw %}/**/*
+          if-no-files-found: error
+          retention-days: 5{% endraw %}{% endif %}{% raw %}{% endraw %}{% endif %}{% raw %}{% endraw %}{% endif %}{% raw %}
 
 
   test-compiled-frontend-dev:
