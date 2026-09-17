@@ -117,8 +117,7 @@
           <util:PermissionEx User="Administrators" GenericAll="yes" />
         </CreateFolder>
         <RegistryValue Root="HKLM" Key="Software\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}" Name="DataStamped" Type="integer" Value="1" KeyPath="yes" />
-        <!-- Read back by the RememberedPort and RememberedService* searches on the next install, so
-             an upgrade keeps this port and shows this account. No password is written here. -->
+        <!-- Read back by the RememberedPort and RememberedService* searches on the next install. -->
         <RegistryValue Root="HKLM" Key="Software\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}" Name="Port" Type="string" Value="[PORT]" />
         <RegistryValue Root="HKLM" Key="Software\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}" Name="ServiceAccount" Type="string" Value="[SERVICE_ACCOUNT]" />
         <RegistryValue Root="HKLM" Key="Software\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}" Name="ServiceUser" Type="string" Value="[SERVICE_USER]" />
