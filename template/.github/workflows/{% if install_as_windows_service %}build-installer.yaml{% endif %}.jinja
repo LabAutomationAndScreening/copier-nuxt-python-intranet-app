@@ -117,6 +117,7 @@ jobs:
           retention-days: ${{ inputs.artifact-retention-days }}
 
       - name: Download the bumped bundle for the upgrade test
+        if: ${{ inputs.artifact-run-id == '' }}
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
           name: built-{% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}-upgrade
@@ -125,6 +126,7 @@ jobs:
           github-token: ${{ github.token }}
 
       - name: Build the upgrade installer
+        if: ${{ inputs.artifact-run-id == '' }}
         shell: pwsh
         # package.ps1 harvests whatever sits in the staged bundle directory, so the bumped
         # bundle replaces the released one before this second build.
@@ -134,6 +136,7 @@ jobs:
           ./installer/package.ps1 -Version 9.9.9
 
       - name: Upload the upgrade installer
+        if: ${{ inputs.artifact-run-id == '' }}
         uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
         with:
           name: {% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}-installer-upgrade
@@ -144,6 +147,7 @@ jobs:
   install-test:
     name: Install and uninstall
     needs: build-installer
+    if: ${{ inputs.artifact-run-id == '' }}
     runs-on: {% endraw %}{{ gha_windows_runner }}{% raw %}
     timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     steps:
@@ -207,6 +211,7 @@ jobs:
   install-test-custom-port:
     name: Install on a custom port
     needs: build-installer
+    if: ${{ inputs.artifact-run-id == '' }}
     runs-on: {% endraw %}{{ gha_windows_runner }}{% raw %}
     timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     steps:
@@ -243,6 +248,7 @@ jobs:
   upgrade-test:
     name: In-place upgrade
     needs: build-installer
+    if: ${{ inputs.artifact-run-id == '' }}
     runs-on: {% endraw %}{{ gha_windows_runner }}{% raw %}
     timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     steps:

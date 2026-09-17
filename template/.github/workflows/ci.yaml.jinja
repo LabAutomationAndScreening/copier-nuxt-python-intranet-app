@@ -255,7 +255,7 @@ jobs:
           name: built-{% endraw %}{{ repo_name }}{% raw %}-${{ matrix.os }}-upgrade
           path: backend/dist/{% endraw %}{{ repo_name }}{% raw %}/**/*
           if-no-files-found: error
-          retention-days: 5{% endraw %}{% endif %}{% raw %}{% endraw %}{% endif %}{% raw %}{% endraw %}{% endif %}{% raw %}
+          retention-days: 1{% endraw %}{% endif %}{% raw %}{% endraw %}{% endif %}{% raw %}{% endraw %}{% endif %}{% raw %}
 
 
   test-compiled-frontend-dev:
