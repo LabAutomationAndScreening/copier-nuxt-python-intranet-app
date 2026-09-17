@@ -18,10 +18,7 @@ tasks:
     # context needs; keeping the base command here is what stops the local and CI builds from drifting apart.
     internal: true
     cmds:
-      # --noconfirm belongs here rather than at the call sites: PyInstaller otherwise prompts
-      # when the output directory already holds a previous build, which hangs and then fails
-      # anywhere there is no terminal to answer it.
-      - uv --directory=backend run pyinstaller pyinstaller.spec --noconfirm {{.PYINSTALLER_ARGS}}
+      - uv --directory=backend run pyinstaller pyinstaller.spec {{.PYINSTALLER_ARGS}}
 
   build-executable:
     desc: Generate the frontend, bundle it into the backend, and build the single-file executable
@@ -29,13 +26,17 @@ tasks:
       - task: build-frontend
       - task: copy-frontend-static
       - task: bundle-executable
+        vars:
+          PYINSTALLER_ARGS: --noconfirm
 
   bundle-executable-from-staged-static:
     desc: Build the executable from static assets already present in backend/src/static, with a verbose build log
     cmds:
       - task: bundle-executable
         vars:
-          PYINSTALLER_ARGS: --log-level=DEBUG
+          # --noconfirm because this runs against a dist directory an earlier build may already
+          # have filled, and the prompt PyInstaller raises then has no terminal to answer it.
+          PYINSTALLER_ARGS: --noconfirm --log-level=DEBUG
 
   run-stack:
     desc: Build the full stack and run it
