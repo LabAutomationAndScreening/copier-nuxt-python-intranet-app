@@ -319,4 +319,99 @@ jobs:
             install-v1.log
             install-v2.log
           if-no-files-found: warn
+          retention-days: ${{ inputs.artifact-retention-days }}
+
+  upgrade-test-custom-account:
+    name: In-place upgrade under a custom service account
+    needs: build-installer
+    if: ${{ inputs.artifact-run-id == '' }}
+    runs-on: {% endraw %}{{ gha_windows_runner }}{% raw %}
+    timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
+    steps:
+      - name: Download the released installer
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: {% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}-installer
+          path: installer-v1
+
+      - name: Download the upgrade installer
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: {% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}-installer-upgrade
+          path: installer-v2
+
+      - name: Create a throwaway local account for the service
+        shell: pwsh
+        # The installer grants the account SeServiceLogonRight itself during install, so this only
+        # has to exist. The password lives and dies with this runner; masking keeps it out of the log.
+        run: |
+          $password = [System.Guid]::NewGuid().ToString() + 'aA1!'
+          Write-Host "::add-mask::$password"
+          $secure = ConvertTo-SecureString $password -AsPlainText -Force
+          $null = New-LocalUser -Name 'svc-upgrade-test' -Password $secure -AccountNeverExpires -PasswordNeverExpires
+          "SVC_PASSWORD=$password" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Install v1 under that account
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem installer-v1 -Filter *.msi | Select-Object -First 1
+          $proc = Start-Process msiexec.exe -Wait -PassThru -ArgumentList @(
+            '/i', "`"$($msi.FullName)`"", '/qn',
+            'SERVICE_ACCOUNT=custom', 'SERVICE_USER=svc-upgrade-test',
+            "SERVICE_PASSWORD=$env:SVC_PASSWORD", 'PORT=8123',
+            '/l*v', "$PWD\install-v1.log"
+          )
+          if ($proc.ExitCode -ne 0) { throw "msiexec exited $($proc.ExitCode)" }
+
+      - name: Check v1 runs as that account
+        shell: pwsh
+        run: |
+          $service = Get-CimInstance Win32_Service -Filter "Name='{% endraw %}{{ windows_service_org_prefix }}{{ repo_name }}{% raw %}'"
+          if ($service.StartName -ne '.\svc-upgrade-test') { throw "v1 runs as $($service.StartName)" }
+          $healthcheck = Invoke-RestMethod -Uri 'http://127.0.0.1:8123/api/healthcheck' -TimeoutSec 30
+          Write-Host "v1 reports $($healthcheck.version) as $($service.StartName)"
+
+      - name: Upgrade supplying only the password
+        shell: pwsh
+        # Nothing but the password is passed, so the account, the user name and the port all have to
+        # come back from the registry. This is the attended upgrade an operator performs, where the
+        # dialog is prefilled from those same values and only the password is retyped.
+        run: |
+          $msi = Get-ChildItem installer-v2 -Filter *.msi | Select-Object -First 1
+          $proc = Start-Process msiexec.exe -Wait -PassThru -ArgumentList @(
+            '/i', "`"$($msi.FullName)`"", '/qn',
+            "SERVICE_PASSWORD=$env:SVC_PASSWORD",
+            '/l*v', "$PWD\install-v2.log"
+          )
+          if ($proc.ExitCode -ne 0) { throw "msiexec exited $($proc.ExitCode)" }
+
+      - name: Check the upgrade kept the account, the port and the service
+        shell: pwsh
+        run: |
+          $service = Get-CimInstance Win32_Service -Filter "Name='{% endraw %}{{ windows_service_org_prefix }}{{ repo_name }}{% raw %}'"
+          if ($service.StartName -ne '.\svc-upgrade-test') { throw "upgrade moved the service to $($service.StartName)" }
+          if ($service.State -ne 'Running') { throw "service is $($service.State)" }
+
+          $healthcheck = Invoke-RestMethod -Uri 'http://127.0.0.1:8123/api/healthcheck' -TimeoutSec 30
+          if ($healthcheck.version -ne '9.9.9') { throw "healthcheck reports $($healthcheck.version)" }
+
+      - name: Check the password stayed out of the installer logs
+        shell: pwsh
+        # SERVICE_PASSWORD is Hidden in Product.wxs precisely so it never reaches /l*v output.
+        run: |
+          foreach ($log in @('install-v1.log', 'install-v2.log')) {
+            if (Select-String -Path $log -SimpleMatch -Pattern $env:SVC_PASSWORD -Quiet) {
+              throw "the service password appears in $log"
+            }
+          }
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
+        with:
+          name: upgrade-test-custom-account-logs
+          path: |
+            install-v1.log
+            install-v2.log
+          if-no-files-found: warn
           retention-days: ${{ inputs.artifact-retention-days }}{% endraw %}
