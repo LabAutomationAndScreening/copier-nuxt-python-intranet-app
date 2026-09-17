@@ -1,3 +1,4 @@
+{%- set company_id = installer_manufacturer | replace(' ', '') | replace('-', '') -%}
 {%- set product_id = human_friendly_app_name | replace(' ', '') | replace('-', '') -%}
 {% raw %}name: Build Windows Installer
 
@@ -113,4 +114,361 @@ jobs:
             installer/dist/{% endraw %}{{ product_id }}{% raw %}-*.msi
             installer/dist/INSTALL.txt
           if-no-files-found: error
+          retention-days: ${{ inputs.artifact-retention-days }}
+
+      - name: Download the bumped bundle for the upgrade test
+        # Only CI builds the upgrade bundle, and it keeps it for a day. A manual dispatch resolves to
+        # an older CI run whose bundle has expired, so the upgrade leg is skipped there.
+        if: ${{ inputs.artifact-run-id == '' && github.event_name != 'workflow_dispatch' }}
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: built-{% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}-upgrade
+          path: upgrade-bundle/{% endraw %}{{ repo_name }}{% raw %}
+          run-id: ${{ steps.resolve-run.outputs.run-id }}
+          github-token: ${{ github.token }}
+
+      - name: Build the upgrade installer
+        if: ${{ inputs.artifact-run-id == '' && github.event_name != 'workflow_dispatch' }}
+        shell: pwsh
+        # package.ps1 harvests whatever sits in the staged bundle directory, so the bumped
+        # bundle replaces the released one before this second build.
+        run: |
+          Remove-Item -Recurse -Force backend/dist/{% endraw %}{{ repo_name }}{% raw %}
+          Move-Item upgrade-bundle/{% endraw %}{{ repo_name }}{% raw %} backend/dist/{% endraw %}{{ repo_name }}{% raw %}
+          ./installer/package.ps1 -Version 9.9.9
+
+      - name: Upload the upgrade installer
+        if: ${{ inputs.artifact-run-id == '' && github.event_name != 'workflow_dispatch' }}
+        uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
+        with:
+          name: {% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}-installer-upgrade
+          path: installer/dist/{% endraw %}{{ product_id }}{% raw %}-9.9.9.msi
+          if-no-files-found: error
+          retention-days: ${{ inputs.artifact-retention-days }}
+
+  install-test:
+    name: Install and uninstall
+    needs: build-installer
+    if: ${{ inputs.artifact-run-id == '' }}
+    runs-on: {% endraw %}{{ gha_windows_runner }}{% raw %}
+    timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
+    steps:
+      - name: Download the installer
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: {% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}-installer
+          path: installer-artifact
+
+      - name: Install silently
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem installer-artifact -Filter *.msi | Select-Object -First 1
+          $proc = Start-Process msiexec.exe -Wait -PassThru -ArgumentList @(
+            '/i', "`"$($msi.FullName)`"", '/qn', '/l*v', "$PWD\install.log"
+          )
+          if ($proc.ExitCode -ne 0) { throw "msiexec exited $($proc.ExitCode)" }
+
+      - name: Check the service registered and came up
+        shell: pwsh
+        run: |
+          $service = Get-Service -Name '{% endraw %}{{ windows_service_org_prefix }}{{ repo_name }}{% raw %}'
+          if ($service.StartType -ne 'Automatic') { throw "StartType is $($service.StartType)" }
+          if ($service.Status -ne 'Running') { throw "Status is $($service.Status)" }
+
+      - name: Check the service is serving
+        shell: pwsh
+        # Start-Service returns as soon as SCM reports RUNNING, which is before uvicorn has bound the
+        # socket, so poll instead of firing a single request into a connection refusal.
+        run: |
+          $deadline = (Get-Date).AddSeconds(120)
+          while ($true) {
+            try { $healthcheck = Invoke-RestMethod -Uri 'http://127.0.0.1:{% endraw %}{{ backend_deployed_port_number }}{% raw %}/api/healthcheck' -TimeoutSec 10; break }
+            catch {
+              if ((Get-Date) -gt $deadline) { throw }
+              Start-Sleep -Seconds 2
+            }
+          }
+          Write-Host "healthcheck reported version $($healthcheck.version)"
+          if (-not $healthcheck.version) { throw 'healthcheck returned no version' }
+
+      - name: Check the log directory was created
+        shell: pwsh
+        run: |
+          $logDir = Join-Path $env:ProgramData '{% endraw %}{{ (company_id ~ '\\' ~ product_id) | replace("'", "''") }}{% raw %}\logs'
+          if (-not (Test-Path $logDir)) { throw "no log directory at $logDir" }
+
+      - name: Uninstall
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem installer-artifact -Filter *.msi | Select-Object -First 1
+          $proc = Start-Process msiexec.exe -Wait -PassThru -ArgumentList @(
+            '/x', "`"$($msi.FullName)`"", '/qn', '/l*v', "$PWD\uninstall.log"
+          )
+          if ($proc.ExitCode -ne 0) { throw "msiexec exited $($proc.ExitCode)" }
+          $service = Get-Service -Name '{% endraw %}{{ windows_service_org_prefix }}{{ repo_name }}{% raw %}' -ErrorAction SilentlyContinue
+          if ($service) { throw 'service still registered after uninstall' }
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
+        with:
+          name: install-test-logs
+          path: |
+            install.log
+            uninstall.log
+          if-no-files-found: warn
+          retention-days: ${{ inputs.artifact-retention-days }}
+
+  install-test-custom-port:
+    name: Install on a custom port
+    needs: build-installer
+    if: ${{ inputs.artifact-run-id == '' }}
+    runs-on: {% endraw %}{{ gha_windows_runner }}{% raw %}
+    timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
+    steps:
+      - name: Download the installer
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: {% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}-installer
+          path: installer-artifact
+
+      - name: Install with PORT=8123
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem installer-artifact -Filter *.msi | Select-Object -First 1
+          $proc = Start-Process msiexec.exe -Wait -PassThru -ArgumentList @(
+            '/i', "`"$($msi.FullName)`"", '/qn', 'PORT=8123', '/l*v', "$PWD\install.log"
+          )
+          if ($proc.ExitCode -ne 0) { throw "msiexec exited $($proc.ExitCode)" }
+
+      - name: Check it is serving on the custom port
+        shell: pwsh
+        # Start-Service returns as soon as SCM reports RUNNING, which is before uvicorn has bound the
+        # socket, so poll instead of firing a single request into a connection refusal.
+        run: |
+          $deadline = (Get-Date).AddSeconds(120)
+          while ($true) {
+            try { $healthcheck = Invoke-RestMethod -Uri 'http://127.0.0.1:8123/api/healthcheck' -TimeoutSec 10; break }
+            catch {
+              if ((Get-Date) -gt $deadline) { throw }
+              Start-Sleep -Seconds 2
+            }
+          }
+          if (-not $healthcheck.version) { throw 'healthcheck returned no version' }
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
+        with:
+          name: install-test-custom-port-logs
+          path: install.log
+          if-no-files-found: warn
+          retention-days: ${{ inputs.artifact-retention-days }}
+
+  upgrade-test:
+    name: In-place upgrade
+    needs: build-installer
+    if: ${{ inputs.artifact-run-id == '' && github.event_name != 'workflow_dispatch' }}
+    runs-on: {% endraw %}{{ gha_windows_runner }}{% raw %}
+    timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
+    steps:
+      - name: Download the released installer
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: {% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}-installer
+          path: installer-v1
+
+      - name: Download the upgrade installer
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: {% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}-installer-upgrade
+          path: installer-v2
+
+      - name: Install v1 on a custom port
+        shell: pwsh
+        # The custom port doubles as the upgrade marker: a major upgrade that fails to carry
+        # PORT forward falls back to the default and the healthcheck below stops answering.
+        run: |
+          $msi = Get-ChildItem installer-v1 -Filter *.msi | Select-Object -First 1
+          $proc = Start-Process msiexec.exe -Wait -PassThru -ArgumentList @(
+            '/i', "`"$($msi.FullName)`"", '/qn', 'PORT=8123', '/l*v', "$PWD\install-v1.log"
+          )
+          if ($proc.ExitCode -ne 0) { throw "msiexec exited $($proc.ExitCode)" }
+
+      - name: Record what v1 reports
+        shell: pwsh
+        # Start-Service returns as soon as SCM reports RUNNING, which is before uvicorn has bound the
+        # socket, so poll instead of firing a single request into a connection refusal.
+        run: |
+          $deadline = (Get-Date).AddSeconds(120)
+          while ($true) {
+            try { $healthcheck = Invoke-RestMethod -Uri 'http://127.0.0.1:8123/api/healthcheck' -TimeoutSec 10; break }
+            catch {
+              if ((Get-Date) -gt $deadline) { throw }
+              Start-Sleep -Seconds 2
+            }
+          }
+          if ($healthcheck.version -eq '9.9.9') { throw 'v1 already reports the upgrade version' }
+          Write-Host "v1 reports $($healthcheck.version)"
+
+      - name: Install v2 over the running v1
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem installer-v2 -Filter *.msi | Select-Object -First 1
+          $proc = Start-Process msiexec.exe -Wait -PassThru -ArgumentList @(
+            '/i', "`"$($msi.FullName)`"", '/qn', '/l*v', "$PWD\install-v2.log"
+          )
+          if ($proc.ExitCode -ne 0) { throw "msiexec exited $($proc.ExitCode)" }
+
+      - name: Check the upgrade replaced the product and kept it serving
+        shell: pwsh
+        run: |
+          # Reading the uninstall keys rather than Win32_Product, which reconfigures every
+          # installed MSI just to enumerate them.
+          $uninstallKeys = @(
+            'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*'
+            'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
+          )
+          $installed = @(
+            Get-ItemProperty $uninstallKeys -ErrorAction SilentlyContinue |
+              Where-Object { $_.DisplayName -eq '{% endraw %}{{ human_friendly_app_name | replace("'", "''") }}{% raw %}' }
+          )
+          if ($installed.Count -ne 1) { throw "expected 1 installed product, found $($installed.Count)" }
+          if ($installed[0].DisplayVersion -ne '9.9.9') { throw "ARP reports $($installed[0].DisplayVersion)" }
+
+          $deadline = (Get-Date).AddSeconds(120)
+          while ($true) {
+            try { $healthcheck = Invoke-RestMethod -Uri 'http://127.0.0.1:8123/api/healthcheck' -TimeoutSec 10; break }
+            catch {
+              if ((Get-Date) -gt $deadline) { throw }
+              Start-Sleep -Seconds 2
+            }
+          }
+          if ($healthcheck.version -ne '9.9.9') { throw "healthcheck reports $($healthcheck.version)" }
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
+        with:
+          name: upgrade-test-logs
+          path: |
+            install-v1.log
+            install-v2.log
+          if-no-files-found: warn
+          retention-days: ${{ inputs.artifact-retention-days }}
+
+  upgrade-test-custom-account:
+    name: In-place upgrade under a custom service account
+    needs: build-installer
+    if: ${{ inputs.artifact-run-id == '' && github.event_name != 'workflow_dispatch' }}
+    runs-on: {% endraw %}{{ gha_windows_runner }}{% raw %}
+    timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
+    steps:
+      - name: Download the released installer
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: {% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}-installer
+          path: installer-v1
+
+      - name: Download the upgrade installer
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: {% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}-installer-upgrade
+          path: installer-v2
+
+      - name: Create a throwaway local account for the service
+        shell: pwsh
+        # The installer grants the account SeServiceLogonRight itself during install, so this only
+        # has to exist. The password lives and dies with this runner; masking keeps it out of the log.
+        run: |
+          $password = [System.Guid]::NewGuid().ToString() + 'aA1!'
+          Write-Host "::add-mask::$password"
+          $secure = ConvertTo-SecureString $password -AsPlainText -Force
+          $null = New-LocalUser -Name 'svc-upgrade-test' -Password $secure -AccountNeverExpires -PasswordNeverExpires
+          "SVC_PASSWORD=$password" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Install v1 under that account
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem installer-v1 -Filter *.msi | Select-Object -First 1
+          $proc = Start-Process msiexec.exe -Wait -PassThru -ArgumentList @(
+            '/i', "`"$($msi.FullName)`"", '/qn',
+            'SERVICE_ACCOUNT=custom', 'SERVICE_USER=svc-upgrade-test',
+            "SERVICE_PASSWORD=$env:SVC_PASSWORD", 'PORT=8123',
+            '/l*v', "$PWD\install-v1.log"
+          )
+          if ($proc.ExitCode -ne 0) { throw "msiexec exited $($proc.ExitCode)" }
+
+      - name: Check v1 runs as that account
+        shell: pwsh
+        run: |
+          $service = Get-CimInstance Win32_Service -Filter "Name='{% endraw %}{{ windows_service_org_prefix }}{{ repo_name }}{% raw %}'"
+          if ($service.StartName -ne '.\svc-upgrade-test') { throw "v1 runs as $($service.StartName)" }
+          $deadline = (Get-Date).AddSeconds(120)
+          while ($true) {
+            try { $healthcheck = Invoke-RestMethod -Uri 'http://127.0.0.1:8123/api/healthcheck' -TimeoutSec 10; break }
+            catch {
+              if ((Get-Date) -gt $deadline) { throw }
+              Start-Sleep -Seconds 2
+            }
+          }
+          Write-Host "v1 reports $($healthcheck.version) as $($service.StartName)"
+
+      - name: Upgrade supplying only the password
+        shell: pwsh
+        # Nothing but the password is passed, so the account, the user name and the port all have to
+        # come back from the registry.
+        run: |
+          $msi = Get-ChildItem installer-v2 -Filter *.msi | Select-Object -First 1
+          $proc = Start-Process msiexec.exe -Wait -PassThru -ArgumentList @(
+            '/i', "`"$($msi.FullName)`"", '/qn',
+            "SERVICE_PASSWORD=$env:SVC_PASSWORD",
+            '/l*v', "$PWD\install-v2.log"
+          )
+          if ($proc.ExitCode -ne 0) { throw "msiexec exited $($proc.ExitCode)" }
+
+      - name: Check the upgrade kept the account, the port and the service
+        shell: pwsh
+        run: |
+          $service = Get-CimInstance Win32_Service -Filter "Name='{% endraw %}{{ windows_service_org_prefix }}{{ repo_name }}{% raw %}'"
+          if ($service.StartName -ne '.\svc-upgrade-test') { throw "upgrade moved the service to $($service.StartName)" }
+          if ($service.State -ne 'Running') { throw "service is $($service.State)" }
+
+          $deadline = (Get-Date).AddSeconds(120)
+          while ($true) {
+            try { $healthcheck = Invoke-RestMethod -Uri 'http://127.0.0.1:8123/api/healthcheck' -TimeoutSec 10; break }
+            catch {
+              if ((Get-Date) -gt $deadline) { throw }
+              Start-Sleep -Seconds 2
+            }
+          }
+          if ($healthcheck.version -ne '9.9.9') { throw "healthcheck reports $($healthcheck.version)" }
+
+      - name: Redact the password from the logs before they are uploaded
+        if: always()
+        shell: pwsh
+        # The engine echoes the command line into the log, so redact before asserting and before upload.
+        # https://learn.microsoft.com/en-us/windows/win32/msi/preventing-confidential-information-from-being-written-into-the-log-file
+        run: |
+          # The account step may itself have failed, leaving nothing to redact; bailing out keeps the
+          # real failure visible instead of burying it under a null-argument error from here.
+          if (-not $env:SVC_PASSWORD) { exit 0 }
+          foreach ($log in @('install-v1.log', 'install-v2.log')) {
+            if (-not (Test-Path $log)) { continue }
+            (Get-Content $log -Raw).Replace($env:SVC_PASSWORD, '<redacted>') |
+              Set-Content $log -Encoding Unicode -NoNewline
+            if (-not (Select-String -Path $log -SimpleMatch -Pattern 'SERVICE_PASSWORD = **********' -Quiet)) {
+              throw "$log does not show SERVICE_PASSWORD masked"
+            }
+          }
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
+        with:
+          name: upgrade-test-custom-account-logs
+          path: |
+            install-v1.log
+            install-v2.log
+          if-no-files-found: warn
           retention-days: ${{ inputs.artifact-retention-days }}{% endraw %}
