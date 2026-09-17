@@ -76,8 +76,15 @@ Examples:
    LocalSystem, default port:
       msiexec /i {% endraw %}{{ product_id }}{% raw %}-1.2.3.msi /qn
 
-   Dedicated low-privilege account:
-      msiexec /i {% endraw %}{{ product_id }}{% raw %}-1.2.3.msi /qn SERVICE_ACCOUNT=custom SERVICE_USER=.\svcaccount SERVICE_PASSWORD=YourPassword
+   Dedicated low-privilege account (PowerShell):
+      $env:{% endraw %}{{ product_id | upper }}{% raw %}_INSTALL_PASSWORD = 'YourPassword'
+      msiexec /i {% endraw %}{{ product_id }}{% raw %}-1.2.3.msi /qn SERVICE_ACCOUNT=custom SERVICE_USER=.\svcaccount
+
+   Supply the password through that environment variable, not as a property on the
+   command line. Windows Installer records the command line verbatim near the top of
+   a /l*v log before any masking applies, so SERVICE_PASSWORD=... would be written to
+   the log in clear text. The environment variable never appears there, and the value
+   is masked everywhere else in the log. Clear the variable when the install finishes.
 {% endraw %}{% if bind_configurable %}{% raw %}
    Reachable from other computers on the network:
       msiexec /i {% endraw %}{{ product_id }}{% raw %}-1.2.3.msi /qn ALLOW_REMOTE=1

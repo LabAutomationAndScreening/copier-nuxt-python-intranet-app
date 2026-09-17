@@ -354,11 +354,11 @@ jobs:
       - name: Install v1 under that account
         shell: pwsh
         run: |
+          $env:{% endraw %}{{ product_id | upper }}{% raw %}_INSTALL_PASSWORD = $env:SVC_PASSWORD
           $msi = Get-ChildItem installer-v1 -Filter *.msi | Select-Object -First 1
           $proc = Start-Process msiexec.exe -Wait -PassThru -ArgumentList @(
             '/i', "`"$($msi.FullName)`"", '/qn',
-            'SERVICE_ACCOUNT=custom', 'SERVICE_USER=svc-upgrade-test',
-            "SERVICE_PASSWORD=$env:SVC_PASSWORD", 'PORT=8123',
+            'SERVICE_ACCOUNT=custom', 'SERVICE_USER=svc-upgrade-test', 'PORT=8123',
             '/l*v', "$PWD\install-v1.log"
           )
           if ($proc.ExitCode -ne 0) { throw "msiexec exited $($proc.ExitCode)" }
@@ -376,10 +376,10 @@ jobs:
         # Nothing but the password is passed, so the account, the user name and the port all have to
         # come back from the registry.
         run: |
+          $env:{% endraw %}{{ product_id | upper }}{% raw %}_INSTALL_PASSWORD = $env:SVC_PASSWORD
           $msi = Get-ChildItem installer-v2 -Filter *.msi | Select-Object -First 1
           $proc = Start-Process msiexec.exe -Wait -PassThru -ArgumentList @(
             '/i', "`"$($msi.FullName)`"", '/qn',
-            "SERVICE_PASSWORD=$env:SVC_PASSWORD",
             '/l*v', "$PWD\install-v2.log"
           )
           if ($proc.ExitCode -ne 0) { throw "msiexec exited $($proc.ExitCode)" }
@@ -396,11 +396,16 @@ jobs:
 
       - name: Check the password stayed out of the installer logs
         shell: pwsh
-        # SERVICE_PASSWORD is Hidden in Product.wxs precisely so it never reaches /l*v output.
+        # Passing the password by environment variable keeps it out of the command line the engine
+        # echoes into the log, and Hidden on SERVICE_PASSWORD masks it everywhere else, so it should
+        # appear nowhere at all. These logs are uploaded as an artifact, so this runs before that.
         run: |
           foreach ($log in @('install-v1.log', 'install-v2.log')) {
             if (Select-String -Path $log -SimpleMatch -Pattern $env:SVC_PASSWORD -Quiet) {
               throw "the service password appears in $log"
+            }
+            if (-not (Select-String -Path $log -SimpleMatch -Pattern 'SERVICE_PASSWORD = **********' -Quiet)) {
+              throw "$log does not show SERVICE_PASSWORD masked, so the masking may have silently stopped applying"
             }
           }
 
