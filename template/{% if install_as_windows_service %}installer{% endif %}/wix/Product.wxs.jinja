@@ -36,15 +36,17 @@
 
     <!-- Service runtime + account selection. The UI sets these interactively;
          a silent install (msiexec /qn) sets them on the command line. -->
-    <!-- PORT carries across upgrades. A major upgrade uninstalls the old product before laying
-         down the new one, so without the search below the service would come back on the default
-         port and stop answering where the previous install put it. AppSearch runs early, while the
-         previous install's registry value is still present, and the SetProperty supplies the
-         default only when neither the command line nor the search produced a value. -->
-    <Property Id="PORT" Secure="yes">
+    <!-- PORT carries across upgrades. A major upgrade uninstalls the old product before laying down
+         the new one, so without this the service would come back on the default port rather than
+         the one the previous install used. The search writes REMEMBERED_PORT rather than PORT
+         directly, because a search bound to PORT would also overwrite a PORT= given on the command
+         line. Precedence therefore runs command line, then remembered value, then default. -->
+    <Property Id="PORT" Secure="yes" />
+    <Property Id="REMEMBERED_PORT" Secure="yes">
       <RegistrySearch Id="RememberedPort" Root="HKLM" Key="Software\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}" Name="Port" Type="raw" />
     </Property>
-    <SetProperty Id="PORT" Value="{% endraw %}{{ backend_deployed_port_number }}{% raw %}" After="AppSearch" Sequence="both" Condition="NOT PORT" />
+    <SetProperty Id="PORT" Action="SetPortFromRemembered" Value="[REMEMBERED_PORT]" After="AppSearch" Sequence="both" Condition="REMEMBERED_PORT AND NOT PORT" />
+    <SetProperty Id="PORT" Action="SetPortDefault" Value="{% endraw %}{{ backend_deployed_port_number }}{% raw %}" After="SetPortFromRemembered" Sequence="both" Condition="NOT PORT" />
     <Property Id="SERVICE_ACCOUNT" Value="LocalSystem" Secure="yes" />
     <Property Id="SERVICE_USER" Secure="yes" />
     <Property Id="SERVICE_PASSWORD" Secure="yes" Hidden="yes" />
