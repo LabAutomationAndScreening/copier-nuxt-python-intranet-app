@@ -680,26 +680,16 @@ jobs:
     if: always()
     steps:
       - name: fail if prior job failure
+        # Iterating the needs context keeps this gate from drifting out of sync with the job list above
+        env:
+          NEEDS: ${{ toJSON(needs) }}
         run: |
-          success_pattern="^(skipped|success)$" # these are the possibilities: https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#needs-context
+          # these are the possibilities: https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#needs-context
+          not_ok=$(jq -r 'to_entries[] | select(.value.result | test("^(skipped|success)$") | not) | .key' <<<"$NEEDS")
 
-          if [[ ! "${{ needs.get-values.result }}" =~ $success_pattern ]] ||
-            [[ ! "${{ needs.check-skip-duplicate.result }}" =~ $success_pattern ]] ||
-            [[ ! "${{ needs.lint.result }}" =~ $success_pattern ]] ||
-            [[ ! "${{ needs.unit-test-frontend.result }}" =~ $success_pattern ]] ||
-            [[ ! "${{ needs.build-frontend.result }}" =~ $success_pattern ]] ||{% endraw %}{% if has_backend %}{% raw %}
-            [[ ! "${{ needs.unit-test-backend.result }}" =~ $success_pattern ]] ||
-            [[ ! "${{ needs.build-backend.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
-            [[ ! "${{ needs.package-images.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}
-            [[ ! "${{ needs.test-compiled-frontend-dev.result }}" =~ $success_pattern ]] ||{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
-            [[ ! "${{ needs.package-firmware.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
-            [[ ! "${{ needs.e2e-test-backend.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
-            [[ ! "${{ needs.e2e-test-k3d.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}{% endraw %}{% if install_as_windows_service %}{% raw %}
-            [[ ! "${{ needs.e2e-test-windows-service.result }}" =~ $success_pattern ]] ||
-            [[ ! "${{ needs.build-installer.result }}" =~ $success_pattern ]] ||{% endraw %}{% endif %}{% raw %}
-            [[ ! "${{ needs.e2e-test.result }}" =~ $success_pattern ]] ||
-            [[ ! "${{ needs.confirm-on-tagged-copier-template.result }}" =~ $success_pattern ]]; then
-            echo "❌ One or more jobs did not finish with skipped or success"
+          if [[ -n "$not_ok" ]]; then
+            echo "❌ One or more jobs did not finish with skipped or success:"
+            echo "$not_ok"
             exit 1
           fi
           echo "✅ All jobs finished with skipped or success"
