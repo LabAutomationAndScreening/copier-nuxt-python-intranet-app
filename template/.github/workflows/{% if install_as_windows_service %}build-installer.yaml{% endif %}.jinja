@@ -374,8 +374,7 @@ jobs:
       - name: Upgrade supplying only the password
         shell: pwsh
         # Nothing but the password is passed, so the account, the user name and the port all have to
-        # come back from the registry. This is the attended upgrade an operator performs, where the
-        # dialog is prefilled from those same values and only the password is retyped.
+        # come back from the registry.
         run: |
           $msi = Get-ChildItem installer-v2 -Filter *.msi | Select-Object -First 1
           $proc = Start-Process msiexec.exe -Wait -PassThru -ArgumentList @(
