@@ -113,6 +113,7 @@
         "src/copier_tasks/__init__.py",
         "src/copier_tasks/copier_provenance.py",
         "src/copier_tasks/ensure_pnpm_minimum_release_age_exclude.py",
+        "src/copier_tasks/normalize_pnpm_minimum_release_age_exclude.py",
         "src/copier_tasks/remove_precommit_hooks.py",
         "template/.claude/.beads/.gitignore",
         "template/.claude/.beads/config.yaml",
