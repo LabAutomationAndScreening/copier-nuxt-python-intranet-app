@@ -64,9 +64,13 @@ SILENT / UNATTENDED INSTALL
 Set any of these properties on the command line:
 
    SERVICE_ACCOUNT    Default LocalSystem. Use "custom" to run as a supplied
-                      account.
+                      account. Carried forward on upgrade.
    SERVICE_USER       Account name when SERVICE_ACCOUNT=custom, e.g. .\svcaccount
-   SERVICE_PASSWORD   Password for that account.
+                      Carried forward on upgrade.
+   SERVICE_PASSWORD   Password for that account. Never stored, so an upgrade of a
+                      SERVICE_ACCOUNT=custom install must supply it again (unless
+                      the account is a group managed service account). An upgrade
+                      without it fails and rolls back.
    PORT               Default {% endraw %}{{ backend_deployed_port_number }}{% raw %}. TCP port the service listens on.
 {% endraw %}{% if bind_configurable %}{% raw %}   ALLOW_REMOTE       Default {% endraw %}{{ '1' if bind_default_all else '0' }}{% raw %}. "1" binds 0.0.0.0 (reachable from other
                       computers); "0" binds 127.0.0.1 (local connections only).
@@ -79,8 +83,9 @@ Examples:
    Dedicated low-privilege account:
       msiexec /i {% endraw %}{{ product_id }}{% raw %}-1.2.3.msi /qn SERVICE_ACCOUNT=custom SERVICE_USER=.\svcaccount SERVICE_PASSWORD=YourPassword
 
-   Windows Installer writes the command line into a /l*v log in clear text, so do not
-   combine SERVICE_PASSWORD with verbose logging.
+   SERVICE_PASSWORD is masked in a /l*v log. The one exception is a machine whose
+   Windows Installer Debug policy is set to 7, which logs the command line verbatim
+   and defeats the mask; do not combine SERVICE_PASSWORD with verbose logging there.
 
    Group managed service account (no password; the name ends with $):
       msiexec /i {% endraw %}{{ product_id }}{% raw %}-1.2.3.msi /qn SERVICE_ACCOUNT=custom SERVICE_USER=DOMAIN\gmsaname$
@@ -105,6 +110,15 @@ UPGRADE
 
 Run a newer {% endraw %}{{ product_id }}{% raw %}-<version>.msi. It replaces the installed version in
 place and keeps the data under C:\ProgramData\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}\.
+
+The port and the service account carry forward, so they need not be repeated. The
+password does not, so an install running under a custom account that is not a group
+managed service account has to pass SERVICE_PASSWORD again:
+
+   msiexec /i {% endraw %}{{ product_id }}{% raw %}-<version>.msi /qn SERVICE_PASSWORD=YourPassword
+
+Unattended update channels (Intune, Configuration Manager, a scripted rollout) have
+to supply it the same way; without it the upgrade fails and rolls back.
 
 
 UNINSTALL

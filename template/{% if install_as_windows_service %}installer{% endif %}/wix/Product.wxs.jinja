@@ -194,12 +194,12 @@
         <Control Id="UserEdit" Type="Edit" X="120" Y="103" Width="210" Height="16" Property="SERVICE_USER" />
         <Control Id="PwdLabel" Type="Text" X="35" Y="129" Width="80" Height="15" Text="Password:" />
         <Control Id="PwdEdit" Type="Edit" X="120" Y="127" Width="210" Height="16" Property="SERVICE_PASSWORD" Password="yes" />
-        <Control Id="Hint" Type="Text" X="35" Y="152" Width="315" Height="40" Transparent="yes" NoPrefix="yes" Text="Enter a local account as .\name or DOMAIN\name. It is granted 'Log on as a service'." />
+        <Control Id="Hint" Type="Text" X="35" Y="152" Width="315" Height="40" Transparent="yes" NoPrefix="yes" Text="Enter a local account as .\name or DOMAIN\name. It is granted 'Log on as a service'. A group managed service account (the name ends with $) needs no password." />
 
         <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="!(loc.WixUIBack)" />
         <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="!(loc.WixUINext)"
-                 DisableCondition="SERVICE_ACCOUNT = &quot;custom&quot; AND (SERVICE_USER = &quot;&quot; OR SERVICE_PASSWORD = &quot;&quot;)"
-                 EnableCondition="SERVICE_ACCOUNT &lt;&gt; &quot;custom&quot; OR (SERVICE_USER &lt;&gt; &quot;&quot; AND SERVICE_PASSWORD &lt;&gt; &quot;&quot;)" />
+                 DisableCondition="SERVICE_ACCOUNT = &quot;custom&quot; AND (SERVICE_USER = &quot;&quot; OR (SERVICE_PASSWORD = &quot;&quot; AND NOT SERVICE_USER &gt;&gt; &quot;$&quot;))"
+                 EnableCondition="SERVICE_ACCOUNT &lt;&gt; &quot;custom&quot; OR (SERVICE_USER &lt;&gt; &quot;&quot; AND (SERVICE_PASSWORD &lt;&gt; &quot;&quot; OR SERVICE_USER &gt;&gt; &quot;$&quot;))" />
         <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="!(loc.WixUICancel)">
           <Publish Event="SpawnDialog" Value="CancelDlg" />
         </Control>
