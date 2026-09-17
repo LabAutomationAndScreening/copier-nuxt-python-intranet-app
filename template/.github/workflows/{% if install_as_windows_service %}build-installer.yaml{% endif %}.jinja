@@ -117,7 +117,9 @@ jobs:
           retention-days: ${{ inputs.artifact-retention-days }}
 
       - name: Download the bumped bundle for the upgrade test
-        if: ${{ inputs.artifact-run-id == '' }}
+        # Only CI builds the upgrade bundle, and it keeps it for a day. A manual dispatch resolves to
+        # an older CI run whose bundle has expired, so the upgrade leg is skipped there.
+        if: ${{ inputs.artifact-run-id == '' && github.event_name != 'workflow_dispatch' }}
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
           name: built-{% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}-upgrade
@@ -126,7 +128,7 @@ jobs:
           github-token: ${{ github.token }}
 
       - name: Build the upgrade installer
-        if: ${{ inputs.artifact-run-id == '' }}
+        if: ${{ inputs.artifact-run-id == '' && github.event_name != 'workflow_dispatch' }}
         shell: pwsh
         # package.ps1 harvests whatever sits in the staged bundle directory, so the bumped
         # bundle replaces the released one before this second build.
@@ -136,7 +138,7 @@ jobs:
           ./installer/package.ps1 -Version 9.9.9
 
       - name: Upload the upgrade installer
-        if: ${{ inputs.artifact-run-id == '' }}
+        if: ${{ inputs.artifact-run-id == '' && github.event_name != 'workflow_dispatch' }}
         uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
         with:
           name: {% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}-installer-upgrade
@@ -175,15 +177,24 @@ jobs:
 
       - name: Check the service is serving
         shell: pwsh
+        # Start-Service returns as soon as SCM reports RUNNING, which is before uvicorn has bound the
+        # socket, so poll instead of firing a single request into a connection refusal.
         run: |
-          $healthcheck = Invoke-RestMethod -Uri 'http://127.0.0.1:{% endraw %}{{ backend_deployed_port_number }}{% raw %}/api/healthcheck' -TimeoutSec 30
+          $deadline = (Get-Date).AddSeconds(120)
+          while ($true) {
+            try { $healthcheck = Invoke-RestMethod -Uri 'http://127.0.0.1:{% endraw %}{{ backend_deployed_port_number }}{% raw %}/api/healthcheck' -TimeoutSec 10; break }
+            catch {
+              if ((Get-Date) -gt $deadline) { throw }
+              Start-Sleep -Seconds 2
+            }
+          }
           Write-Host "healthcheck reported version $($healthcheck.version)"
           if (-not $healthcheck.version) { throw 'healthcheck returned no version' }
 
       - name: Check the log directory was created
         shell: pwsh
         run: |
-          $logDir = Join-Path $env:ProgramData '{% endraw %}{{ company_id }}\{{ product_id }}{% raw %}\logs'
+          $logDir = Join-Path $env:ProgramData '{% endraw %}{{ (company_id ~ '\\' ~ product_id) | replace("'", "''") }}{% raw %}\logs'
           if (-not (Test-Path $logDir)) { throw "no log directory at $logDir" }
 
       - name: Uninstall
@@ -232,8 +243,17 @@ jobs:
 
       - name: Check it is serving on the custom port
         shell: pwsh
+        # Start-Service returns as soon as SCM reports RUNNING, which is before uvicorn has bound the
+        # socket, so poll instead of firing a single request into a connection refusal.
         run: |
-          $healthcheck = Invoke-RestMethod -Uri 'http://127.0.0.1:8123/api/healthcheck' -TimeoutSec 30
+          $deadline = (Get-Date).AddSeconds(120)
+          while ($true) {
+            try { $healthcheck = Invoke-RestMethod -Uri 'http://127.0.0.1:8123/api/healthcheck' -TimeoutSec 10; break }
+            catch {
+              if ((Get-Date) -gt $deadline) { throw }
+              Start-Sleep -Seconds 2
+            }
+          }
           if (-not $healthcheck.version) { throw 'healthcheck returned no version' }
 
       - name: Upload logs
@@ -248,7 +268,7 @@ jobs:
   upgrade-test:
     name: In-place upgrade
     needs: build-installer
-    if: ${{ inputs.artifact-run-id == '' }}
+    if: ${{ inputs.artifact-run-id == '' && github.event_name != 'workflow_dispatch' }}
     runs-on: {% endraw %}{{ gha_windows_runner }}{% raw %}
     timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     steps:
@@ -277,8 +297,17 @@ jobs:
 
       - name: Record what v1 reports
         shell: pwsh
+        # Start-Service returns as soon as SCM reports RUNNING, which is before uvicorn has bound the
+        # socket, so poll instead of firing a single request into a connection refusal.
         run: |
-          $healthcheck = Invoke-RestMethod -Uri 'http://127.0.0.1:8123/api/healthcheck' -TimeoutSec 30
+          $deadline = (Get-Date).AddSeconds(120)
+          while ($true) {
+            try { $healthcheck = Invoke-RestMethod -Uri 'http://127.0.0.1:8123/api/healthcheck' -TimeoutSec 10; break }
+            catch {
+              if ((Get-Date) -gt $deadline) { throw }
+              Start-Sleep -Seconds 2
+            }
+          }
           if ($healthcheck.version -eq '9.9.9') { throw 'v1 already reports the upgrade version' }
           Write-Host "v1 reports $($healthcheck.version)"
 
@@ -302,12 +331,19 @@ jobs:
           )
           $installed = @(
             Get-ItemProperty $uninstallKeys -ErrorAction SilentlyContinue |
-              Where-Object { $_.DisplayName -eq '{% endraw %}{{ human_friendly_app_name }}{% raw %}' }
+              Where-Object { $_.DisplayName -eq '{% endraw %}{{ human_friendly_app_name | replace("'", "''") }}{% raw %}' }
           )
           if ($installed.Count -ne 1) { throw "expected 1 installed product, found $($installed.Count)" }
           if ($installed[0].DisplayVersion -ne '9.9.9') { throw "ARP reports $($installed[0].DisplayVersion)" }
 
-          $healthcheck = Invoke-RestMethod -Uri 'http://127.0.0.1:8123/api/healthcheck' -TimeoutSec 30
+          $deadline = (Get-Date).AddSeconds(120)
+          while ($true) {
+            try { $healthcheck = Invoke-RestMethod -Uri 'http://127.0.0.1:8123/api/healthcheck' -TimeoutSec 10; break }
+            catch {
+              if ((Get-Date) -gt $deadline) { throw }
+              Start-Sleep -Seconds 2
+            }
+          }
           if ($healthcheck.version -ne '9.9.9') { throw "healthcheck reports $($healthcheck.version)" }
 
       - name: Upload logs
@@ -324,7 +360,7 @@ jobs:
   upgrade-test-custom-account:
     name: In-place upgrade under a custom service account
     needs: build-installer
-    if: ${{ inputs.artifact-run-id == '' }}
+    if: ${{ inputs.artifact-run-id == '' && github.event_name != 'workflow_dispatch' }}
     runs-on: {% endraw %}{{ gha_windows_runner }}{% raw %}
     timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     steps:
@@ -368,7 +404,14 @@ jobs:
         run: |
           $service = Get-CimInstance Win32_Service -Filter "Name='{% endraw %}{{ windows_service_org_prefix }}{{ repo_name }}{% raw %}'"
           if ($service.StartName -ne '.\svc-upgrade-test') { throw "v1 runs as $($service.StartName)" }
-          $healthcheck = Invoke-RestMethod -Uri 'http://127.0.0.1:8123/api/healthcheck' -TimeoutSec 30
+          $deadline = (Get-Date).AddSeconds(120)
+          while ($true) {
+            try { $healthcheck = Invoke-RestMethod -Uri 'http://127.0.0.1:8123/api/healthcheck' -TimeoutSec 10; break }
+            catch {
+              if ((Get-Date) -gt $deadline) { throw }
+              Start-Sleep -Seconds 2
+            }
+          }
           Write-Host "v1 reports $($healthcheck.version) as $($service.StartName)"
 
       - name: Upgrade supplying only the password
@@ -391,7 +434,14 @@ jobs:
           if ($service.StartName -ne '.\svc-upgrade-test') { throw "upgrade moved the service to $($service.StartName)" }
           if ($service.State -ne 'Running') { throw "service is $($service.State)" }
 
-          $healthcheck = Invoke-RestMethod -Uri 'http://127.0.0.1:8123/api/healthcheck' -TimeoutSec 30
+          $deadline = (Get-Date).AddSeconds(120)
+          while ($true) {
+            try { $healthcheck = Invoke-RestMethod -Uri 'http://127.0.0.1:8123/api/healthcheck' -TimeoutSec 10; break }
+            catch {
+              if ((Get-Date) -gt $deadline) { throw }
+              Start-Sleep -Seconds 2
+            }
+          }
           if ($healthcheck.version -ne '9.9.9') { throw "healthcheck reports $($healthcheck.version)" }
 
       - name: Redact the password from the logs before they are uploaded
@@ -400,6 +450,9 @@ jobs:
         # The engine echoes the command line into the log, so redact before asserting and before upload.
         # https://learn.microsoft.com/en-us/windows/win32/msi/preventing-confidential-information-from-being-written-into-the-log-file
         run: |
+          # The account step may itself have failed, leaving nothing to redact; bailing out keeps the
+          # real failure visible instead of burying it under a null-argument error from here.
+          if (-not $env:SVC_PASSWORD) { exit 0 }
           foreach ($log in @('install-v1.log', 'install-v2.log')) {
             if (-not (Test-Path $log)) { continue }
             (Get-Content $log -Raw).Replace($env:SVC_PASSWORD, '<redacted>') |
