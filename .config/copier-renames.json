@@ -1,0 +1,8 @@
+{
+  "renames": [
+    {
+      "from": ".config/.coveragerc",
+      "to": "backend/.coveragerc"
+    }
+  ]
+}

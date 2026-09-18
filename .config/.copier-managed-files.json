@@ -112,6 +112,7 @@
         "sh.bat",
         "src/copier_tasks/__init__.py",
         "src/copier_tasks/copier_provenance.py",
+        "src/copier_tasks/copier_renames.py",
         "src/copier_tasks/ensure_pnpm_minimum_release_age_exclude.py",
         "src/copier_tasks/normalize_pnpm_minimum_release_age_exclude.py",
         "src/copier_tasks/remove_precommit_hooks.py",
@@ -228,6 +229,7 @@
         "tests/unit/copier_tasks/__init__.py",
         "tests/unit/copier_tasks/helpers.py",
         "tests/unit/copier_tasks/test_copier_provenance.py",
+        "tests/unit/copier_tasks/test_copier_renames.py",
         "tests/unit/copier_tasks/test_ensure_pnpm_minimum_release_age_exclude.py",
         "tests/unit/copier_tasks/test_remove_precommit_hooks.py"
       ]
