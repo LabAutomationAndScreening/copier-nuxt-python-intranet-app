@@ -2,7 +2,8 @@
   "renames": [
     {
       "from": ".config/.coveragerc",
-      "to": "backend/.coveragerc"
+      "to": "backend/.coveragerc",
+      "when": "has_backend"
     }
   ]
 }
