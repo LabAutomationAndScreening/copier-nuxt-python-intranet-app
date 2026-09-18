@@ -6,11 +6,13 @@
 # but if the change should be shared with other projects, please backport it to the template repo.
 # =====================================================================================================
 import json
+import os
 import subprocess
 from pathlib import Path
 from typing import NotRequired
 from typing import TypedDict
 
+import jinja2
 import pytest
 from faker import Faker
 
@@ -90,12 +92,27 @@ def _run_script(
     src_template_dir: Path,
     dst_dir: Path,
     template_src: str = "",
+    templates_suffix: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     args = [str(src_template_dir), str(dst_dir)]
     if template_src != "":
         args += ["--template-src", template_src]
+    if templates_suffix is not None:
+        args += ["--templates-suffix", templates_suffix]
     result = run_copier_task(_SCRIPT_PATH, *args)
     assert result.returncode == 0, result.stderr
+    return result
+
+
+def _run_script_expecting_failure(
+    *,
+    src_template_dir: Path,
+    dst_dir: Path,
+    template_src: str,
+) -> subprocess.CompletedProcess[str]:
+    """Run the task expecting it to report unstampable files and exit 1, having still done its work."""
+    result = run_copier_task(_SCRIPT_PATH, str(src_template_dir), str(dst_dir), "--template-src", template_src)
+    assert result.returncode == 1, f"expected a reported failure, got rc={result.returncode}: {result.stderr}"
     return result
 
 
@@ -128,7 +145,7 @@ class TestJinjaTemplateMatching:
         _ = _run_script(src_template_dir=template_dir, dst_dir=dst_dir)
 
         content = (dst_dir / "README.md.jinja").read_text(encoding="utf-8")
-        assert content == expected_jinja_comment + "\n" + file_content
+        assert content == expected_jinja_comment + file_content
 
     def test_jinja_if_check_filename_matched(self, tmp_path: Path) -> None:
         template_dir = tmp_path / "template"
@@ -144,7 +161,177 @@ class TestJinjaTemplateMatching:
         _ = _run_script(src_template_dir=template_dir, dst_dir=dst_dir)
 
         content = (dst_dir / ".coveragerc.jinja").read_text(encoding="utf-8")
-        assert content == expected_jinja_comment + "\n" + file_content
+        assert content == expected_jinja_comment + file_content
+
+    def test_raw_wrapped_jinja_filename_matched(self, tmp_path: Path) -> None:
+        # base-template names a grandchild-template file `{% raw %}...{% endraw %}` so the inner Jinja
+        # survives into the child template verbatim. The destination name is the un-raw'd text, so only
+        # the raw markers are removed — the inner if-check must NOT be resolved at this level.
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / "{% raw %}{% if is_open_source %}LICENSE{% endif %}{% endraw %}").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        file_content = "Apache License\n"
+        dst_file = dst_dir / "{% if is_open_source %}LICENSE{% endif %}"
+        _ = dst_file.write_text(file_content, encoding="utf-8")
+
+        _ = _run_script(src_template_dir=template_dir, dst_dir=dst_dir)
+
+        assert dst_file.read_text(encoding="utf-8") == expected_hash_comment + "\n" + file_content
+
+    def test_raw_wrapped_jinja_filename_does_not_swallow_its_directory(self, tmp_path: Path) -> None:
+        # Regression: the empty span between `{% raw %}` and `{% if` used to collapse the whole path to
+        # its parent directory, so the file was silently never tracked nor stamped.
+        template_dir = tmp_path / "template"
+        nested = template_dir / "docs"
+        nested.mkdir(parents=True)
+        (nested / "{% raw %}{% if is_open_source %}LICENSE{% endif %}{% endraw %}").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_docs = dst_dir / "docs"
+        dst_docs.mkdir(parents=True)
+        dst_file = dst_docs / "{% if is_open_source %}LICENSE{% endif %}"
+        _ = dst_file.write_text("Apache License\n", encoding="utf-8")
+
+        _ = _run_script(
+            src_template_dir=template_dir,
+            dst_dir=dst_dir,
+            template_src="https://github.com/org/base-template",
+        )
+
+        manifest = _read_manifest(dst_dir)
+        assert manifest["templates"][0]["managed_files"] == ["docs/{% if is_open_source %}LICENSE{% endif %}"]
+
+    def test_raw_wrapped_jinja_filename_keeps_inner_suffix_stripping(self, tmp_path: Path) -> None:
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / "{% raw %}{% if is_open_source %}NOTICE.md{% endif %}{% endraw %}.jinja-base").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        file_content = "# notice\n"
+        dst_file = dst_dir / "{% if is_open_source %}NOTICE.md{% endif %}"
+        _ = dst_file.write_text(file_content, encoding="utf-8")
+
+        _ = _run_script(src_template_dir=template_dir, dst_dir=dst_dir)
+
+        assert dst_file.read_text(encoding="utf-8") == file_content + "\n" + expected_markdown_comment + "\n"
+
+    def test_retained_if_check_filename_uses_real_extension_for_comment_format(self, tmp_path: Path) -> None:
+        # Mirrors base-template's template/.github/{% raw %}{% if is_open_source %}CODE_OF_CONDUCT.md...
+        # The destination keeps the if-check, so Path.suffix reads ".md{% endif %}" and the markdown
+        # format would be missed, stamping a markdown file with `#` comments.
+        template_dir = tmp_path / "template"
+        nested = template_dir / ".github"
+        nested.mkdir(parents=True)
+        (nested / "{% raw %}{% if is_open_source %}CODE_OF_CONDUCT.md{% endif %}{% endraw %}").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_github = dst_dir / ".github"
+        dst_github.mkdir(parents=True)
+        file_content = "# Code of Conduct\n"
+        dst_file = dst_github / "{% if is_open_source %}CODE_OF_CONDUCT.md{% endif %}"
+        _ = dst_file.write_text(file_content, encoding="utf-8")
+
+        _ = _run_script(src_template_dir=template_dir, dst_dir=dst_dir)
+
+        assert dst_file.read_text(encoding="utf-8") == file_content + "\n" + expected_markdown_comment + "\n"
+
+    def test_empty_jinja_span_in_a_name_does_not_hide_the_real_extension(self, tmp_path: Path) -> None:
+        # A conditional that wraps a prefix rather than the whole name leaves an empty span between
+        # the first `%}` and the next `{%`. Taking that span as the lookup name yields "", whose
+        # suffix is "", so the file silently falls back to the default hash comment instead of the
+        # markdown one its .md extension calls for.
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / "{% raw %}{% if draft %}{% endif %}notes.md{% endraw %}").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        file_content = "# notes\n"
+        dst_file = dst_dir / "{% if draft %}{% endif %}notes.md"
+        _ = dst_file.write_text(file_content, encoding="utf-8")
+
+        _ = _run_script(src_template_dir=template_dir, dst_dir=dst_dir)
+
+        assert dst_file.read_text(encoding="utf-8") == file_content + "\n" + expected_markdown_comment + "\n"
+
+    def test_trailing_jinja_is_literal_when_the_active_suffix_is_jinja_base(self, tmp_path: Path) -> None:
+        # base-template ships template/template/Taskfile.yaml.jinja. Its _templates_suffix is
+        # .jinja-base, so that trailing .jinja is literal content: copier renders the name unchanged
+        # and the child template ends up with template/Taskfile.yaml.jinja. Stripping .jinja anyway
+        # made the task probe template/Taskfile.yaml, which does not exist, so the file was never
+        # tracked nor stamped. Taskfile.yaml, .pre-commit-config.yaml and .github/dependabot.yml are
+        # all missing from the base entry of the nuxt template's manifest for this reason.
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / "Taskfile.yaml.jinja").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        dst_file = dst_dir / "Taskfile.yaml.jinja"
+        file_content = "version: '3'\n"
+        _ = dst_file.write_text(file_content, encoding="utf-8")
+        # The over-stripped spelling must not be picked up instead.
+        decoy = dst_dir / "Taskfile.yaml"
+        _ = decoy.write_text(file_content, encoding="utf-8")
+
+        _ = _run_script(
+            src_template_dir=template_dir,
+            dst_dir=dst_dir,
+            templates_suffix=".jinja-base",
+        )
+
+        assert dst_file.read_text(encoding="utf-8") == expected_jinja_comment + file_content
+        assert decoy.read_text(encoding="utf-8") == file_content
+        entry = _read_manifest(dst_dir)["templates"][0]
+        assert entry["managed_files"] == ["Taskfile.yaml.jinja"]
+
+    def test_jinja_suffix_still_stripped_when_it_is_the_active_suffix(self, tmp_path: Path) -> None:
+        # The child template's own _templates_suffix is .jinja, so there the suffix is real.
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / "Taskfile.yaml.jinja").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        dst_file = dst_dir / "Taskfile.yaml"
+        file_content = "version: '3'\n"
+        _ = dst_file.write_text(file_content, encoding="utf-8")
+
+        _ = _run_script(
+            src_template_dir=template_dir,
+            dst_dir=dst_dir,
+            template_src="https://github.com/org/child-template",
+            templates_suffix=".jinja",
+        )
+
+        entry = _read_manifest(dst_dir)["templates"][0]
+        assert entry["managed_files"] == ["Taskfile.yaml"]
+
+    def test_both_suffixes_stripped_when_none_is_declared(self, tmp_path: Path) -> None:
+        # Existing child templates invoke the task without the flag, so the permissive behavior has
+        # to stay the default until they opt in.
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / "a.yaml.jinja").touch()
+        (template_dir / "b.yaml.jinja-base").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        _ = (dst_dir / "a.yaml").write_text("a: 1\n", encoding="utf-8")
+        _ = (dst_dir / "b.yaml").write_text("b: 2\n", encoding="utf-8")
+
+        _ = _run_script(
+            src_template_dir=template_dir,
+            dst_dir=dst_dir,
+            template_src="https://github.com/org/child-template",
+        )
+
+        entry = _read_manifest(dst_dir)["templates"][0]
+        assert entry["managed_files"] == ["a.yaml", "b.yaml"]
 
     def test_symlinked_template_directory_traversed(self, tmp_path: Path) -> None:
         # Simulates base-template's template/template/.claude → ../../.claude symlink pattern.
@@ -267,6 +454,8 @@ class TestFileExtensionComments:
             (".coveragerc", "bottom", expected_hash_comment),
             (".python-version", "none", ""),
             (".prettierrc", "none", ""),
+            (".nvmrc", "none", ""),
+            (".node-version", "none", ""),
         ],
         ids=[
             "py-hash-top",
@@ -295,6 +484,8 @@ class TestFileExtensionComments:
             "coveragerc-hash-bottom",
             "python-version-none",
             "prettierrc-none",
+            "nvmrc-none",
+            "node-version-none",
         ],
     )
     def test_comment_format_by_file_type(
@@ -371,6 +562,138 @@ class TestFileExtensionComments:
         assert non_template.read_text(encoding="utf-8") == file_content
 
 
+class TestJinjaMarkerRendersAway:
+    """A marker in a .jinja file must leave no trace once the file is rendered.
+
+    These files are handed down to a grandchild, so the marker sits in a template whose output is a
+    real file. `{# ... #}` renders to an empty string, but a newline after the closing delimiter
+    would survive -- putting a blank line at the top of the rendered file, which for a script means a
+    blank line ahead of its shebang. The marker is therefore glued straight onto the first line of
+    content, with no separating newline.
+    """
+
+    def _stamp(self, tmp_path: Path, body: str) -> str:
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / "script.sh.jinja").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        dst_file = dst_dir / "script.sh.jinja"
+        _ = dst_file.write_text(body, encoding="utf-8")
+
+        _ = _run_script(src_template_dir=template_dir, dst_dir=dst_dir, templates_suffix=".jinja-base")
+
+        stamped = dst_file.read_text(encoding="utf-8")
+        assert "============== WARNING" in stamped, "the file under test was not stamped"
+        return stamped
+
+    def _render(self, source: str) -> str:
+        return jinja2.Environment(autoescape=False).from_string(source).render()  # noqa: S701 -- rendering a shell script, not HTML
+
+    def test_shebang_stays_on_the_first_line_after_rendering(self, tmp_path: Path) -> None:
+        rendered = self._render(self._stamp(tmp_path, "{% raw %}#!/usr/bin/env sh\nset -ex\n{% endraw %}"))
+
+        assert rendered.startswith("#!/usr/bin/env sh"), f"shebang is no longer first: {rendered[:40]!r}"
+
+    def test_rendered_output_matches_the_unstamped_original(self, tmp_path: Path) -> None:
+        body = "{% raw %}key: value\nother: thing\n{% endraw %}"
+
+        assert self._render(self._stamp(tmp_path, body)) == self._render(body)
+
+    def test_marker_does_not_take_a_line_of_its_own(self, tmp_path: Path) -> None:
+        # The closing delimiter shares its line with the first line of content. Giving the marker its
+        # own line instead rewrites that first content line, and in a child template that has
+        # customized the file the resulting hunk swallows the whole divergent body.
+        stamped = self._stamp(tmp_path, "{% raw %}first-line\n{% endraw %}")
+
+        assert "#}{% raw %}first-line" in stamped, stamped[:400]
+
+
+class TestByteFidelity:
+    """Stamping must not rewrite anything about a file other than inserting the marker."""
+
+    def _stamp(self, tmp_path: Path, filename: str, raw: bytes) -> Path:
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / filename).touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        dst_file = dst_dir / filename
+        _ = dst_file.write_bytes(raw)
+
+        _ = _run_script(src_template_dir=template_dir, dst_dir=dst_dir)
+        return dst_file
+
+    def test_crlf_line_endings_preserved(self, tmp_path: Path) -> None:
+        # sh.bat and deployment/deploy.bat are CRLF on purpose; text-mode writes silently
+        # converted them to LF, so every stamped .bat file came back as a whole-file diff.
+        dst_file = self._stamp(tmp_path, "run.bat", b"@echo off\r\nrem hi\r\n")
+
+        raw = dst_file.read_bytes()
+        assert b"REM ============== WARNING" in raw
+        assert raw.replace(b"\r\n", b"").count(b"\n") == 0, "file gained bare LF line endings"
+
+    def test_lf_line_endings_not_converted_to_crlf(self, tmp_path: Path) -> None:
+        dst_file = self._stamp(tmp_path, "script.sh", b"echo hi\n")
+
+        raw = dst_file.read_bytes()
+        assert b"# ============== WARNING" in raw
+        assert b"\r" not in raw
+
+    def test_crlf_stamping_is_idempotent(self, tmp_path: Path) -> None:
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / "run.bat").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        dst_file = dst_dir / "run.bat"
+        _ = dst_file.write_bytes(b"@echo off\r\nrem hi\r\n")
+
+        _ = _run_script(src_template_dir=template_dir, dst_dir=dst_dir)
+        after_first = dst_file.read_bytes()
+        _ = _run_script(src_template_dir=template_dir, dst_dir=dst_dir)
+
+        assert dst_file.read_bytes() == after_first
+
+    @pytest.mark.parametrize(
+        ("body", "expected_newline"),
+        [
+            (b"a = 1\r\nb = 2\r\nc = 3\r\nd = 4\n", b"\r\n"),
+            (b"a = 1\r\nb = 2\nc = 3\nd = 4\n", b"\n"),
+            (b"a = 1\r\nb = 2\n", b"\n"),
+        ],
+        ids=["crlf-majority-wins", "lf-majority-wins", "tie-goes-to-lf"],
+    )
+    def test_mixed_line_endings_normalize_to_the_dominant_one(
+        self,
+        body: bytes,
+        expected_newline: bytes,
+        tmp_path: Path,
+    ) -> None:
+        # A file that arrives with both endings is normalized rather than left mixed, so the choice of
+        # which ending wins is a promise the module makes and has to keep. A tie resolves to LF.
+        dst_file = self._stamp(tmp_path, "mixed.py", body)
+
+        raw = dst_file.read_bytes()
+
+        assert b"# ============== WARNING" in raw
+        if expected_newline == b"\r\n":
+            assert raw.replace(b"\r\n", b"").count(b"\n") == 0
+        else:
+            assert b"\r" not in raw
+
+    def test_non_ascii_content_preserved(self, tmp_path: Path) -> None:
+        # The file was opened without an explicit encoding, so a non-UTF-8 locale would mangle this.
+        body = "s = 'café 中文 🙂'\n"
+        dst_file = self._stamp(tmp_path, "unicode.py", body.encode("utf-8"))
+
+        content = dst_file.read_text(encoding="utf-8")
+        assert content == expected_hash_comment + "\n" + body
+
+
 class TestShebangHandling:
     @pytest.mark.parametrize(
         ("shebang_line", "expected_location"),
@@ -433,21 +756,22 @@ class TestExistingUserCommentsPreserved:
     @pytest.mark.parametrize(
         ("filenames", "user_comment", "expected_marker"),
         [
-            (("module.ts", "module.ts"), "/*\n * SPDX-License-Identifier: MIT\n */", expected_block_comment),
-            (("page.jinja.jinja-base", "page.jinja"), "{#\n a hand-written jinja note\n#}", expected_jinja_comment),
-            (("index.html", "index.html"), "<!--\n a hand-written html note\n-->", expected_markdown_comment),
+            (("module.ts", "module.ts", "\n"), "/*\n * SPDX-License-Identifier: MIT\n */", expected_block_comment),
+            # The Jinja marker is glued to the content so it leaves no blank line once rendered.
+            (("page.jinja.jinja-base", "page.jinja", ""), "{#\n a hand-written jinja note\n#}", expected_jinja_comment),
+            (("index.html", "index.html", "\n"), "<!--\n a hand-written html note\n-->", expected_markdown_comment),
         ],
         ids=["block-license-preserved", "jinja-note-preserved", "markdown-note-preserved"],
     )
     def test_non_marker_leading_comment_is_not_stripped(
         self,
-        filenames: tuple[str, str],
+        filenames: tuple[str, str, str],
         user_comment: str,
         expected_marker: str,
         tmp_path: Path,
         faker: Faker,
     ) -> None:
-        template_filename, dst_filename = filenames
+        template_filename, dst_filename, separator = filenames
         body = faker.sentence()
         template_dir = tmp_path / "template"
         template_dir.mkdir()
@@ -461,13 +785,13 @@ class TestExistingUserCommentsPreserved:
         _ = _run_script(src_template_dir=template_dir, dst_dir=dst_dir)
 
         content = (dst_dir / dst_filename).read_text(encoding="utf-8")
-        assert content == expected_marker + "\n" + file_content
+        assert content == expected_marker + separator + file_content
 
     @pytest.mark.parametrize(
-        ("filenames", "expected_marker"),
+        ("filenames", "expected_marker", "separator"),
         [
-            (("module.ts", "module.ts"), expected_block_comment),
-            (("page.jinja.jinja-base", "page.jinja"), expected_jinja_comment),
+            (("module.ts", "module.ts"), expected_block_comment, "\n"),
+            (("page.jinja.jinja-base", "page.jinja"), expected_jinja_comment, ""),
         ],
         ids=["block-marker-not-duplicated", "jinja-marker-not-duplicated"],
     )
@@ -475,6 +799,7 @@ class TestExistingUserCommentsPreserved:
         self,
         filenames: tuple[str, str],
         expected_marker: str,
+        separator: str,
         tmp_path: Path,
         faker: Faker,
     ) -> None:
@@ -486,13 +811,331 @@ class TestExistingUserCommentsPreserved:
 
         dst_dir = tmp_path / "destination"
         dst_dir.mkdir()
-        file_content = expected_marker + "\n" + body + "\n"
+        file_content = expected_marker + separator + body + "\n"
         _ = (dst_dir / dst_filename).write_text(file_content, encoding="utf-8")
 
         _ = _run_script(src_template_dir=template_dir, dst_dir=dst_dir)
 
         content = (dst_dir / dst_filename).read_text(encoding="utf-8")
         assert content == file_content
+
+
+class TestStaleMarkersRemoved:
+    """A marker written by an older version of this task must be removed, not left to accumulate."""
+
+    def test_marker_in_a_different_comment_format_is_replaced_not_doubled(self, tmp_path: Path) -> None:
+        # .jsonc moved from the hash format to the block format. Only the current format's pattern was
+        # stripped, so the old marker stayed put and the new one was added alongside it.
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / "biome.jsonc").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        dst_file = dst_dir / "biome.jsonc"
+        body = '{"a": 1}\n'
+        _ = dst_file.write_text(expected_hash_comment + "\n" + body, encoding="utf-8")
+
+        _ = _run_script(src_template_dir=template_dir, dst_dir=dst_dir)
+
+        content = dst_file.read_text(encoding="utf-8")
+        assert content.count("============== WARNING") == 1
+        assert content == expected_block_comment + "\n" + body
+
+    def test_stacked_duplicate_markers_are_all_removed(self, tmp_path: Path) -> None:
+        # Stripping was capped at one occurrence, so a file that ever acquired two markers kept one
+        # of them permanently.
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / "settings.py").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        dst_file = dst_dir / "settings.py"
+        body = "x = 1\n"
+        _ = dst_file.write_text(
+            expected_hash_comment + "\n" + expected_hash_comment + "\n" + body,
+            encoding="utf-8",
+        )
+
+        _ = _run_script(src_template_dir=template_dir, dst_dir=dst_dir)
+
+        content = dst_file.read_text(encoding="utf-8")
+        assert content.count("============== WARNING") == 1
+        assert content == expected_hash_comment + "\n" + body
+
+    def test_marker_removed_when_file_type_no_longer_takes_one(self, tmp_path: Path) -> None:
+        # .python-version and friends moved to the "none" format. The task returned early without
+        # stripping, so a marker stamped by an earlier version was stuck in the file forever.
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / ".python-version").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        dst_file = dst_dir / ".python-version"
+        body = "3.12.7\n"
+        _ = dst_file.write_text(expected_hash_comment + "\n" + body, encoding="utf-8")
+
+        _ = _run_script(src_template_dir=template_dir, dst_dir=dst_dir)
+
+        assert dst_file.read_text(encoding="utf-8") == body
+
+    def test_marker_text_quoted_as_data_is_left_alone(self, tmp_path: Path) -> None:
+        # This task's own test file is shipped to child templates and quotes every marker spelling as
+        # a string constant. Stripping matched marker text anywhere in a file, so stamping the test
+        # file deleted the constants out of it. A marker only ever sits at the very top or the very
+        # bottom, so stripping is anchored there.
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / "quotes_markers.py").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        dst_file = dst_dir / "quotes_markers.py"
+        body = (
+            "jinja_example = '''\\\n"
+            + expected_jinja_comment
+            + "'''\n\nhash_example = '''\\\n"
+            + expected_hash_comment
+            + "'''\n"
+        )
+        _ = dst_file.write_text(body, encoding="utf-8")
+
+        _ = _run_script(src_template_dir=template_dir, dst_dir=dst_dir)
+
+        content = dst_file.read_text(encoding="utf-8")
+        assert content == expected_hash_comment + "\n" + body, "quoted marker text was eaten"
+
+    def test_unchanged_file_is_not_rewritten(self, tmp_path: Path) -> None:
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / "a.py").touch()
+        (template_dir / "c.json").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        stamped = dst_dir / "a.py"
+        _ = stamped.write_text(expected_hash_comment + "\n" + "x = 1\n", encoding="utf-8")
+        untouched = dst_dir / "c.json"
+        _ = untouched.write_text("{}\n", encoding="utf-8")
+        for path in (stamped, untouched):
+            os.utime(path, (0, 0))
+
+        _ = _run_script(src_template_dir=template_dir, dst_dir=dst_dir)
+
+        assert stamped.stat().st_mtime == 0, "already-correct file was rewritten"
+        assert untouched.stat().st_mtime == 0, "file that takes no marker was rewritten"
+
+
+class TestExclusions:
+    """Regenerated files ship in the template but must not be claimed as managed."""
+
+    def test_generated_subtree_is_excluded_at_any_depth(self, tmp_path: Path) -> None:
+        # A code generator rewrites these after the copier task runs, so the marker is destroyed and
+        # the manifest is left claiming a file nobody maintains by hand. No template opts in or out:
+        # every generated tree in these repos lives under a path segment named exactly "generated",
+        # so the exclusion is unconditional.
+        template_dir = tmp_path / "template"
+        generated = template_dir / "backend" / "tests" / "e2e" / "generated" / "open_api"
+        generated.mkdir(parents=True)
+        (generated / "backend_client.py").touch()
+        (template_dir / "kept.py").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_generated = dst_dir / "backend" / "tests" / "e2e" / "generated" / "open_api"
+        dst_generated.mkdir(parents=True)
+        client_body = "class BackendClient:\n    pass\n"
+        _ = (dst_generated / "backend_client.py").write_text(client_body, encoding="utf-8")
+        _ = (dst_dir / "kept.py").write_text("x = 1\n", encoding="utf-8")
+
+        _ = _run_script(
+            src_template_dir=template_dir,
+            dst_dir=dst_dir,
+            template_src="https://github.com/org/child-template",
+        )
+
+        assert (dst_generated / "backend_client.py").read_text(encoding="utf-8") == client_body
+        entry = _read_manifest(dst_dir)["templates"][0]
+        assert entry["managed_files"] == ["kept.py"]
+
+    def test_marker_already_in_a_generated_file_is_cleaned_up(self, tmp_path: Path) -> None:
+        # Existing projects have these files stamped, so the task has to remove its own marker rather
+        # than walk away and strand it. This is why "generated" is an exclusion rather than a pruned
+        # directory like the tool caches.
+        template_dir = tmp_path / "template"
+        generated = template_dir / "generated"
+        generated.mkdir(parents=True)
+        (generated / "client.py").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_generated = dst_dir / "generated"
+        dst_generated.mkdir(parents=True)
+        dst_file = dst_generated / "client.py"
+        body = "class Client:\n    pass\n"
+        _ = dst_file.write_text(expected_hash_comment + "\n" + body, encoding="utf-8")
+
+        _ = _run_script(
+            src_template_dir=template_dir,
+            dst_dir=dst_dir,
+            template_src="https://github.com/org/child-template",
+        )
+
+        assert dst_file.read_text(encoding="utf-8") == body
+
+    @pytest.mark.parametrize("filename", ["generated_client.py", "regenerated.md", "generated.py"])
+    def test_generated_as_part_of_a_longer_name_is_still_tracked(self, filename: str, tmp_path: Path) -> None:
+        # The rule matches a whole path segment, not a substring, so a hand-maintained file whose name
+        # merely contains the word is unaffected. Across 250 generated files in the downstream repo and
+        # 20 in the templates, the only segment containing "generated" is exactly "generated".
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / filename).touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        _ = (dst_dir / filename).write_text("x = 1\n", encoding="utf-8")
+
+        _ = _run_script(
+            src_template_dir=template_dir,
+            dst_dir=dst_dir,
+            template_src="https://github.com/org/child-template",
+        )
+
+        entry = _read_manifest(dst_dir)["templates"][0]
+        assert entry["managed_files"] == [filename]
+
+    @pytest.mark.parametrize(
+        "cache_dir",
+        [
+            ".git",
+            ".ruff_cache",
+            ".pytest_cache",
+            ".mypy_cache",
+            "__pycache__",
+            "node_modules",
+            ".venv",
+            ".pnpm-store",
+            ".turbo",
+            ".nuxt",
+            ".output",
+        ],
+    )
+    def test_tool_cache_directories_are_never_tracked(self, cache_dir: str, tmp_path: Path) -> None:
+        # base-template's own template/.ruff_cache is untracked local junk that sits inside the
+        # template directory. Walking the filesystem picked it up, so a run from a non-git source
+        # would stamp .ruff_cache/.gitignore and CACHEDIR.TAG in the destination.
+        template_dir = tmp_path / "template"
+        cache = template_dir / cache_dir
+        cache.mkdir(parents=True)
+        (cache / ".gitignore").touch()
+        (template_dir / "kept.py").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_cache = dst_dir / cache_dir
+        dst_cache.mkdir(parents=True)
+        cache_body = "# generated by a tool\n"
+        _ = (dst_cache / ".gitignore").write_text(cache_body, encoding="utf-8")
+        _ = (dst_dir / "kept.py").write_text("x = 1\n", encoding="utf-8")
+
+        _ = _run_script(
+            src_template_dir=template_dir,
+            dst_dir=dst_dir,
+            template_src="https://github.com/org/base-template",
+        )
+
+        assert (dst_cache / ".gitignore").read_text(encoding="utf-8") == cache_body
+        entry = _read_manifest(dst_dir)["templates"][0]
+        assert entry["managed_files"] == ["kept.py"]
+
+
+class TestResilience:
+    """One unstampable file must not cost the whole run."""
+
+    def test_undecodable_file_in_a_bottom_format_is_tracked_but_not_stamped(self, tmp_path: Path) -> None:
+        # The decode probe only ran for top-location formats, so an undecodable file in a
+        # bottom-location format (.md, .sh, .bat, .coveragerc) raised instead of being skipped.
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / "aaa.py").touch()
+        (template_dir / "mmm.md").touch()
+        (template_dir / "zzz.py").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        _ = (dst_dir / "aaa.py").write_text("a = 1\n", encoding="utf-8")
+        _ = (dst_dir / "mmm.md").write_bytes(b"\xff\xfe\x00binary\x00")
+        _ = (dst_dir / "zzz.py").write_text("z = 1\n", encoding="utf-8")
+
+        _ = _run_script(
+            src_template_dir=template_dir,
+            dst_dir=dst_dir,
+            template_src="https://github.com/org/base-template",
+        )
+
+        assert (dst_dir / "aaa.py").read_text(encoding="utf-8").startswith("# ============== WARNING")
+        assert (dst_dir / "zzz.py").read_text(encoding="utf-8").startswith("# ============== WARNING")
+        assert (dst_dir / "mmm.md").read_bytes() == b"\xff\xfe\x00binary\x00"
+        entry = _read_manifest(dst_dir)["templates"][0]
+        assert entry["managed_files"] == ["aaa.py", "mmm.md", "zzz.py"]
+
+    def test_undecodable_file_in_a_top_format_is_tracked_but_not_stamped(self, tmp_path: Path) -> None:
+        # The bottom-location case has its own test above. Both locations go through the same decode
+        # probe now, and this pins that: a probe that ever becomes location-dependent again would
+        # otherwise only be caught on one side.
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / "binary.py").touch()
+        (template_dir / "text.py").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        binary_body = b"\xff\xfe\x00binary\x00"
+        _ = (dst_dir / "binary.py").write_bytes(binary_body)
+        _ = (dst_dir / "text.py").write_text("t = 1\n", encoding="utf-8")
+
+        _ = _run_script(
+            src_template_dir=template_dir,
+            dst_dir=dst_dir,
+            template_src="https://github.com/org/base-template",
+        )
+
+        assert (dst_dir / "binary.py").read_bytes() == binary_body
+        assert (dst_dir / "text.py").read_text(encoding="utf-8").startswith("# ============== WARNING")
+        entry = _read_manifest(dst_dir)["templates"][0]
+        assert entry["managed_files"] == ["binary.py", "text.py"]
+
+    def test_unreadable_file_does_not_abort_the_run(self, tmp_path: Path) -> None:
+        # Files are visited in sorted order and the manifest was only written after the loop, so a
+        # raise part-way through left later files unstamped and no manifest on disk at all.
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / "aaa.py").touch()
+        (template_dir / "mmm.py").touch()
+        (template_dir / "zzz.py").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        _ = (dst_dir / "aaa.py").write_text("a = 1\n", encoding="utf-8")
+        unreadable = dst_dir / "mmm.py"
+        _ = unreadable.write_text("m = 1\n", encoding="utf-8")
+        _ = (dst_dir / "zzz.py").write_text("z = 1\n", encoding="utf-8")
+        unreadable.chmod(0o000)
+
+        try:
+            result = _run_script_expecting_failure(
+                src_template_dir=template_dir,
+                dst_dir=dst_dir,
+                template_src="https://github.com/org/base-template",
+            )
+        finally:
+            unreadable.chmod(0o644)
+
+        assert "mmm.py" in result.stderr
+        assert (dst_dir / "aaa.py").read_text(encoding="utf-8").startswith("# ============== WARNING")
+        assert (dst_dir / "zzz.py").read_text(encoding="utf-8").startswith("# ============== WARNING")
+        entry = _read_manifest(dst_dir)["templates"][0]
+        assert entry["managed_files"] == ["aaa.py", "mmm.py", "zzz.py"]
 
 
 class TestManifest:
@@ -546,60 +1189,249 @@ class TestManifest:
         assert len(manifest["templates"]) == 1
 
     def test_manifest_layering_preserves_other_template_entries(self, tmp_path: Path) -> None:
-        template_dir = tmp_path / "template"
-        template_dir.mkdir()
-        (template_dir / "a.txt").touch()
+        # Two templates applied to one repo, each managing its own files. Neither run knows about the
+        # other, so each must leave the other's entry alone.
+        base_template = tmp_path / "base_template"
+        base_template.mkdir()
+        (base_template / "a.txt").touch()
+        child_template = tmp_path / "child_template"
+        child_template.mkdir()
+        (child_template / "b.txt").touch()
 
         dst_dir = tmp_path / "destination"
         dst_dir.mkdir()
         _ = (dst_dir / "a.txt").write_text("content", encoding="utf-8")
+        _ = (dst_dir / "b.txt").write_text("content", encoding="utf-8")
 
         _ = _run_script(
-            src_template_dir=template_dir,
+            src_template_dir=base_template,
             dst_dir=dst_dir,
             template_src="https://github.com/org/base-template",
         )
         _ = _run_script(
-            src_template_dir=template_dir,
+            src_template_dir=child_template,
             dst_dir=dst_dir,
             template_src="https://github.com/org/child-template",
         )
 
-        manifest = _read_manifest(dst_dir)
-        srcs = [t["src"] for t in manifest["templates"]]
-        assert "https://github.com/org/base-template" in srcs
-        assert "https://github.com/org/child-template" in srcs
+        srcs = {t["src"]: t for t in _read_manifest(dst_dir)["templates"]}
+        assert srcs["https://github.com/org/base-template"]["managed_files"] == ["a.txt"]
+        assert srcs["https://github.com/org/child-template"]["managed_files"] == ["b.txt"]
 
     def test_manifest_child_update_does_not_overwrite_base(self, tmp_path: Path) -> None:
         expected_num_manifests_in_project = 2
-        template_dir = tmp_path / "template"
-        template_dir.mkdir()
-        (template_dir / "a.txt").touch()
+        base_template = tmp_path / "base_template"
+        base_template.mkdir()
+        (base_template / "a.txt").touch()
+        child_template = tmp_path / "child_template"
+        child_template.mkdir()
+        (child_template / "b.txt").touch()
 
         dst_dir = tmp_path / "destination"
         dst_dir.mkdir()
         _ = (dst_dir / "a.txt").write_text("content", encoding="utf-8")
+        _ = (dst_dir / "b.txt").write_text("content", encoding="utf-8")
 
         _ = _run_script(
-            src_template_dir=template_dir,
+            src_template_dir=base_template,
             dst_dir=dst_dir,
             template_src="https://github.com/org/base-template",
         )
-        _ = _run_script(
-            src_template_dir=template_dir,
-            dst_dir=dst_dir,
-            template_src="https://github.com/org/child-template",
-        )
-        _ = _run_script(
-            src_template_dir=template_dir,
-            dst_dir=dst_dir,
-            template_src="https://github.com/org/child-template",
-        )
+        for _ in range(2):
+            _ = _run_script(
+                src_template_dir=child_template,
+                dst_dir=dst_dir,
+                template_src="https://github.com/org/child-template",
+            )
 
         manifest = _read_manifest(dst_dir)
         assert len(manifest["templates"]) == expected_num_manifests_in_project
         base = next(t for t in manifest["templates"] if "base" in t["src"])
-        assert "a.txt" in base["managed_files"]
+        assert base["managed_files"] == ["a.txt"]
+
+    def test_managed_files_are_ordered_as_strings_not_as_paths(self, tmp_path: Path) -> None:
+        # Files are collected in Path order, where "a/b.py" precedes "a.b/c.py" because "a" < "a.b"
+        # segment-wise. The manifest is read as text, so it is sorted as text, where "." (46) sorts
+        # before "/" (47) and the two swap. Without the explicit re-sort the two orders disagree only
+        # for sibling names like these, so a plainer fixture cannot tell the difference.
+        template_dir = tmp_path / "template"
+        (template_dir / "a").mkdir(parents=True)
+        (template_dir / "a.b").mkdir(parents=True)
+        (template_dir / "a" / "b.py").touch()
+        (template_dir / "a.b" / "c.py").touch()
+
+        dst_dir = tmp_path / "destination"
+        (dst_dir / "a").mkdir(parents=True)
+        (dst_dir / "a.b").mkdir(parents=True)
+        _ = (dst_dir / "a" / "b.py").write_text("x = 1\n", encoding="utf-8")
+        _ = (dst_dir / "a.b" / "c.py").write_text("y = 2\n", encoding="utf-8")
+
+        _ = _run_script(
+            src_template_dir=template_dir,
+            dst_dir=dst_dir,
+            template_src="https://github.com/org/child-template",
+        )
+
+        entry = _read_manifest(dst_dir)["templates"][0]
+        assert entry["managed_files"] == ["a.b/c.py", "a/b.py"]
+
+    def test_manifest_entries_are_ordered_by_src(self, tmp_path: Path) -> None:
+        # Entry order used to follow whichever src happened to own the alphabetically first managed
+        # file, so a change of ownership reordered the whole array and produced a huge diff.
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / "zzz.txt").touch()
+        (template_dir / "aaa.txt").touch()
+
+        # Entries are created in the order their first managed file is encountered, and files are
+        # walked in sorted order. So for the sort to be doing any work, the src that must end up
+        # FIRST has to own the file that is walked LAST. Here the current template (zzz-) owns
+        # "aaa.txt" and the ancestor (aaa-) owns "zzz.txt", which is the only arrangement that
+        # distinguishes a sorted array from the insertion order.
+        _ = (tmp_path / ".copier-managed-files.json").write_text(
+            json.dumps(
+                {
+                    "templates": [
+                        {"src": "https://github.com/org/aaa-template", "managed_files": ["template/zzz.txt"]},
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        _ = (dst_dir / "aaa.txt").write_text("content", encoding="utf-8")
+        _ = (dst_dir / "zzz.txt").write_text("content", encoding="utf-8")
+
+        _ = _run_script(
+            src_template_dir=template_dir,
+            dst_dir=dst_dir,
+            template_src="https://github.com/org/zzz-template",
+        )
+
+        manifest = _read_manifest(dst_dir)
+        srcs = [t["src"] for t in manifest["templates"]]
+        assert srcs == ["https://github.com/org/aaa-template", "https://github.com/org/zzz-template"]
+        # Guard the fixture itself: if the ancestor stopped owning zzz.txt the arrangement above
+        # collapses and the assertion goes back to passing by accident.
+        assert manifest["templates"][0]["managed_files"] == ["zzz.txt"]
+
+
+class TestManifestPruning:
+    """The current run is authoritative for every path it claims."""
+
+    def test_path_claimed_by_this_run_is_removed_from_another_entry(self, tmp_path: Path) -> None:
+        # Reproduces the duplicate: the ancestor manifest stops claiming a file, this run picks it up,
+        # and the old entry was never pruned, so the file was listed under two srcs at once.
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / "shared.py").touch()
+        (template_dir / "own.py").touch()
+
+        ancestor_manifest = tmp_path / ".copier-managed-files.json"
+        _ = ancestor_manifest.write_text(
+            json.dumps(
+                {
+                    "templates": [
+                        {"src": "https://github.com/org/base-template", "managed_files": ["template/shared.py"]}
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        _ = (dst_dir / "shared.py").write_text("x = 1\n", encoding="utf-8")
+        _ = (dst_dir / "own.py").write_text("y = 2\n", encoding="utf-8")
+
+        _ = _run_script(
+            src_template_dir=template_dir,
+            dst_dir=dst_dir,
+            template_src="https://github.com/org/child-template",
+        )
+        srcs = {t["src"]: t for t in _read_manifest(dst_dir)["templates"]}
+        assert srcs["https://github.com/org/base-template"]["managed_files"] == ["shared.py"]
+
+        # The ancestor template hands shared.py over to the child.
+        _ = ancestor_manifest.write_text(
+            json.dumps({"templates": [{"src": "https://github.com/org/base-template", "managed_files": []}]}),
+            encoding="utf-8",
+        )
+        _ = _run_script(
+            src_template_dir=template_dir,
+            dst_dir=dst_dir,
+            template_src="https://github.com/org/child-template",
+        )
+
+        manifest = _read_manifest(dst_dir)
+        appearances = [t["src"] for t in manifest["templates"] if "shared.py" in t["managed_files"]]
+        assert appearances == ["https://github.com/org/child-template"]
+
+    def test_entry_left_with_no_files_is_dropped(self, tmp_path: Path) -> None:
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / "shared.py").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        _ = (dst_dir / "shared.py").write_text("x = 1\n", encoding="utf-8")
+        config_dir = dst_dir / ".config"
+        config_dir.mkdir()
+        _ = (config_dir / ".copier-managed-files.json").write_text(
+            json.dumps(
+                {"templates": [{"src": "https://github.com/org/retired-template", "managed_files": ["shared.py"]}]}
+            ),
+            encoding="utf-8",
+        )
+
+        _ = _run_script(
+            src_template_dir=template_dir,
+            dst_dir=dst_dir,
+            template_src="https://github.com/org/child-template",
+        )
+
+        srcs = [t["src"] for t in _read_manifest(dst_dir)["templates"]]
+        assert srcs == ["https://github.com/org/child-template"]
+
+    def test_entry_for_an_unrelated_template_survives_intact(self, tmp_path: Path) -> None:
+        # Pruning must only take paths this run actually claimed, or a repo that layers two unrelated
+        # templates would lose whichever one did not run last.
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / "own.py").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        _ = (dst_dir / "own.py").write_text("y = 2\n", encoding="utf-8")
+        config_dir = dst_dir / ".config"
+        config_dir.mkdir()
+        _ = (config_dir / ".copier-managed-files.json").write_text(
+            json.dumps(
+                {
+                    "templates": [
+                        {
+                            "src": "https://github.com/org/other-template",
+                            "parent_src": "https://github.com/org/other-parent",
+                            "managed_files": ["unrelated.py", "also-unrelated.py"],
+                        }
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        _ = _run_script(
+            src_template_dir=template_dir,
+            dst_dir=dst_dir,
+            template_src="https://github.com/org/child-template",
+        )
+
+        srcs = {t["src"]: t for t in _read_manifest(dst_dir)["templates"]}
+        other = srcs["https://github.com/org/other-template"]
+        assert other["managed_files"] == ["unrelated.py", "also-unrelated.py"]
+        assert other.get("parent_src") == "https://github.com/org/other-parent"
 
     def test_manifest_src_matches_template_src_argument(self, tmp_path: Path) -> None:
         template_dir = tmp_path / "template"
@@ -618,6 +1450,138 @@ class TestManifest:
         entry = manifest["templates"][0]
         assert entry["src"] == "https://github.com/org/my-template"
 
+    def test_manifest_src_falls_back_to_the_template_path_when_no_src_is_given(self, tmp_path: Path) -> None:
+        # Child templates invoke the task without --template-src. The manifest key must still be
+        # something that identifies the template, never the empty string.
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / "a.txt").touch()
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        _ = (dst_dir / "a.txt").write_text("content", encoding="utf-8")
+
+        _ = _run_script(src_template_dir=template_dir, dst_dir=dst_dir)
+
+        entry = _read_manifest(dst_dir)["templates"][0]
+        assert entry["src"] == str(template_dir)
+
+    def test_no_parent_src_when_the_answers_file_omits_src_path(self, tmp_path: Path) -> None:
+        # A .copier-answers.yml that exists but carries no _src_path must yield no parent_src, not a
+        # crash and not a garbage value.
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        config_dir = tmp_path / ".config"
+        config_dir.mkdir()
+        _ = (config_dir / ".copier-answers.yml").write_text("some_question: yes\n", encoding="utf-8")
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+
+        _ = _run_script(
+            src_template_dir=template_dir,
+            dst_dir=dst_dir,
+            template_src="https://github.com/org/child-template",
+        )
+
+        entry = _read_manifest(dst_dir)["templates"][0]
+        assert entry["src"] == "https://github.com/org/child-template"
+        assert "parent_src" not in entry
+
+    def test_ancestor_entry_carries_its_own_parent_src_forward(self, tmp_path: Path) -> None:
+        # An ancestor entry records who generated the ancestor. That link is what lets a reader walk
+        # the chain upward past the immediate parent, so it has to survive being re-emitted into the
+        # grandchild's manifest rather than being dropped or replaced by this run's parent.
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / "shared.py").touch()
+        (template_dir / "own.py").touch()
+
+        _ = (tmp_path / ".copier-managed-files.json").write_text(
+            json.dumps(
+                {
+                    "templates": [
+                        {
+                            "src": "https://github.com/org/base-template",
+                            "parent_src": "https://github.com/org/grandparent-template",
+                            "managed_files": ["template/shared.py"],
+                        },
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        _ = (dst_dir / "shared.py").write_text("x = 1\n", encoding="utf-8")
+        _ = (dst_dir / "own.py").write_text("y = 2\n", encoding="utf-8")
+
+        _ = _run_script(
+            src_template_dir=template_dir,
+            dst_dir=dst_dir,
+            template_src="https://github.com/org/child-template",
+        )
+
+        srcs = {t["src"]: t for t in _read_manifest(dst_dir)["templates"]}
+        assert srcs["https://github.com/org/base-template"].get("parent_src") == (
+            "https://github.com/org/grandparent-template"
+        )
+
+    def test_bare_subdirectory_entry_in_an_ancestor_manifest_is_ignored(self, tmp_path: Path) -> None:
+        # An ancestor entry listing the template subdirectory itself rather than a file under it
+        # strips to the empty path. It attributes nothing and must not take the run down with it.
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / "own.py").touch()
+
+        _ = (tmp_path / ".copier-managed-files.json").write_text(
+            json.dumps(
+                {"templates": [{"src": "https://github.com/org/base-template", "managed_files": ["template/"]}]}
+            ),
+            encoding="utf-8",
+        )
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        _ = (dst_dir / "own.py").write_text("y = 2\n", encoding="utf-8")
+
+        _ = _run_script(
+            src_template_dir=template_dir,
+            dst_dir=dst_dir,
+            template_src="https://github.com/org/child-template",
+        )
+
+        srcs = {t["src"]: t for t in _read_manifest(dst_dir)["templates"]}
+        assert srcs["https://github.com/org/child-template"]["managed_files"] == ["own.py"]
+        assert "https://github.com/org/base-template" not in srcs
+
+    def test_entry_keys_are_written_in_a_stable_order(self, tmp_path: Path) -> None:
+        # Key order is what keeps a regenerated manifest from showing up as a diff against an
+        # otherwise identical file.
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / "a.txt").touch()
+        config_dir = tmp_path / ".config"
+        config_dir.mkdir()
+        _ = (config_dir / ".copier-answers.yml").write_text(
+            "_src_path: https://github.com/org/parent-template\n",
+            encoding="utf-8",
+        )
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        _ = (dst_dir / "a.txt").write_text("content", encoding="utf-8")
+
+        _ = _run_script(
+            src_template_dir=template_dir,
+            dst_dir=dst_dir,
+            template_src="https://github.com/org/child-template",
+        )
+
+        entry = _read_manifest(dst_dir)["templates"][0]
+        assert list(entry) == ["src", "parent_src", "managed_files"]
+
     def test_manifest_structure_is_valid(self, tmp_path: Path) -> None:
         template_dir = tmp_path / "template"
         template_dir.mkdir()
@@ -635,10 +1599,9 @@ class TestManifest:
 
         manifest = _read_manifest(dst_dir)
         assert isinstance(manifest["templates"], list)
-        for entry in manifest["templates"]:
-            assert isinstance(entry["src"], str)
-            assert isinstance(entry["managed_files"], list)
-            assert all(isinstance(f, str) for f in entry["managed_files"])
+        assert [e for e in manifest["templates"] if not isinstance(e["src"], str)] == []
+        assert [e for e in manifest["templates"] if not isinstance(e["managed_files"], list)] == []
+        assert [f for e in manifest["templates"] for f in e["managed_files"] if not isinstance(f, str)] == []
 
     def test_manifest_parent_src_discovered_from_config_copier_answers(self, tmp_path: Path) -> None:
         template_dir = tmp_path / "template"
@@ -706,7 +1669,8 @@ class TestManifest:
 
     def test_ancestor_files_attributed_to_ancestor_template(self, tmp_path: Path) -> None:
         # Simulate child template updating a grandchild project.
-        # The child template's own manifest lists base-template as managing "shared.py".
+        # The child template's own manifest lists base-template as managing "template/shared.py",
+        # i.e. a file inside the child's template directory, which is what gets handed down.
         # "app.py" is child-specific. Expect two manifest entries with correct attribution.
         template_dir = tmp_path / "template"
         template_dir.mkdir()
@@ -718,7 +1682,7 @@ class TestManifest:
             json.dumps(
                 {
                     "templates": [
-                        {"src": "https://github.com/org/base-template", "managed_files": ["shared.py"]},
+                        {"src": "https://github.com/org/base-template", "managed_files": ["template/shared.py"]},
                     ]
                 }
             ),
@@ -749,6 +1713,48 @@ class TestManifest:
         # app.py header references the child template URL
         app_content = (dst_dir / "app.py").read_text(encoding="utf-8")
         assert "https://github.com/org/child-template" in app_content
+
+    def test_ancestor_repo_root_file_does_not_claim_a_colliding_grandchild_file(self, tmp_path: Path) -> None:
+        # An ancestor entry holds two kinds of path: files it manages in the child template repo
+        # itself (its tooling -- pyproject.toml, .github/workflows/ci.yaml) and files under the
+        # child's template/ directory, which are the only ones handed down to a grandchild.
+        # Attribution used to match either spelling, so a grandchild file was credited to the
+        # ancestor purely because a same-named file happened to exist at the child repo's root.
+        template_dir = tmp_path / "template"
+        template_dir.mkdir()
+        (template_dir / "handed_down.py").touch()
+        (template_dir / "Taskfile.yaml").touch()
+
+        _ = (tmp_path / ".copier-managed-files.json").write_text(
+            json.dumps(
+                {
+                    "templates": [
+                        {
+                            "src": "https://github.com/org/base-template",
+                            "managed_files": ["Taskfile.yaml", "template/handed_down.py"],
+                        },
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        dst_dir = tmp_path / "destination"
+        dst_dir.mkdir()
+        _ = (dst_dir / "handed_down.py").write_text("x = 1\n", encoding="utf-8")
+        _ = (dst_dir / "Taskfile.yaml").write_text("version: '3'\n", encoding="utf-8")
+
+        _ = _run_script(
+            src_template_dir=template_dir,
+            dst_dir=dst_dir,
+            template_src="https://github.com/org/child-template",
+        )
+
+        srcs = {t["src"]: t for t in _read_manifest(dst_dir)["templates"]}
+        assert srcs["https://github.com/org/base-template"]["managed_files"] == ["handed_down.py"]
+        assert srcs["https://github.com/org/child-template"]["managed_files"] == ["Taskfile.yaml"]
+        # The header has to agree with the manifest, or the two disagree about who owns the file.
+        assert "https://github.com/org/child-template" in (dst_dir / "Taskfile.yaml").read_text(encoding="utf-8")
 
     def test_ancestor_jinja_suffix_resolved_for_attribution(self, tmp_path: Path) -> None:
         # Ancestor manifest records "template/README.md.jinja" (base stamped child template with the
@@ -829,3 +1835,204 @@ class TestManifest:
         assert "README.md" in srcs["https://github.com/org/base-template"]["managed_files"]
         assert "child_only.py" in srcs["https://github.com/org/child-template"]["managed_files"]
         assert "README.md" not in srcs["https://github.com/org/child-template"]["managed_files"]
+
+
+_BASE_SRC = "https://github.com/org/base-template"
+_CHILD_SRC = "https://github.com/org/child-template"
+
+
+class TestChainStabilityAcrossTemplateVersions:
+    """The three reported symptoms, exercised together over a base -> child -> grandchild chain.
+
+    Each of the three had its own root cause, but they only show up in combination: a repo two levels
+    down from the base template, updated more than once. These tests drive the real filename shapes
+    the templates use, including the raw-escaped conditional name and the literal trailing .jinja that
+    base hands to a child.
+    """
+
+    def _build_base_template(self, base_tmpl: Path, *, extra_grandchild_file: str | None = None) -> None:
+        child_level = base_tmpl / "template"
+        grandchild_level = child_level / "template"
+        (grandchild_level / ".github").mkdir(parents=True, exist_ok=True)
+        # Child-level: base's own tooling for the child template repo. Never handed down.
+        (child_level / "pyproject.toml.jinja-base").touch()
+        (child_level / "Taskfile.yaml").touch()
+        # Grandchild-level: handed down to projects. The trailing .jinja is literal here.
+        (grandchild_level / "Taskfile.yaml.jinja").touch()
+        (grandchild_level / "shared.py").touch()
+        (grandchild_level / "{% raw %}{% if is_open_source %}LICENSE{% endif %}{% endraw %}").touch()
+        if extra_grandchild_file is not None:
+            (grandchild_level / extra_grandchild_file).touch()
+
+    def _build_child_repo(self, child_repo: Path, *, extra_template_file: str | None = None) -> None:
+        template_dir = child_repo / "template"
+        (template_dir / ".github").mkdir(parents=True, exist_ok=True)
+        # Rendered from base's child-level template.
+        _ = (child_repo / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
+        _ = (child_repo / "Taskfile.yaml").write_text("version: '3'\n", encoding="utf-8")
+        # Rendered from base's grandchild-level template: names survive for the child to render later.
+        _ = (template_dir / "Taskfile.yaml.jinja").write_text("version: '3'\n", encoding="utf-8")
+        _ = (template_dir / "shared.py").write_text("shared = 1\n", encoding="utf-8")
+        _ = (template_dir / "{% if is_open_source %}LICENSE{% endif %}").write_text("Apache\n", encoding="utf-8")
+        # The child template's own contribution.
+        _ = (template_dir / "app.py").write_text("app = 1\n", encoding="utf-8")
+        if extra_template_file is not None:
+            _ = (template_dir / extra_template_file).write_text("added = 1\n", encoding="utf-8")
+
+    def _build_grandchild_repo(self, repo: Path, *, extra_file: str | None = None) -> None:
+        repo.mkdir(parents=True, exist_ok=True)
+        _ = (repo / "Taskfile.yaml").write_text("version: '3'\n", encoding="utf-8")
+        _ = (repo / "shared.py").write_text("shared = 1\n", encoding="utf-8")
+        _ = (repo / "LICENSE").write_text("Apache\n", encoding="utf-8")
+        _ = (repo / "app.py").write_text("app = 1\n", encoding="utf-8")
+        if extra_file is not None:
+            _ = (repo / extra_file).write_text("added = 1\n", encoding="utf-8")
+
+    def _stamp_chain(self, base_tmpl: Path, child_repo: Path, grandchild: Path) -> None:
+        _ = _run_script(
+            src_template_dir=base_tmpl / "template",
+            dst_dir=child_repo,
+            template_src=_BASE_SRC,
+            templates_suffix=".jinja-base",
+        )
+        _ = _run_script(
+            src_template_dir=child_repo / "template",
+            dst_dir=grandchild,
+            template_src=_CHILD_SRC,
+            templates_suffix=".jinja",
+        )
+
+    def test_grandchild_attribution_follows_the_real_owner(self, tmp_path: Path) -> None:
+        base_tmpl = tmp_path / "base_tmpl"
+        child_repo = tmp_path / "child_repo"
+        grandchild = tmp_path / "grandchild"
+        self._build_base_template(base_tmpl)
+        self._build_child_repo(child_repo)
+        self._build_grandchild_repo(grandchild)
+
+        self._stamp_chain(base_tmpl, child_repo, grandchild)
+
+        srcs = {t["src"]: t for t in _read_manifest(grandchild)["templates"]}
+        # Taskfile.yaml is handed down by base, and must not be stolen by the child template merely
+        # because the child repo also has a root Taskfile.yaml of its own.
+        assert srcs[_BASE_SRC]["managed_files"] == ["LICENSE", "Taskfile.yaml", "shared.py"]
+        assert srcs[_CHILD_SRC]["managed_files"] == ["app.py"]
+
+    def test_no_file_is_claimed_by_two_templates(self, tmp_path: Path) -> None:
+        base_tmpl = tmp_path / "base_tmpl"
+        child_repo = tmp_path / "child_repo"
+        grandchild = tmp_path / "grandchild"
+        self._build_base_template(base_tmpl)
+        self._build_child_repo(child_repo)
+        self._build_grandchild_repo(grandchild)
+
+        self._stamp_chain(base_tmpl, child_repo, grandchild)
+
+        entries = _read_manifest(grandchild)["templates"]
+        claimed = [path for t in entries for path in t["managed_files"]]
+        assert sorted(claimed) == sorted(set(claimed)), "a file is listed under more than one template"
+
+    def test_every_managed_file_carries_exactly_one_marker(self, tmp_path: Path) -> None:
+        base_tmpl = tmp_path / "base_tmpl"
+        child_repo = tmp_path / "child_repo"
+        grandchild = tmp_path / "grandchild"
+        self._build_base_template(base_tmpl)
+        self._build_child_repo(child_repo)
+        self._build_grandchild_repo(grandchild)
+
+        self._stamp_chain(base_tmpl, child_repo, grandchild)
+
+        stamped = [
+            (t["src"], rel, (grandchild / rel).read_text(encoding="utf-8"))
+            for t in _read_manifest(grandchild)["templates"]
+            for rel in t["managed_files"]
+        ]
+
+        assert [rel for _, rel, content in stamped if content.count("============== WARNING") != 1] == []
+        # The marker has to name the same template the manifest does, or the file and the manifest
+        # disagree about who owns it.
+        assert [rel for src, rel, content in stamped if src not in content] == []
+
+    def test_child_that_templatizes_a_base_file_takes_ownership_of_it(self, tmp_path: Path) -> None:
+        # The .pre-commit-config.yaml case. Base hands down a plain template/template/hook.yaml, and
+        # the child template needs Jinja in it, so the child carries template/hook.yaml.jinja instead.
+        # Base's path no longer resolves to anything in the child, so the child owns the rendered file
+        # in a grandchild -- which is what we want, since the child is what maintains its content.
+        base_tmpl = tmp_path / "base_tmpl"
+        child_repo = tmp_path / "child_repo"
+        grandchild = tmp_path / "grandchild"
+
+        grandchild_level = base_tmpl / "template" / "template"
+        grandchild_level.mkdir(parents=True)
+        (grandchild_level / "hook.yaml").touch()
+        (grandchild_level / "shared.py").touch()
+
+        template_dir = child_repo / "template"
+        template_dir.mkdir(parents=True)
+        # The child templatized base's file, so the name it carries gained a .jinja.
+        _ = (template_dir / "hook.yaml.jinja").write_text("repos: []\n", encoding="utf-8")
+        _ = (template_dir / "shared.py").write_text("shared = 1\n", encoding="utf-8")
+
+        grandchild.mkdir(parents=True)
+        _ = (grandchild / "hook.yaml").write_text("repos: []\n", encoding="utf-8")
+        _ = (grandchild / "shared.py").write_text("shared = 1\n", encoding="utf-8")
+
+        self._stamp_chain(base_tmpl, child_repo, grandchild)
+
+        # Base cannot claim it in the child repo: the path it ships does not exist there any more.
+        child_base_entry = next(t for t in _read_manifest(child_repo)["templates"] if "base" in t["src"])
+        assert "template/hook.yaml" not in child_base_entry["managed_files"]
+        assert "template/hook.yaml.jinja" not in child_base_entry["managed_files"]
+
+        srcs = {t["src"]: t for t in _read_manifest(grandchild)["templates"]}
+        assert srcs[_CHILD_SRC]["managed_files"] == ["hook.yaml"]
+        assert srcs[_BASE_SRC]["managed_files"] == ["shared.py"]
+        assert _CHILD_SRC in (grandchild / "hook.yaml").read_text(encoding="utf-8")
+        assert _BASE_SRC not in (grandchild / "hook.yaml").read_text(encoding="utf-8")
+
+    def test_second_update_at_the_same_version_changes_nothing(self, tmp_path: Path) -> None:
+        base_tmpl = tmp_path / "base_tmpl"
+        child_repo = tmp_path / "child_repo"
+        grandchild = tmp_path / "grandchild"
+        self._build_base_template(base_tmpl)
+        self._build_child_repo(child_repo)
+        self._build_grandchild_repo(grandchild)
+
+        self._stamp_chain(base_tmpl, child_repo, grandchild)
+        before = {p: p.read_bytes() for p in sorted(grandchild.rglob("*")) if p.is_file()}
+        self._stamp_chain(base_tmpl, child_repo, grandchild)
+        after = {p: p.read_bytes() for p in sorted(grandchild.rglob("*")) if p.is_file()}
+
+        assert after == before
+
+    def test_template_version_bump_only_adds_the_new_file(self, tmp_path: Path) -> None:
+        # The reported symptom was files moving between manifest entries, and markers disappearing,
+        # on an update that should only have added something.
+        base_tmpl = tmp_path / "base_tmpl"
+        child_repo = tmp_path / "child_repo"
+        grandchild = tmp_path / "grandchild"
+        self._build_base_template(base_tmpl)
+        self._build_child_repo(child_repo)
+        self._build_grandchild_repo(grandchild)
+        self._stamp_chain(base_tmpl, child_repo, grandchild)
+
+        manifest_before = _read_manifest(grandchild)
+        markers_before = {
+            rel: (grandchild / rel).read_text(encoding="utf-8")
+            for t in manifest_before["templates"]
+            for rel in t["managed_files"]
+        }
+
+        # Base ships a new grandchild-level file, which flows through the child template.
+        self._build_base_template(base_tmpl, extra_grandchild_file="added.py")
+        self._build_child_repo(child_repo, extra_template_file="added.py")
+        self._build_grandchild_repo(grandchild, extra_file="added.py")
+        self._stamp_chain(base_tmpl, child_repo, grandchild)
+
+        srcs = {t["src"]: t for t in _read_manifest(grandchild)["templates"]}
+        assert srcs[_BASE_SRC]["managed_files"] == ["LICENSE", "Taskfile.yaml", "added.py", "shared.py"]
+        assert srcs[_CHILD_SRC]["managed_files"] == ["app.py"]
+        # Nothing that was already stamped may have changed.
+        assert [
+            rel for rel, content in markers_before.items() if (grandchild / rel).read_text(encoding="utf-8") != content
+        ] == []

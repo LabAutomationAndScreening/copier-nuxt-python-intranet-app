@@ -429,35 +429,6 @@ _tasks:
             --hook-id-regex '^\s*-\s+id:\s+merge-claude-settings\s*$' \
             --target-file .pre-commit-config.yaml
     when: "{{ not install_claude_cli }}"
-  # Copier does not preserve executable permissions when instantiating the template, so we set them explicitly here.
-  # git update-index is also needed because with core.fileMode=false (common on WSL2) git ignores the on-disk exec bit,
-  # so a plain `git add` would not capture it. It is guarded on the file being tracked, since on an initial `copier copy`
-  # into a fresh repo the file is not in the index yet (the chmod alone covers that case).
-  - command: |
-        if [ -f scripts/delete_false_positive_rej.py ]; then
-            chmod +x scripts/delete_false_positive_rej.py
-            if git ls-files --error-unmatch scripts/delete_false_positive_rej.py > /dev/null 2>&1; then
-                git update-index --chmod=+x scripts/delete_false_positive_rej.py
-            fi
-        fi
-  - command: |
-        for script in .claude/skills/address-pr-comments/check-footer.py .claude/skills/address-pr-comments/commit-link.py .claude/skills/address-pr-comments/fetch-pr-comments.py .claude/skills/address-pr-comments/post-reply.py .claude/skills/address-pr-comments/verify-env.py; do
-            if [ -f "$script" ]; then
-                chmod +x "$script"
-                if git ls-files --error-unmatch "$script" > /dev/null 2>&1; then
-                    git update-index --chmod=+x "$script"
-                fi
-            fi
-        done
-  - command: |
-        for script in .claude/skills/fix-mutants/check-results.py .claude/skills/fix-mutants/group-by-line.py .claude/skills/fix-mutants/list-survived.py .claude/skills/fix-mutants/run-mutmut.py .claude/skills/fix-mutants/show-mutant.py .claude/skills/fix-mutants/verify-mutant.py; do
-            if [ -f "$script" ]; then
-                chmod +x "$script"
-                if git ls-files --error-unmatch "$script" > /dev/null 2>&1; then
-                    git update-index --chmod=+x "$script"
-                fi
-            fi
-        done
   - command: |
         export PNPM_PATTERNS='{{ pnpm_minimum_release_age_exclude }}'
         python3 '{{ _copier_conf.src_path }}/src/copier_tasks/ensure_pnpm_minimum_release_age_exclude.py' --patterns "$PNPM_PATTERNS"
@@ -507,7 +478,43 @@ _tasks:
         python3 '{{ _copier_conf.src_path }}/src/copier_tasks/copier_provenance.py' \
             '{{ _copier_conf.src_path }}/template' \
             '.' \
-            --template-src '{{ _src_path }}'
+            --template-src '{{ _src_path }}' \
+            --templates-suffix '.jinja'
+  # Copier does not preserve executable permissions when instantiating the template, so we set them explicitly here.
+  # git update-index is also needed because with core.fileMode=false (common on WSL2) git ignores the on-disk exec bit,
+  # so a plain `git add` would not capture it. It is guarded on the file being tracked, since on an initial `copier copy`
+  # into a fresh repo the file is not in the index yet (the chmod alone covers that case).
+  #
+  # These run after the provenance task on purpose. `git update-index --chmod=+x` on an already-tracked file refreshes
+  # the index entry from the working tree, staging whatever content is there at the time. Running it before the
+  # provenance task therefore staged the unstamped file, and the stamp that landed afterwards existed only in the
+  # working tree -- so `git status` reported the file as both staged and modified, and committing the staged version
+  # silently dropped the provenance marker.
+  - command: |
+        if [ -f scripts/delete_false_positive_rej.py ]; then
+            chmod +x scripts/delete_false_positive_rej.py
+            if git ls-files --error-unmatch scripts/delete_false_positive_rej.py > /dev/null 2>&1; then
+                git update-index --chmod=+x scripts/delete_false_positive_rej.py
+            fi
+        fi
+  - command: |
+        for script in .claude/skills/address-pr-comments/check-footer.py .claude/skills/address-pr-comments/commit-link.py .claude/skills/address-pr-comments/fetch-pr-comments.py .claude/skills/address-pr-comments/post-reply.py .claude/skills/address-pr-comments/verify-env.py; do
+            if [ -f "$script" ]; then
+                chmod +x "$script"
+                if git ls-files --error-unmatch "$script" > /dev/null 2>&1; then
+                    git update-index --chmod=+x "$script"
+                fi
+            fi
+        done
+  - command: |
+        for script in .claude/skills/fix-mutants/check-results.py .claude/skills/fix-mutants/group-by-line.py .claude/skills/fix-mutants/list-survived.py .claude/skills/fix-mutants/run-mutmut.py .claude/skills/fix-mutants/show-mutant.py .claude/skills/fix-mutants/verify-mutant.py; do
+            if [ -f "$script" ]; then
+                chmod +x "$script"
+                if git ls-files --error-unmatch "$script" > /dev/null 2>&1; then
+                    git update-index --chmod=+x "$script"
+                fi
+            fi
+        done
 
 # Additional Settings
 _min_copier_version: "9.8"
@@ -520,6 +527,16 @@ _templates_suffix: .jinja
 
 _exclude:
     - "copier.yml"
+
+# A template that adds entries of its own must extend this list rather than declare a second
+# _skip_if_exists key: YAML keeps only the last of two identical keys, silently dropping whichever
+# list loses.
+_skip_if_exists:
+    # The provenance task regenerates this file in full after the patch is applied, so the copy in the
+    # destination is authoritative and a patch hunk against it can never be worth applying. Copier feeds
+    # this list to `git apply --exclude`, so no hunk is attempted and no .rej is produced -- the same
+    # treatment copier already gives its own answers file.
+    - ".config/.copier-managed-files.json"
 
 # adapted from https://github.com/copier-org/copier-template-extensions#context-hook-extension
 _jinja_extensions:

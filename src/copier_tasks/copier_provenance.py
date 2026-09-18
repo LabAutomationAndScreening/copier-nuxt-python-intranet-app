@@ -5,339 +5,349 @@
 # You are welcome to make changes to this file in your repo if they are custom to your project,
 # but if the change should be shared with other projects, please backport it to the template repo.
 # =====================================================================================================
+"""Stamp every file a copier template placed in a project with a provenance marker and record it in a manifest.
+
+Run as a copier task after rendering. It walks the template directory, resolves each template path to the
+path it rendered to, and for every such file that exists in the destination it inserts a comment naming the
+template that owns the file, then writes .config/.copier-managed-files.json listing every managed file under
+its owning template.
+"""
+
 import argparse
 import json
 import os
 import re
-from dataclasses import dataclass
+import sys
+from operator import itemgetter
 from pathlib import Path
-from typing import Literal
 from typing import NotRequired
 from typing import TypedDict
 
-CommentType = Literal["hash", "batch", "block", "jinja", "markdown", "none"]
-Location = Literal["top", "bottom", "none"]
 
-
-class TemplateEntry(TypedDict):
+class Entry(TypedDict):
     src: str
     parent_src: NotRequired[str]
     managed_files: list[str]
 
 
 class Manifest(TypedDict):
-    templates: list[TemplateEntry]
+    templates: list[Entry]
 
 
-@dataclass
-class CommentFormat:
-    comment_type: CommentType = "hash"
-    location: Location = "top"
+MANIFEST_PATH = Path(".config") / ".copier-managed-files.json"
 
+# base-template declares _templates_suffix .jinja-base and child templates declare .jinja. Existing child
+# templates still call this task without --templates-suffix, so both are stripped unless one is named.
+DEFAULT_SUFFIXES = (".jinja-base", ".jinja")
 
-default_comment_format = CommentFormat("hash", "top")
-custom_file_handling: dict[str, CommentFormat] = {
-    ".md": CommentFormat("markdown", "bottom"),
-    ".sh": CommentFormat("hash", "bottom"),  # put at bottom to not mess with shebang
-    ".bat": CommentFormat("batch", "bottom"),  # put at bottom to not mess with @echo off
-    ".js": CommentFormat("block", "top"),
-    ".cjs": CommentFormat("block", "top"),
-    ".mjs": CommentFormat("block", "top"),
-    ".css": CommentFormat("block", "top"),
-    ".ts": CommentFormat("block", "top"),
-    ".cts": CommentFormat("block", "top"),
-    ".mts": CommentFormat("block", "top"),
-    ".vue": CommentFormat("markdown", "top"),
-    ".html": CommentFormat("markdown", "top"),
-    ".svg": CommentFormat("markdown", "top"),
-    ".jinja": CommentFormat("jinja", "top"),
-    ".jinja-base": CommentFormat("jinja", "top"),
-    ".json": CommentFormat("none", "none"),
-    ".jsonc": CommentFormat("block", "top"),
-    ".yaml": CommentFormat("hash", "top"),
-    ".yml": CommentFormat("hash", "top"),
-    # XML/RTF cannot carry a leading '#' provenance header (a '#' before the
-    # <?xml?> declaration is invalid XML and corrupts RTF), so these carry no
-    # provenance marker. The plain-text install guide is exempted by exact
-    # filename (INSTALL.txt) below so regular .txt files still get provenance.
-    ".wxs": CommentFormat("none", "none"),
-    ".rtf": CommentFormat("none", "none"),
-}
-# Per-filename overrides for dotfiles/extensionless files where suffix alone is insufficient.
-custom_filename_handling: dict[str, CommentFormat] = {
-    "INSTALL.txt": CommentFormat("none", "none"),
-    ".copier-answers.yml": CommentFormat("none", "none"),
-    ".coveragerc": CommentFormat("hash", "bottom"),
-    ".python-version": CommentFormat("none", "none"),
-    ".prettierrc": CommentFormat("none", "none"),
-    ".nvmrc": CommentFormat("none", "none"),
-    ".node-version": CommentFormat("none", "none"),
+# Tool caches and dependency trees that can sit inside a template checkout but are never template content.
+PRUNED_DIRECTORIES = frozenset(
+    {
+        ".git",
+        ".ruff_cache",
+        ".pytest_cache",
+        ".mypy_cache",
+        "__pycache__",
+        "node_modules",
+        ".venv",
+        ".pnpm-store",
+        ".turbo",
+        ".nuxt",
+        ".output",
+    }
+)
+
+# Code-generator output is committed in the template but regenerated in the project, so it is never claimed.
+# An earlier marker in such a file is still stripped.
+EXCLUDED_SEGMENT = "generated"
+
+# Comment style -> (opener, per-line prefix, closer). A None prefix leaves lines bare; an empty opener means
+# a line-comment style with no surrounding delimiters.
+STYLES: dict[str, tuple[str, str | None, str]] = {
+    "hash": ("", "#", ""),
+    "batch": ("", "REM", ""),
+    "block": ("/*", " *", " */"),
+    "jinja": ("{#", "", "#}"),
+    "markdown": ("<!--", None, "-->"),
 }
 
-_MANIFEST_RELPATH = Path(".config") / ".copier-managed-files.json"
+# Keyed by exact filename first, then by suffix. A None style means the file takes no marker at all.
+# Bottom placement keeps shebangs and @echo off on line one.
+FORMATS: dict[str, tuple[str | None, str]] = {
+    ".copier-answers.yml": (None, "top"),
+    # A '#' ahead of the <?xml?> declaration is invalid XML and corrupts RTF, so the installer sources carry
+    # no marker. INSTALL.txt is the plain-text install guide; other .txt files still take one.
+    "INSTALL.txt": (None, "top"),
+    ".wxs": (None, "top"),
+    ".rtf": (None, "top"),
+    ".python-version": (None, "top"),
+    ".prettierrc": (None, "top"),
+    ".nvmrc": (None, "top"),
+    ".node-version": (None, "top"),
+    ".coveragerc": ("hash", "bottom"),
+    ".md": ("markdown", "bottom"),
+    ".sh": ("hash", "bottom"),
+    ".bat": ("batch", "bottom"),
+    ".js": ("block", "top"),
+    ".cjs": ("block", "top"),
+    ".mjs": ("block", "top"),
+    ".ts": ("block", "top"),
+    ".cts": ("block", "top"),
+    ".mts": ("block", "top"),
+    ".css": ("block", "top"),
+    ".jsonc": ("block", "top"),
+    ".json": (None, "top"),
+    ".vue": ("markdown", "top"),
+    ".html": ("markdown", "top"),
+    ".svg": ("markdown", "top"),
+    ".jinja": ("jinja", "top"),
+    ".jinja-base": ("jinja", "top"),
+}
+DEFAULT_FORMAT: tuple[str | None, str] = ("hash", "top")
+
+RAW_TAG = re.compile(r"\{%-?\s*(?:raw|endraw)\s*-?%\}")
+ANY_TAG = re.compile(r"\{%.*?%\}")
+
+# One marker in any comment style this task has ever written: an optional opener line, the WARNING rule, the
+# body, the closing rule, and an optional closer. The closer of the Jinja style is glued to the content, so
+# the newline after it is optional.
+MARKER = (
+    r"(?:(?:/\*|\{#|<!--)\n)?"
+    r"[^\n]*={14} WARNING[^\n]*\n"
+    r"(?:[^\n]*\n)*?"
+    r"[^\n]*={50,}\n"
+    r"(?:[ -]*(?:\*/|#\}|-->)\n?)?"
+)
+# Anchored to the two edges of the file: marker text also appears as ordinary data inside some managed
+# files, such as this task's own test suite.
+TOP_MARKERS = re.compile(r"\A(?:" + MARKER + ")+")
+BOTTOM_MARKERS = re.compile(r"(?:\n?" + MARKER + r")+\s*\Z")
 
 
-def _find_manifest(base_directory: Path) -> Path:
-    config_manifest = base_directory / _MANIFEST_RELPATH
-    if config_manifest.exists():
-        return config_manifest
-    return base_directory / ".copier-managed-files.json"
-
-
-_HEADER_BASE = """\
-============== WARNING ==============================================================================
-File is managed by a copier template. See .config/.copier-managed-files.json for details.
-
-You are welcome to make changes to this file in your repo if they are custom to your project,
-but if the change should be shared with other projects, please backport it to the template repo.
-====================================================================================================="""
-
-
-def _build_header(template_src: str) -> str:
-    """Return the header text. With a template_src, embeds the URL on its own line."""
+def marker_text(template_src: str) -> str:
     if template_src == "":
-        return _HEADER_BASE
-    lines: list[str] = list(_HEADER_BASE.split("\n"))
-    # Replace the generic "File is managed" line with two lines: URL line + "See ..." line.
-    lines[1] = f"File is managed by copier template: {template_src}"
-    lines.insert(2, "See .config/.copier-managed-files.json for details.")
-    return "\n".join(lines)
-
-
-def get_base_filename(template_filename: str) -> str:
-    """Return the destination filename for a template file.
-
-    Handles two cases:
-    - Jinja if-check pattern: {% if cond %}actual_filename{% endif %}[.jinja-base]
-      The text between %} and {% is the actual destination filename (no suffix stripping needed).
-    - Plain template file: README.md.jinja-base → README.md (strip template suffix).
-    """
-    result = re.findall(r"%\}(.*?)\{%", template_filename, re.DOTALL)
-    if len(result) > 0:
-        assert isinstance(result[0], str)
-        return result[0]
-    for suffix in [".jinja-base", ".jinja"]:
-        if template_filename.endswith(suffix):
-            return template_filename[: -len(suffix)]
-    return template_filename
-
-
-def _build_specific_header(comment_type: CommentType, template_src: str = "") -> str | None:
-    header = _build_header(template_src)
-    if comment_type == "hash":
-        return "\n".join(f"# {line}" if line != "" else "#" for line in header.split("\n"))
-    if comment_type == "batch":
-        return "\n".join(f"REM {line}" if line != "" else "REM" for line in header.split("\n"))
-    if comment_type == "block":
-        body = "\n".join(f" * {line}" if line != "" else " *" for line in header.split("\n"))
-        return f"/*\n{body}\n */"
-    if comment_type == "jinja":
-        # Jinja renders {# ... #} to empty string, so this marker is invisible in rendered output.
-        body = "\n".join(f" {line}" if line != "" else "" for line in header.split("\n"))
-        return f"{{#\n{body}\n#}}"
-    if comment_type == "markdown":
-        return f"<!--\n{header}\n-->"
-    return None
-
-
-def _strip_existing_header(content: str, comment_format: CommentFormat) -> str:
-    """Strip any existing copier header block regardless of template URL inside."""
-    t = comment_format.comment_type
-    loc = comment_format.location
-    if t == "hash":
-        pattern = r"# ={14} WARNING[^\n]*\n(?:.*\n)*?# ={50,}\n"
-    elif t == "batch":
-        pattern = r"REM ={14} WARNING[^\n]*\n(?:.*\n)*?REM ={50,}\n"
-    elif t == "block":
-        pattern = r"/\*\n \* ={14} WARNING[^\n]*\n(?: \*.*\n)*? \*/\n"
-    elif t == "jinja":
-        pattern = r"\{#\n ={14} WARNING[^\n]*\n(?:.*\n)*?#\}\n"
-    elif t == "markdown":
-        pattern = r"<!--\n={14} WARNING[^\n]*\n(?:.*\n)*?-->\n"
+        managed_by = "File is managed by a copier template. See .config/.copier-managed-files.json for details."
     else:
-        return content
-    if loc == "bottom":
-        result = re.sub(r"\n" + pattern, "", content, count=1)
-        if result == content:
-            result = re.sub(pattern, "", content, count=1)
-        return result
-    return re.sub(pattern, "", content, count=1)
-
-
-def _write_file_marker(file: Path, comment_format: CommentFormat, specific_header: str) -> None:
-    with Path.open(file, "r+") as f:
-        content = f.read()
-        content = _strip_existing_header(content, comment_format)
-        _ = f.seek(0)
-        _ = f.truncate()
-        if comment_format.location == "top":
-            _ = f.write(specific_header + "\n")
-        _ = f.write(content)
-        if comment_format.location == "bottom":
-            _ = f.write("\n" + specific_header + "\n")
-
-
-def _resolve_file_src(
-    rel_str: str,
-    template_src: str,
-    ancestor_managed_by_src: dict[str, set[str]] | None,
-) -> str:
-    """Return the template src that originally contributed this file path."""
-    if ancestor_managed_by_src is not None:
-        for origin_src, origin_files in ancestor_managed_by_src.items():
-            if rel_str in origin_files:
-                return origin_src
-    return template_src
-
-
-def _get_comment_format_for_file(file: Path, default_format: CommentFormat) -> CommentFormat | None:
-    """Return the effective CommentFormat, or None if the file is binary (track but skip marking)."""
-    if default_format.location != "top" or default_format.comment_type == "none":
-        return default_format
-    try:
-        first_line = file.read_text(encoding="utf-8").split("\n", 1)[0]
-    except UnicodeDecodeError:
-        return None
-    if first_line.startswith("#!/"):
-        return CommentFormat(default_format.comment_type, "bottom")
-    return default_format
-
-
-def _collect_template_base_paths(src_template_directory: Path) -> set[Path]:
-    """Walk src_template_directory (following symlinks) and return resolved base paths."""
-    paths: set[Path] = set()
-    for root, _, files in os.walk(src_template_directory, followlinks=True):
-        for fname in files:
-            f = Path(root) / fname
-            parts = [get_base_filename(p) for p in f.relative_to(src_template_directory).parts]
-            paths.add(Path(*parts))
-    return paths
-
-
-def apply_file_markers(
-    *,
-    src_template_directory: Path,
-    dst_directory: Path,
-    template_src: str = "",
-    ancestor_managed_by_src: dict[str, set[str]] | None = None,
-) -> dict[str, list[str]]:
-    """Stamp managed files with provenance headers.
-
-    Returns files bucketed by originating template src. Files listed in
-    ancestor_managed_by_src are attributed to their originating ancestor template;
-    remaining files are attributed to template_src.
-    """
-    template_base_paths = _collect_template_base_paths(src_template_directory)
-
-    managed: dict[str, list[str]] = {}
-
-    # Iterate the template paths and probe the destination rather than walking the destination:
-    # a destination repo can contain symlink cycles (e.g. pnpm workspace node_modules farms) that
-    # make os.walk(followlinks=True) never terminate.
-    for rel in sorted(template_base_paths):
-        file = dst_directory / rel
-        if not file.is_file():
-            continue
-
-        rel_str = str(rel)
-        file_src = _resolve_file_src(rel_str, template_src, ancestor_managed_by_src)
-        managed.setdefault(file_src, []).append(rel_str)
-
-        base_format = custom_filename_handling.get(
-            file.name, custom_file_handling.get(file.suffix, default_comment_format)
+        managed_by = (
+            f"File is managed by copier template: {template_src}\nSee .config/.copier-managed-files.json for details."
         )
-        comment_formatting = _get_comment_format_for_file(file, base_format)
-        if comment_formatting is None:
-            continue
-
-        specific_header = _build_specific_header(comment_formatting.comment_type, file_src)
-        if specific_header is not None:
-            _write_file_marker(file, comment_formatting, specific_header)
-
-    for file_list in managed.values():
-        file_list.sort()
-    return managed
-
-
-def _read_parent_src(src_template_directory: Path) -> str | None:
-    template_root = src_template_directory.parent
-    answers_path = template_root / ".config" / ".copier-answers.yml"
-    if not answers_path.exists():
-        answers_path = template_root / ".copier-answers.yml"
-    if not answers_path.exists():
-        return None
-    text = answers_path.read_text(encoding="utf-8")
-    m = re.search(r"^_src_path:\s*(.+)$", text, re.MULTILINE)
-    if m is None:
-        return None
-    return m.group(1).strip()
-
-
-def update_manifest(
-    *,
-    dst_directory: Path,
-    template_src: str,
-    managed_files: list[str],
-    parent_src: str | None = None,
-) -> None:
-    manifest_path = dst_directory / _MANIFEST_RELPATH
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-
-    existing: Manifest = {"templates": []}
-    if manifest_path.exists():
-        existing = json.loads(manifest_path.read_text(encoding="utf-8"))
-
-    templates: list[TemplateEntry] = []
-    for t in existing["templates"]:
-        if t["src"] == template_src:
-            continue
-        templates.append(t)
-
-    # Both branches spell the whole entry out so the JSON key order stays src, parent_src, managed_files.
-    if parent_src is None:
-        entry: TemplateEntry = {"src": template_src, "managed_files": managed_files}
-    else:
-        entry = {"src": template_src, "parent_src": parent_src, "managed_files": managed_files}
-    templates.append(entry)
-
-    _ = manifest_path.write_text(
-        json.dumps({"templates": templates}, indent=2) + "\n",
-        encoding="utf-8",
+    return (
+        "============== WARNING ==============================================================================\n"
+        f"{managed_by}\n"
+        "\n"
+        "You are welcome to make changes to this file in your repo if they are custom to your project,\n"
+        "but if the change should be shared with other projects, please backport it to the template repo.\n"
+        "====================================================================================================="
     )
 
 
-def _read_ancestor_manifest(src_template_dir: Path) -> tuple[dict[str, set[str]], dict[str, str]]:
-    """Return each ancestor template's managed paths and its own parent, keyed by template src.
+def render_marker(style: str, text: str) -> str:
+    opener, prefix, closer = STYLES[style]
+    lines: list[str] = []
+    for line in text.split("\n"):
+        if prefix is None:
+            lines.append(line)
+        elif line == "":
+            lines.append(prefix)
+        else:
+            lines.append(f"{prefix} {line}")
+    body = "\n".join(lines)
+    if opener == "":
+        return body
+    return f"{opener}\n{body}\n{closer}"
 
-    The ancestor manifest may contain paths with a "template/" prefix (from self-stamp tasks that run
-    with src=dst=template/). Both the prefixed and stripped spellings are recorded so lookups match the
-    destination repo's layout (where "template/" doesn't exist).
+
+def comment_format(filename: str) -> tuple[str | None, str]:
+    # A destination name can still carry a Jinja if-check when the file is itself handed down to a
+    # grandchild template, so the tags come off before the suffix is read.
+    name = ANY_TAG.sub("", filename)
+    if name in FORMATS:
+        return FORMATS[name]
+    suffix = Path(name).suffix
+    if suffix in FORMATS:
+        return FORMATS[suffix]
+    return DEFAULT_FORMAT
+
+
+def stamp(file: Path, template_src: str | None) -> None:
+    """Rewrite the file with exactly one marker naming template_src, or with no marker when it is None.
+
+    Line endings are preserved: a file that is mostly CRLF is written back as CRLF. A file that is not
+    UTF-8 text is left alone. A file that already has the right content is not written, so its mtime
+    does not move.
     """
-    ancestor_managed_by_src: dict[str, set[str]] = {}
-    ancestor_parent_by_src: dict[str, str] = {}
-    ancestor_manifest_path = _find_manifest(src_template_dir.parent)
-    if not ancestor_manifest_path.exists():
-        return ancestor_managed_by_src, ancestor_parent_by_src
+    original = file.read_bytes()
+    try:
+        raw = original.decode("utf-8")
+    except UnicodeDecodeError:
+        return
+    crlf_count = raw.count("\r\n")
+    if crlf_count > raw.count("\n") - crlf_count:
+        newline = "\r\n"
+    else:
+        newline = "\n"
 
-    data: Manifest = json.loads(ancestor_manifest_path.read_text(encoding="utf-8"))
-    subdir_prefix = src_template_dir.name + "/"
-    for t in data["templates"]:
-        path_set: set[str] = set()
-        for f in t["managed_files"]:
-            path_set.add(f)
-            stripped = f.removeprefix(subdir_prefix)
-            path_set.add(stripped)
-            # Apply get_base_filename to each part so .jinja/.jinja-base suffixes
-            # and Jinja conditional names resolve to the final destination filename.
-            parts = Path(stripped).parts
-            if len(parts) > 0:
-                resolved = str(Path(*[get_base_filename(p) for p in parts]))
-                path_set.add(resolved)
-        ancestor_managed_by_src[t["src"]] = path_set
-        ancestor_parent = t.get("parent_src")
-        if ancestor_parent is not None:
-            ancestor_parent_by_src[t["src"]] = ancestor_parent
-    return ancestor_managed_by_src, ancestor_parent_by_src
+    content = BOTTOM_MARKERS.sub("", TOP_MARKERS.sub("", raw.replace("\r\n", "\n"), count=1), count=1)
+    style, location = comment_format(file.name)
+    if template_src is not None and style is not None:
+        marker = render_marker(style, marker_text(template_src))
+        if location == "top" and not content.startswith("#!/"):
+            # A Jinja comment renders to nothing, so a newline after it would become a blank first line in
+            # the rendered file. The marker is glued to the first line of content instead.
+            if style == "jinja":
+                content = marker + content
+            else:
+                content = marker + "\n" + content
+        else:
+            content = content + "\n" + marker + "\n"
+
+    updated = content.replace("\n", newline).encode("utf-8")
+    if updated != original:
+        _ = file.write_bytes(updated)
+
+
+def destination_name(template_name: str, suffixes: tuple[str, ...]) -> str:
+    """Return the name a template path segment renders to.
+
+    A raw-wrapped name keeps its inner Jinja verbatim, because that Jinja is meant for the child template
+    to render later. Otherwise every tag is dropped, leaving the literal text of the if-check. Only a
+    declared template suffix comes off: with .jinja-base declared, a trailing .jinja is literal content.
+    """
+    name = RAW_TAG.sub("", template_name)
+    if name == template_name:
+        name = ANY_TAG.sub("", template_name)
+    for suffix in suffixes:
+        if name.endswith(suffix):
+            return name[: -len(suffix)]
+    return name
+
+
+def destination_path(template_path: Path, suffixes: tuple[str, ...]) -> Path:
+    return Path(*(destination_name(part, suffixes) for part in template_path.parts))
+
+
+def destination_paths(template_dir: Path, suffixes: tuple[str, ...]) -> list[Path]:
+    # The template is walked and the destination probed, never the reverse: a project's node_modules can
+    # hold symlink cycles that a followlinks walk of the destination would never finish.
+    paths: list[Path] = []
+    for root, dirnames, filenames in os.walk(template_dir, followlinks=True):
+        dirnames[:] = [d for d in dirnames if destination_name(d, suffixes) not in PRUNED_DIRECTORIES]
+        paths.extend(destination_path((Path(root) / f).relative_to(template_dir), suffixes) for f in filenames)
+    return sorted(paths)
+
+
+def find_manifest(repo_dir: Path) -> Path:
+    preferred = repo_dir / MANIFEST_PATH
+    if preferred.exists():
+        return preferred
+    return repo_dir / MANIFEST_PATH.name
+
+
+def load_manifest(path: Path) -> Manifest:
+    manifest: Manifest = json.loads(path.read_text(encoding="utf-8"))
+    return manifest
+
+
+def read_parent_src(template_dir: Path) -> str | None:
+    """Return the _src_path of the template repo's own copier answers, i.e. the template that generated it."""
+    answers = template_dir.parent / ".config" / ".copier-answers.yml"
+    if not answers.exists():
+        answers = template_dir.parent / ".copier-answers.yml"
+    if not answers.exists():
+        return None
+    match = re.search(r"^_src_path:\s*(.+)$", answers.read_text(encoding="utf-8"), re.MULTILINE)
+    if match is None:
+        return None
+    return match.group(1).strip()
+
+
+def read_ancestors(template_dir: Path, suffixes: tuple[str, ...]) -> list[tuple[str, str | None, set[str]]]:
+    """Return (src, parent_src, handed-down paths) for each template in the template repo's own manifest.
+
+    Only an ancestor's files under the template directory are handed down to a destination, so only those
+    are returned, re-rooted to the destination and in both their template and their rendered spelling.
+    """
+    manifest_path = find_manifest(template_dir.parent)
+    if not manifest_path.exists():
+        return []
+    prefix = template_dir.name + "/"
+    ancestors: list[tuple[str, str | None, set[str]]] = []
+    for entry in load_manifest(manifest_path)["templates"]:
+        handed_down: set[str] = set()
+        for managed_file in entry["managed_files"]:
+            if not managed_file.startswith(prefix):
+                continue
+            template_relative = managed_file.removeprefix(prefix)
+            handed_down.add(template_relative)
+            handed_down.add(str(destination_path(Path(template_relative), suffixes)))
+        ancestors.append((entry["src"], entry.get("parent_src"), handed_down))
+    return ancestors
+
+
+def build_entry(src: str, managed_files: list[str], parent_src: str | None) -> Entry:
+    if parent_src is None:
+        return {"src": src, "managed_files": managed_files}
+    return {"src": src, "parent_src": parent_src, "managed_files": managed_files}
+
+
+def write_manifest(dst_dir: Path, managed: dict[str, list[str]], parents: dict[str, str | None]) -> None:
+    """Write this run's attributions over the manifest on disk.
+
+    Entries for templates this run knows nothing about survive, minus any path this run claimed, so two
+    templates never list the same file and a retired template's entry disappears once nothing is left in it.
+    """
+    manifest_path = dst_dir / MANIFEST_PATH
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    claimed = {path for files in managed.values() for path in files}
+    entries = [build_entry(src, sorted(files), parents[src]) for src, files in managed.items()]
+    if manifest_path.exists():
+        for entry in load_manifest(manifest_path)["templates"]:
+            if entry["src"] in managed:
+                continue
+            remaining = [path for path in entry["managed_files"] if path not in claimed]
+            if len(remaining) > 0:
+                entries.append(build_entry(entry["src"], remaining, entry.get("parent_src")))
+    entries.sort(key=itemgetter("src"))
+    _ = manifest_path.write_text(json.dumps({"templates": entries}, indent=2) + "\n", encoding="utf-8")
+
+
+def stamp_all(
+    *,
+    template_dir: Path,
+    dst_dir: Path,
+    template_src: str,
+    manifest_src: str,
+    suffixes: tuple[str, ...],
+) -> list[str]:
+    """Stamp every destination file the template placed, write the manifest, and return the files that failed.
+
+    A file handed down from an ancestor template is stamped with, and listed under, that ancestor rather than
+    the current template. One unstampable file costs neither the rest of the run nor the manifest.
+    """
+    ancestors = read_ancestors(template_dir, suffixes)
+    managed: dict[str, list[str]] = {manifest_src: []}
+    parents: dict[str, str | None] = {manifest_src: read_parent_src(template_dir)}
+    failures: list[str] = []
+    for relative in destination_paths(template_dir, suffixes):
+        file = dst_dir / relative
+        if not file.is_file():
+            continue
+        owner = None
+        if EXCLUDED_SEGMENT not in relative.parts:
+            owner = template_src
+            managed_by = manifest_src
+            for ancestor_src, ancestor_parent, handed_down in ancestors:
+                if str(relative) in handed_down:
+                    owner = managed_by = ancestor_src
+                    parents[ancestor_src] = ancestor_parent
+                    break
+            managed.setdefault(managed_by, []).append(str(relative))
+        try:
+            stamp(file, owner)
+        except Exception as exc:  # noqa: BLE001 -- deliberately broad: no single file may abort the run
+            failures.append(f"{relative}: {type(exc).__name__}: {exc}")
+    write_manifest(dst_dir, managed, parents)
+    return failures
 
 
 def main() -> None:
@@ -345,55 +355,36 @@ def main() -> None:
     _ = parser.add_argument("src_template_dir", type=Path, help="Template source directory")
     _ = parser.add_argument("dst_dir", type=Path, help="Destination directory")
     _ = parser.add_argument("--template-src", default="", help="Template source identifier for the manifest")
+    _ = parser.add_argument(
+        "--templates-suffix",
+        default="",
+        help="The calling template's _templates_suffix. Defaults to stripping both '.jinja-base' and '.jinja'.",
+    )
     args = parser.parse_args()
-    assert isinstance(args.src_template_dir, Path)
-    assert isinstance(args.dst_dir, Path)
-    assert isinstance(args.template_src, str)
-    src_template_dir = args.src_template_dir
-    dst_dir = args.dst_dir
-    template_src = args.template_src
-
-    # header_src drives what URL appears in file headers (empty → generic "managed by a copier template" text).
-    # manifest_src is the key written to .config/.copier-managed-files.json and is always non-empty.
-    header_src = template_src
+    template_dir = Path(args.src_template_dir)
+    template_src = str(args.template_src)
+    if args.templates_suffix == "":
+        suffixes = DEFAULT_SUFFIXES
+    else:
+        suffixes = (str(args.templates_suffix),)
+    # Without --template-src the markers stay generic, but the manifest still needs a key naming the template.
     if template_src == "":
-        manifest_src = str(src_template_dir)
+        manifest_src = str(template_dir)
     else:
         manifest_src = template_src
 
-    ancestor_managed_by_src, ancestor_parent_by_src = _read_ancestor_manifest(src_template_dir)
-
-    ancestor_argument: dict[str, set[str]] | None = None
-    if len(ancestor_managed_by_src) > 0:
-        ancestor_argument = ancestor_managed_by_src
-
-    managed_by_src = apply_file_markers(
-        src_template_directory=src_template_dir,
-        dst_directory=dst_dir,
-        template_src=header_src,
-        ancestor_managed_by_src=ancestor_argument,
+    failures = stamp_all(
+        template_dir=template_dir,
+        dst_dir=Path(args.dst_dir),
+        template_src=template_src,
+        manifest_src=manifest_src,
+        suffixes=suffixes,
     )
-    # Always write an entry for the current template even when no files matched.
-    _ = managed_by_src.setdefault(header_src, [])
-
-    parent_src = _read_parent_src(src_template_dir)
-    for src, files in managed_by_src.items():
-        if src == header_src:
-            effective_src = manifest_src
-        else:
-            effective_src = src
-        # Current template's parent comes from copier-answers; ancestor entries carry
-        # their own parent_src forward from the ancestor manifest so the chain survives.
-        if effective_src == manifest_src:
-            effective_parent = parent_src
-        else:
-            effective_parent = ancestor_parent_by_src.get(src)
-        update_manifest(
-            dst_directory=dst_dir,
-            template_src=effective_src,
-            managed_files=files,
-            parent_src=effective_parent,
-        )
+    if len(failures) > 0:
+        print(f"Failed to stamp {len(failures)} file(s):", file=sys.stderr)  # noqa: T201 -- task output is meant for the copier console
+        for failure in failures:
+            print(f"  {failure}", file=sys.stderr)  # noqa: T201 -- task output is meant for the copier console
+        sys.exit(1)
 
 
 if __name__ == "__main__":
