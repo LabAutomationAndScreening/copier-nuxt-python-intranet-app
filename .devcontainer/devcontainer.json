@@ -22,10 +22,10 @@
       "extensions": [
         // basic tooling
         // "eamodio.gitlens@15.5.1",
-        "coderabbit.coderabbit-vscode@0.21.7",
+        "coderabbit.coderabbit-vscode@0.21.8",
         "ms-vscode.live-server@0.5.2025051301",
         "MS-vsliveshare.vsliveshare@1.0.5905",
-        "anthropic.claude-code@2.1.273",
+        "anthropic.claude-code@2.1.278",
 
         // Python
         "-ms-python.vscode-pylance", // pyrefly is the language server for this project; ms-python.python auto-installs Pylance via its extension pack, and Pylance then warns on every boot that it's disabled
