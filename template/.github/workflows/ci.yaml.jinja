@@ -98,7 +98,13 @@ jobs:
           - "{% endraw %}{{ gha_linux_runner }}{% raw %}"{% endraw %}{% if use_windows_in_ci %}
           - {{ gha_windows_runner }}{% endif %}{% raw %}
     runs-on: ${{ matrix.os }}
-    steps:
+    steps:{% endraw %}{% if use_windows_in_ci %}
+      - name: Allow long file paths
+        if: runner.os == 'Windows'
+        # Some tooling (e.g. vcrpy, syrupy) generates file names past the 260 character limit Windows
+        # defaults to. This has to happen before the checkout that writes those files.
+        run: git config --global core.longpaths true
+{% endif %}{% raw %}
       - name: Checkout code
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
 
@@ -202,7 +208,13 @@ jobs:
     timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     runs-on: ${{ matrix.os }}
 
-    steps:
+    steps:{% endraw %}{% if use_windows_in_ci %}
+      - name: Allow long file paths
+        if: runner.os == 'Windows'
+        # Some tooling (e.g. vcrpy, syrupy) generates file names past the 260 character limit Windows
+        # defaults to. This has to happen before the checkout that writes those files.
+        run: git config --global core.longpaths true
+{% endif %}{% raw %}
       - name: Checkout code
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
       - name: Download Frontend Static Assets
@@ -442,6 +454,12 @@ jobs:
       - check-skip-duplicate
     if: needs.check-skip-duplicate.outputs.should-run == 'true'
     steps:
+      - name: Allow long file paths
+        if: runner.os == 'Windows'
+        # Some tooling (e.g. vcrpy, syrupy) generates file names past the 260 character limit Windows
+        # defaults to. This has to happen before the checkout that writes those files.
+        run: git config --global core.longpaths true
+
       - name: Checkout code
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
 
@@ -510,7 +528,13 @@ jobs:
       - build-backend{% endraw %}{% endif %}{% raw %}
       - check-skip-duplicate
     if: needs.check-skip-duplicate.outputs.should-run == 'true'
-    steps:
+    steps:{% endraw %}{% if use_windows_in_ci %}
+      - name: Allow long file paths
+        if: runner.os == 'Windows'
+        # Some tooling (e.g. vcrpy, syrupy) generates file names past the 260 character limit Windows
+        # defaults to. This has to happen before the checkout that writes those files.
+        run: git config --global core.longpaths true
+{% endif %}{% raw %}
       - name: Checkout code
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
 
