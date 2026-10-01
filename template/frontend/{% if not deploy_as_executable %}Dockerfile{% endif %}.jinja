@@ -10,7 +10,7 @@ RUN npm install -g pnpm@{% endraw %}{{ pnpm_version }}{% raw %}
 WORKDIR /app
 
 # Skip Playwright browser install in Docker builds (not needed for static generate)
-ENV SKIP_PLAYWRIGHT_INSTALL=1
+ENV INSTALL_PLAYWRIGHT_BROWSERS=0
 
 # Mirror repo workspace structure: root files at /app, frontend source at /app/frontend
 # First just copy in the dependency information for better caching
