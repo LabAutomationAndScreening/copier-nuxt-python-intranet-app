@@ -5,12 +5,12 @@ import { fileURLToPath } from "node:url";
 const rootDir = fileURLToPath(new URL("..", import.meta.url));
 const useShell = process.platform === "win32";
 
-// INSTALL_PLAYWRIGHT=1/true installs the browsers and 0/false skips them, anywhere. Left unset, they are installed
-// off CI, so a fresh devcontainer can run the E2E tests, and skipped on CI, because pnpm reruns this before every
-// script and most jobs never open a browser; a CI job that needs one and forgets fails loudly when Playwright
-// finds no browser to launch.
-const shouldInstallPlaywright = () => {
-  const setting = process.env.INSTALL_PLAYWRIGHT;
+// INSTALL_PLAYWRIGHT_BROWSERS=1/true installs Playwright's browsers and 0/false skips them, anywhere. Left unset,
+// they are installed locally, so a fresh devcontainer can run the E2E tests, and skipped in CI, because pnpm reruns
+// this before every script and most jobs never open a browser; a CI job that needs one and forgets fails loudly
+// when Playwright finds no browser to launch.
+const shouldInstallPlaywrightBrowsers = () => {
+  const setting = process.env.INSTALL_PLAYWRIGHT_BROWSERS;
   if (setting === undefined) {
     return process.env.CI !== "true";
   }
@@ -29,7 +29,7 @@ const shouldInstallPlaywright = () => {
   if (setting === "false") {
     return false;
   }
-  throw new Error(`INSTALL_PLAYWRIGHT must be 1, true, 0 or false, or left unset, but was "${setting}"`);
+  throw new Error(`INSTALL_PLAYWRIGHT_BROWSERS must be 1, true, 0 or false, or left unset, but was "${setting}"`);
 };
 
 const run = (...args) => {
@@ -43,6 +43,6 @@ const run = (...args) => {
 
 run("exec", "nuxt", "prepare");
 
-if (shouldInstallPlaywright()) {
+if (shouldInstallPlaywrightBrowsers()) {
   run("exec", "playwright-core", "install", "--with-deps", "chromium");
 }

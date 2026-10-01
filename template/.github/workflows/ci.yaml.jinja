@@ -252,7 +252,7 @@ jobs:
     timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     env:
-      INSTALL_PLAYWRIGHT: "1" # createPage() drives a real browser
+      INSTALL_PLAYWRIGHT_BROWSERS: "1" # createPage() drives a real browser
     needs:
       - build-frontend{% endraw %}{% if has_backend %}{% raw %}
       - build-backend{% endraw %}{% endif %}{% raw %}
@@ -516,7 +516,7 @@ jobs:
     name: End-to-end Testing
     timeout-minutes: {% endraw %}{{ gha_xlong_timeout_minutes }}{% raw %}
     env:
-      INSTALL_PLAYWRIGHT: "1"
+      INSTALL_PLAYWRIGHT_BROWSERS: "1"
     strategy:
       matrix:
         os:
