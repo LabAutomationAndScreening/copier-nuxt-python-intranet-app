@@ -5,18 +5,31 @@ import { fileURLToPath } from "node:url";
 const rootDir = fileURLToPath(new URL("..", import.meta.url));
 const useShell = process.platform === "win32";
 
-// Off CI the browsers are always installed, so a fresh devcontainer can run the E2E tests. On CI a job opts in
-// with INSTALL_PLAYWRIGHT=1, because pnpm reruns this before every script and most jobs never open a browser;
-// a job that needs one and forgets fails loudly when Playwright finds no browser to launch.
-// SKIP_PLAYWRIGHT_INSTALL=1 skips it anywhere, such as a Docker build, where CI is not set.
+// INSTALL_PLAYWRIGHT=1/true installs the browsers and 0/false skips them, anywhere. Left unset, they are installed
+// off CI, so a fresh devcontainer can run the E2E tests, and skipped on CI, because pnpm reruns this before every
+// script and most jobs never open a browser; a CI job that needs one and forgets fails loudly when Playwright
+// finds no browser to launch.
 const shouldInstallPlaywright = () => {
-  if (process.env.SKIP_PLAYWRIGHT_INSTALL === "1") {
+  const setting = process.env.INSTALL_PLAYWRIGHT;
+  if (setting === undefined) {
+    return process.env.CI !== "true";
+  }
+  if (setting === "") {
+    return process.env.CI !== "true";
+  }
+  if (setting === "1") {
+    return true;
+  }
+  if (setting === "true") {
+    return true;
+  }
+  if (setting === "0") {
     return false;
   }
-  if (process.env.CI === "true") {
-    return process.env.INSTALL_PLAYWRIGHT === "1";
+  if (setting === "false") {
+    return false;
   }
-  return true;
+  throw new Error(`INSTALL_PLAYWRIGHT must be 1, true, 0 or false, or left unset, but was "${setting}"`);
 };
 
 const run = (...args) => {
