@@ -10,8 +10,7 @@ export default defineNuxtConfig({
   },
   devtools: { enabled: process.env.NODE_ENV !== "test" },
   telemetry: process.env.NODE_ENV !== "test",
-  // the conditional modules added in by the template make it complicated to format consistently...at least with only 3 'always included' modules
-  // prettier-ignore
+  // biome-ignore format: the conditional modules added in by the template make it complicated to format consistently...at least with only 3 'always included' modules
   modules: [
     {% endraw %}{% if is_circuit_python_driver %}{% raw %}"@lab-sync/nuxt-common",
     {% endraw %}{% endif %}{% raw %}"@nuxt/ui"{% endraw %}{% if frontend_uses_graphql %}{% raw %},
@@ -69,8 +68,7 @@ export default defineNuxtConfig({
     ...(useOptimizeDeps
       ? {
           optimizeDeps: {
-            // the conditional modules added in by the template make it complicated to format consistently
-            // prettier-ignore
+            // biome-ignore format: the conditional modules added in by the template make it complicated to format consistently
             include: [
                         "@microsoft/kiota-abstractions",
                         "@microsoft/kiota-http-fetchlibrary",{% endraw %}{% if frontend_uses_zod %}{% raw %}

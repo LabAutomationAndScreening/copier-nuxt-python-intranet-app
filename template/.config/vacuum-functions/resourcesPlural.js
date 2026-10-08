@@ -10,6 +10,7 @@
 // nouns). Projects can edit ALLOWLIST below — this file is copier-managed but locally customizable.
 
 // Segments that are legitimately not plural collections.
+// biome-ignore format: one category of segments per line keeps the allowlist scannable
 var ALLOWLIST = [
   // namespace / versioning
   "api", "v1", "v2", "v3",
@@ -61,7 +62,10 @@ function runRule(input) {
       continue;
     }
     results.push({
-      message: "path segment '" + seg + "' should be a plural resource noun (or added to the allowlist if it is not a collection)"
+      message:
+        "path segment '" +
+        seg +
+        "' should be a plural resource noun (or added to the allowlist if it is not a collection)",
     });
   }
   return results;

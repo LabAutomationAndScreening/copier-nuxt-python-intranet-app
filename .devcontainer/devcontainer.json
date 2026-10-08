@@ -14,7 +14,7 @@
       "autoPull": false
     },
     // https://github.com/anthropics/devcontainer-features/blob/main/src/claude-code/devcontainer-feature.json
-    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0.5": {},
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0.5": {}
   },
   "customizations": {
     "vscode": {
@@ -39,6 +39,7 @@
         "samuelcolvin.jinjahtml@0.20.0",
         "tamasfe.even-better-toml@0.19.2",
         "emilast.LogFileHighlighter@3.3.3",
+        "biomejs.biome@2026.8.190716",
         "esbenp.prettier-vscode@12.4.0"
       ],
       "settings": {
@@ -57,15 +58,19 @@
         "ruff.configuration": "/workspaces/copier-nuxt-python-intranet-app/.config/ruff-non-src.toml", // use the non-src configuration since it's less restrictive and won't show false positives and underline things
         "python.pyrefly.configPath": "/workspaces/copier-nuxt-python-intranet-app/.config/pyrefly.toml",
         "prettier.configPath": "/workspaces/copier-nuxt-python-intranet-app/.config/.prettierrc",
-        "[jsonc][json][javascript][typescript][graphql][css][scss][html][vue]": {
+        "[jsonc][json][javascript][typescript][graphql][css]": {
+          "editor.defaultFormatter": "biomejs.biome",
+          "editor.formatOnSave": true
+        },
+        "[vue][html][scss][less]": {
           "editor.defaultFormatter": "esbenp.prettier-vscode",
           "editor.formatOnSave": true
         }
       }
-    },
+    }
   },
   "initializeCommand": "sh .devcontainer/initialize-command.sh",
   "onCreateCommand": "sh .devcontainer/on-create-command.sh",
   "postStartCommand": "sh .devcontainer/post-start-command.sh"
-  // Devcontainer context hash (do not manually edit this, it's managed by a pre-commit hook): 5539254b # spellchecker:disable-line
+  // Devcontainer context hash (do not manually edit this, it's managed by a pre-commit hook): d8d2fb9e # spellchecker:disable-line
 }
