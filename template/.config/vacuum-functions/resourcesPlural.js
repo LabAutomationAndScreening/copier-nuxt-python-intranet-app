@@ -12,15 +12,44 @@
 // Segments that are legitimately not plural collections.
 var ALLOWLIST = [
   // namespace / versioning
-  "api", "v1", "v2", "v3",
+  "api",
+  "v1",
+  "v2",
+  "v3",
   // uncountable / mass nouns
-  "data", "series", "telemetry", "equipment", "info", "metadata", "media", "config", "configuration",
+  "data",
+  "series",
+  "telemetry",
+  "equipment",
+  "info",
+  "metadata",
+  "media",
+  "config",
+  "configuration",
   // health / status / lifecycle singletons
-  "health", "healthcheck", "healthz", "readyz", "livez", "status", "shutdown", "ping", "version",
+  "health",
+  "healthcheck",
+  "healthz",
+  "readyz",
+  "livez",
+  "status",
+  "shutdown",
+  "ping",
+  "version",
   // common actions, filters and singleton sub-resources
-  "me", "self", "search", "online", "offline", "push", "polling", "dashboard", "summary", "latest", "current",
+  "me",
+  "self",
+  "search",
+  "online",
+  "offline",
+  "push",
+  "polling",
+  "dashboard",
+  "summary",
+  "latest",
+  "current",
   // non-REST endpoints (not resource collections)
-  "graphql"
+  "graphql",
 ];
 
 function getSchema() {
@@ -61,7 +90,10 @@ function runRule(input) {
       continue;
     }
     results.push({
-      message: "path segment '" + seg + "' should be a plural resource noun (or added to the allowlist if it is not a collection)"
+      message:
+        "path segment '" +
+        seg +
+        "' should be a plural resource noun (or added to the allowlist if it is not a collection)",
     });
   }
   return results;
