@@ -63,7 +63,12 @@
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Open {% endraw %}{{ human_friendly_app_name }}{% raw %}" />
     <WixVariable Id="WixUILicenseRtf" Value="$(LicenseRtf)" />
-
+{% endraw %}{% if installer_banner_bmp or installer_dialog_bmp %}{% raw %}
+    <!-- Replace WiX's default red-disc artwork. Paths are relative to the repo root (this file
+         lives in installer\wix\). Banner is 493x58; dialog is 493x312 with branding in the left 164px. -->
+{% endraw %}{% endif %}{% if installer_banner_bmp %}{% raw %}    <WixVariable Id="WixUIBannerBmp" Value="$(sys.SOURCEFILEDIR)..\..\{% endraw %}{{ installer_banner_bmp | replace('/', '\\') }}{% raw %}" />
+{% endraw %}{% endif %}{% if installer_dialog_bmp %}{% raw %}    <WixVariable Id="WixUIDialogBmp" Value="$(sys.SOURCEFILEDIR)..\..\{% endraw %}{{ installer_dialog_bmp | replace('/', '\\') }}{% raw %}" />
+{% endraw %}{% endif %}{% raw %}
     <Feature Id="{% endraw %}{{ product_id }}{% raw %}" Title="{% endraw %}{{ human_friendly_app_name }}{% raw %}" Level="1">
       <ComponentGroupRef Id="StagedFiles" />
       <ComponentGroupRef Id="DataFolder" />

@@ -221,6 +221,22 @@ installer_branding_dir:
     default: "frontend/public"
     when: "{{ install_as_windows_service }}"
 
+installer_banner_bmp:
+    type: str
+    help: "Path (relative to the repo root) to a 493x58 .bmp shown across the top of the installer's inner pages. Leave blank to keep WiX's default artwork."
+    default: ""
+    when: "{{ install_as_windows_service }}"
+    validator: |-
+      {% if installer_banner_bmp %}{% if not (installer_banner_bmp | regex_search('(?i)\\.bmp$')) %}The banner must be a .bmp file.{% elif installer_banner_bmp | regex_search('^(/|\\\\|[A-Za-z]:)') %}The banner path must be relative to the repo root.{% elif installer_banner_bmp | regex_search('["<>&]') %}The banner path must not contain " < > or & (they break the MSI XML attribute).{% endif %}{% endif %}
+
+installer_dialog_bmp:
+    type: str
+    help: "Path (relative to the repo root) to a 493x312 .bmp shown as the background of the installer's Welcome and Finish pages (keep artwork in the left 164px; text draws over the rest). Leave blank to keep WiX's default artwork."
+    default: ""
+    when: "{{ install_as_windows_service }}"
+    validator: |-
+      {% if installer_dialog_bmp %}{% if not (installer_dialog_bmp | regex_search('(?i)\\.bmp$')) %}The dialog image must be a .bmp file.{% elif installer_dialog_bmp | regex_search('^(/|\\\\|[A-Za-z]:)') %}The dialog image path must be relative to the repo root.{% elif installer_dialog_bmp | regex_search('["<>&]') %}The dialog image path must not contain " < > or & (they break the MSI XML attribute).{% endif %}{% endif %}
+
 installer_upgrade_code:
     type: str
     help: "A fixed-for-life UpgradeCode GUID for this app's MSI (generate once, NEVER change it - it identifies upgrades across versions). Format: 8-4-4-4-12 hex, e.g. 3b9d1f6a-2c84-4e7b-9a1f-6d5c4b3a2e10."
