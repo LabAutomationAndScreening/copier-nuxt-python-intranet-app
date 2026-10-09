@@ -29,6 +29,13 @@
         DowngradeErrorMessage="A newer version of {% endraw %}{{ human_friendly_app_name }}{% raw %} is already installed."
         Schedule="afterInstallInitialize" />
 
+    <!-- Upgrades must not stop on the "close the application or reboot" prompt. Restart Manager
+         flags the running service's locked exe at InstallValidate, but the service is stopped later
+         by the old product's CA_RemoveService (inside RemoveExistingProducts) before any file is
+         replaced. The legacy files-in-use check lists only windowed processes, so it ignores the
+         session-0 service and the upgrade proceeds without user interaction. -->
+    <Property Id="MSIRESTARTMANAGERCONTROL" Value="Disable" />
+
     <MediaTemplate EmbedCab="yes" />
 
     <Icon Id="{% endraw %}{{ product_id }}{% raw %}Icon" SourceFile="$(BrandingDir)\favicon.ico" />
