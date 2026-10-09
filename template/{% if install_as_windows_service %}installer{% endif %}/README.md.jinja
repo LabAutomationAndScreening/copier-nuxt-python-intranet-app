@@ -65,4 +65,6 @@ unsigned MSI.
 - `license.rtf` — shown on the license page.
 - `INSTALL.txt` — end-user/admin install guide; copied into `dist/` next to the MSI by `package.ps1`.
 
-The installer icon reuses the app's own `frontend/public/favicon.ico`.{% endraw %}
+The installer icon reuses `{% endraw %}{{ installer_branding_dir }}{% raw %}/favicon.ico`. Wizard artwork comes from the
+`installer_banner_bmp` (493x58) and `installer_dialog_bmp` (493x312) copier answers, repo-relative `.bmp` paths;
+leaving one blank keeps WiX's default artwork for that slot.{% endraw %}
