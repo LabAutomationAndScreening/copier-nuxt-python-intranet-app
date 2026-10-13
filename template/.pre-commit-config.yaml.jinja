@@ -78,10 +78,24 @@ repos:
               .*/vendor_files/.*|
           )$
 
-  - repo: https://github.com/biomejs/pre-commit
-    rev: d1d67cb1a73ea0917eb553c4f025e212c8cd0465  # frozen: v2.5.15
+  # `language: system` so the hooks run the one Biome that .devcontainer/install-ci-tooling.py installs, which the VS Code
+  # extension uses too, instead of a second copy whose version has to be kept in sync (https://biomejs.dev/recipes/git-hooks/#pre-commit)
+  - repo: local
     hooks:
       - id: biome-check
+        name: biome check
+        entry: biome check --write --files-ignore-unknown=true --no-errors-on-unmatched --config-path .config/biome.jsonc
+        language: system
+        types: [text]
+        files: '\.(jsx?|tsx?|c(js|ts)|m(js|ts)|d\.(ts|cts|mts)|jsonc?|css|svelte|vue|astro|graphql|gql)$'
+        require_serial: true
+      - id: biome-format-config
+        name: format the biome config itself
+        # run from .config/ so Biome treats the file as its own root config instead of rejecting it as a second one
+        entry: bash -c 'cd .config && biome format --write biome.jsonc'
+        language: system
+        files: ^\.config/biome\.jsonc$
+        pass_filenames: false
 
   - repo: https://github.com/rbubley/mirrors-prettier
     rev: 0ee178619d696787ca73d210cc191d720868c631  # frozen: v3.9.6
