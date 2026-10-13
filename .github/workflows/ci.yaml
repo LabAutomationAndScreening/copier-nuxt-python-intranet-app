@@ -138,6 +138,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
           node-version: 24.11.1
           install-deps: false
+          install-copier: true
+          install-pre-commit-tooling: true
 
       - name: Instantiate copier template
         run: |
