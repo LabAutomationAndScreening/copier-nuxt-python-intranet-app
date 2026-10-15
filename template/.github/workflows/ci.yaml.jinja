@@ -6,6 +6,7 @@ on:
       - 'gh-readonly-queue/**' # don't run (again) when on these special branches created during merge groups; the `on: merge_group` already triggers it.
   merge_group:
   pull_request:
+  workflow_dispatch: # a manual run executes every job for the chosen branch, as information only: it posts no required-check
 
 env:
   PYTHONUNBUFFERED: True
@@ -37,6 +38,63 @@ jobs:
       - id: check
         uses: ./.github/actions/check-skip-duplicates
 
+  changes:
+    name: Classify changed paths
+    runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
+    timeout-minutes: {% endraw %}{{ gha_short_timeout_minutes }}{% raw %}
+    permissions:
+      contents: read
+      pull-requests: read # dorny/paths-filter reads a PR's file list through the API
+    outputs:
+      # One boolean per class in .github/path-filters.yaml, as a JSON object:
+      # fromJSON(needs.changes.outputs.classes).<class>
+      classes: ${{ steps.resolve.outputs.classes }}
+    steps:
+      - name: Decide whether the diff matters at all
+        id: policy
+        env:
+          # The default branch always runs everything, so a class that was wrong on a feature branch or in the merge
+          # queue is still caught there. A manual run is the way to get that full run for one branch.
+          RUN_EVERYTHING: ${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) || github.event_name == 'workflow_dispatch' }}
+        run: echo "run_everything=$RUN_EVERYTHING" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout code
+        uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
+        with:
+          persist-credentials: false
+
+      - name: Match the changed files against the path classes
+        if: steps.policy.outputs.run_everything != 'true'
+        id: filter
+        uses: dorny/paths-filter@{% endraw %}{{ gha_paths_filter }}{% raw %}
+        with:
+          filters: .github/path-filters.yaml
+          predicate-quantifier: some-with-excludes
+          list-files: json
+
+      - name: Resolve the class outputs
+        id: resolve
+        env:
+          RUN_EVERYTHING: ${{ steps.policy.outputs.run_everything }}
+          # Holds file names from the PR, so it only ever travels through env and jq, never a shell expansion
+          FILTER_OUTPUTS: ${{ toJSON(steps.filter.outputs) }}
+        run: |
+          # A code file that no other class claims forces every class on: an unclassified path can affect anything, so
+          # nothing may be skipped because of it.
+          classes=$(yq 'keys | .[]' .github/path-filters.yaml)
+          jq -n --arg run_everything "$RUN_EVERYTHING" --argjson outputs "$FILTER_OUTPUTS" --arg classes "$classes" '
+            def files($class): $outputs[$class + "_files"] // "[]" | fromjson;
+            ($classes | split("\n") | map(select(length > 0))) as $classes
+            | (files("code") - ([$classes[] | select(. != "code") | files(.)] | add // [])) as $unclassified
+            | ($run_everything == "true" or ($unclassified | length) > 0) as $force
+            | {
+                unclassified: $unclassified,
+                classes: ([$classes[] | {key: ., value: ($force or $outputs[.] == "true")}] | from_entries)
+              }
+          ' > "$RUNNER_TEMP/resolved.json"
+          echo "classes=$(jq -c .classes "$RUNNER_TEMP/resolved.json")" >> "$GITHUB_OUTPUT"
+          jq -r '"classes: \(.classes)", (if (.unclassified | length) > 0 then "every class forced on by unclassified paths:", .unclassified[] else empty end)' "$RUNNER_TEMP/resolved.json" | tee -a "$GITHUB_STEP_SUMMARY"
+
   lint:
     needs:
       - get-values
@@ -53,24 +111,30 @@ jobs:
       node-version: {% endraw %}{{ node_version }}{% raw %}
 
   unit-test-frontend:
-    name: Unit Test Frontend
+    name: Unit Test Frontend${{ fromJSON(needs.changes.outputs.classes).frontend != true && ' (skipped, no frontend changes)' || '' }}
     timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     needs:
       - lint
       - check-skip-duplicate
+      - changes
     if: needs.check-skip-duplicate.outputs.should-run == 'true'
+    env:
+      RUN_JOB: ${{ fromJSON(needs.changes.outputs.classes).frontend }}
     steps:
       - name: Checkout code
+        if: env.RUN_JOB == 'true'
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
 
       - name: Install latest versions of packages
+        if: env.RUN_JOB == 'true'
         uses: ./.github/actions/install_deps
         with:
           node-version: {% endraw %}{{ node_version }}{% raw %}
           skip-installing-ssm-plugin-manager: true
 
       - name: Unit test
+        if: env.RUN_JOB == 'true'
         run: pnpm --dir=frontend test-unit
 
       - name: Upload test coverage on failure
@@ -84,12 +148,15 @@ jobs:
           retention-days: 5{% endraw %}{% if has_backend %}{% raw %}
 
   unit-test-backend:
-    name: Unit Test Backend
+    name: Unit Test Backend${{ fromJSON(needs.changes.outputs.classes).backend != true && ' (skipped, no backend changes)' || '' }}
     timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     needs:
       - lint
       - check-skip-duplicate
+      - changes
     if: needs.check-skip-duplicate.outputs.should-run == 'true'
+    env:
+      RUN_JOB: ${{ fromJSON(needs.changes.outputs.classes).backend }}
     strategy:
       matrix:
         os:
@@ -98,21 +165,24 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:{% endraw %}{% if use_windows_in_ci %}
       - name: Allow long file paths
-        if: runner.os == 'Windows'
+        if: env.RUN_JOB == 'true' && runner.os == 'Windows'
         # Some tooling (e.g. vcrpy, syrupy) generates file names past the 260 character limit Windows
         # defaults to. This has to happen before the checkout that writes those files.
         run: git config --global core.longpaths true
 {% endif %}{% raw %}
       - name: Checkout code
+        if: env.RUN_JOB == 'true'
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
 
       - name: Install latest versions of python packages
+        if: env.RUN_JOB == 'true'
         uses: ./.github/actions/install_deps
         with:
           python-version: {% endraw %}{{ python_version }}{% raw %}
           skip-installing-ssm-plugin-manager: true
 
       - name: Unit test
+        if: env.RUN_JOB == 'true'
         run: uv --directory=backend run pytest tests/unit --durations=5
 
       - name: Upload test coverage on failure
@@ -130,8 +200,9 @@ jobs:
       - unit-test-frontend{% endraw %}{% if has_backend %}{% raw %}
       - unit-test-backend{% endraw %}{% endif %}{% raw %}
       - check-skip-duplicate
-    if: needs.check-skip-duplicate.outputs.should-run == 'true'
-{% endraw %}{% if not deploy_as_executable %}{% raw %}    uses: ./.github/workflows/build-docker-image.yaml
+      - changes
+{% endraw %}{% if not deploy_as_executable %}{% raw %}    if: needs.check-skip-duplicate.outputs.should-run == 'true' && fromJSON(needs.changes.outputs.classes).code
+    uses: ./.github/workflows/build-docker-image.yaml
     permissions:
       contents: write # needed for mutex
       id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
@@ -144,22 +215,30 @@ jobs:
       repository: {% endraw %}{{ frontend_ecr_base_url }}{% raw %}
       image_name: {% endraw %}{{ frontend_image_name }}{% raw %}
 {% endraw %}{% if push_to_ecr %}{% raw %}      push-role-name: {% endraw %}{{ frontend_ecr_push_role_name }}{% endif %}{% else %}{% raw %}
+    name: Build Frontend${{ fromJSON(needs.changes.outputs.classes).code != true && ' (skipped, no code changes)' || '' }}
+    if: needs.check-skip-duplicate.outputs.should-run == 'true'
+    env:
+      RUN_JOB: ${{ fromJSON(needs.changes.outputs.classes).code }}
     timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     steps:
       - name: Checkout code
+        if: env.RUN_JOB == 'true'
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
 
       - name: Install latest versions of node packages
+        if: env.RUN_JOB == 'true'
         uses: ./.github/actions/install_deps
         with:
           node-version: {% endraw %}{{ node_version }}{% raw %}
           skip-installing-ssm-plugin-manager: true
 
       - name: Build frontend
+        if: env.RUN_JOB == 'true'
         run: task build-frontend
 
       - name: Upload build artifact
+        if: env.RUN_JOB == 'true'
         uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
         with:
           name: frontend-static-assets
@@ -176,7 +255,8 @@ jobs:
       - unit-test-frontend
       - unit-test-backend
       - check-skip-duplicate
-    if: needs.check-skip-duplicate.outputs.should-run == 'true'
+      - changes
+    if: needs.check-skip-duplicate.outputs.should-run == 'true' && fromJSON(needs.changes.outputs.classes).code
     uses: ./.github/workflows/build-docker-image.yaml
     permissions:
       contents: write # needed for mutex
@@ -195,7 +275,11 @@ jobs:
       - unit-test-backend
       - build-frontend
       - check-skip-duplicate
+      - changes
+    name: Build Backend${{ fromJSON(needs.changes.outputs.classes).code != true && ' (skipped, no code changes)' || '' }}
     if: needs.check-skip-duplicate.outputs.should-run == 'true'
+    env:
+      RUN_JOB: ${{ fromJSON(needs.changes.outputs.classes).code }}
     strategy:
       matrix:
         os:
@@ -206,31 +290,36 @@ jobs:
 
     steps:{% endraw %}{% if use_windows_in_ci %}
       - name: Allow long file paths
-        if: runner.os == 'Windows'
+        if: env.RUN_JOB == 'true' && runner.os == 'Windows'
         # Some tooling (e.g. vcrpy, syrupy) generates file names past the 260 character limit Windows
         # defaults to. This has to happen before the checkout that writes those files.
         run: git config --global core.longpaths true
 {% endif %}{% raw %}
       - name: Checkout code
+        if: env.RUN_JOB == 'true'
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
       - name: Download Frontend Static Assets
+        if: env.RUN_JOB == 'true'
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
           name: frontend-static-assets
           path: backend/src/static
 
       - name: Install latest versions of python packages
+        if: env.RUN_JOB == 'true'
         uses: ./.github/actions/install_deps
         with:
           python-version: {% endraw %}{{ python_version }}{% raw %}
           skip-installing-ssm-plugin-manager: true
 
       - name: Build application
+        if: env.RUN_JOB == 'true'
         run: task bundle-executable-from-staged-static
       - name: Tar files to preserve permissions on Linux during artifact upload # https://github.com/actions/upload-artifact?tab=readme-ov-file#permission-loss
+        if: env.RUN_JOB == 'true'
         run: tar -cvf app.tar backend/dist/{% endraw %}{{ repo_name }}{% raw %}
       - name: Upload application artifact (Windows)
-        if: runner.os == 'Windows'
+        if: env.RUN_JOB == 'true' && runner.os == 'Windows'
         uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
         with:
           name: built-{% endraw %}{{ repo_name }}{% raw %}-${{ matrix.os }}
@@ -238,7 +327,7 @@ jobs:
           if-no-files-found: error
           retention-days: 5
       - name: Upload application artifact (Linux)
-        if: runner.os == 'Linux'
+        if: env.RUN_JOB == 'true' && runner.os == 'Linux'
         uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
         with:
           name: built-{% endraw %}{{ repo_name }}{% raw %}-${{ matrix.os }}
@@ -248,66 +337,80 @@ jobs:
 
 
   test-compiled-frontend-dev:
-    name: Test the compiled Frontend for pnpm dev mode
+    name: Test the compiled Frontend for pnpm dev mode${{ fromJSON(needs.changes.outputs.classes).frontend != true && ' (skipped, no frontend changes)' || '' }}
     timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     env:
+      RUN_JOB: ${{ fromJSON(needs.changes.outputs.classes).frontend }}
       INSTALL_PLAYWRIGHT_BROWSERS: "1" # createPage() drives a real browser
     needs:
       - build-frontend{% endraw %}{% if has_backend %}{% raw %}
       - build-backend{% endraw %}{% endif %}{% raw %}
       - check-skip-duplicate
+      - changes
     if: needs.check-skip-duplicate.outputs.should-run == 'true'
     steps:
       - name: Checkout code
+        if: env.RUN_JOB == 'true'
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
 
       - name: Install latest versions of node packages
+        if: env.RUN_JOB == 'true'
         uses: ./.github/actions/install_deps
         with:
           node-version: {% endraw %}{{ node_version }}{% raw %}
           skip-installing-ssm-plugin-manager: true
 
       - name: Test
+        if: env.RUN_JOB == 'true'
         run: pnpm --dir=frontend test-compiled-dev{% endraw %}{% if is_circuit_python_driver %}{% raw %}
 
   e2e-test-k3d:
-    name: End-to-end Testing on k3d
+    name: End-to-end Testing on k3d${{ fromJSON(needs.changes.outputs.classes).code != true && ' (skipped, no code changes)' || '' }}
     timeout-minutes: {% endraw %}{{ gha_xlong_timeout_minutes }}{% raw %}
     runs-on: "{% endraw %}{{ gha_linux_runner }}{% raw %}"
     needs:
       - build-frontend
       - build-backend
       - check-skip-duplicate
+      - changes
     if: needs.check-skip-duplicate.outputs.should-run == 'true'
+    env:
+      RUN_JOB: ${{ fromJSON(needs.changes.outputs.classes).code }}
     steps:
       - name: Checkout code
+        if: env.RUN_JOB == 'true'
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
 
       - name: Download Backend Artifact
+        if: env.RUN_JOB == 'true'
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
           name: ${{ needs.build-backend.outputs.artifact-name }}
           path: deployment-package-folder
 
       - name: Download Frontend Artifact
+        if: env.RUN_JOB == 'true'
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
           name: {% endraw %}{{ frontend_image_name | replace('/', '-') }}{% raw %}
           path: deployment-package-folder
 
       - name: Load docker images
+        if: env.RUN_JOB == 'true'
         run: |
           ls deployment-package-folder -a
           # load all images in the folder
           ls -1 deployment-package-folder/*.tar | xargs --no-run-if-empty -L 1 docker load -i
 
       - name: Retag loaded images to stable local names
+        if: env.RUN_JOB == 'true'
         run: |
           docker tag ${{ needs.build-frontend.outputs.full-image-tag }} {% endraw %}{{ frontend_image_name }}{% raw %}:local
           docker tag ${{ needs.build-backend.outputs.full-image-tag }} {% endraw %}{{ backend_image_name }}{% raw %}:local
 
       - name: Create k3d cluster
+        if: env.RUN_JOB == 'true'
         # k3d runs k3s inside Docker containers. NodePort iptables rules only handle traffic
         # arriving via Docker port publishing (host → container), not inter-container traffic.
         # --port with @server:0 uses Docker port publishing so localhost:30060/30061 on the
@@ -324,28 +427,34 @@ jobs:
             --port {% endraw %}{{ backend_nodeport_number }}{% raw %}:{% endraw %}{{ backend_nodeport_number }}{% raw %}@server:0
 
       - name: Setup Helm
+        if: env.RUN_JOB == 'true'
         uses: Azure/setup-helm@{% endraw %}{{ gha_azure_setup_helm }}{% raw %}
         with:
           version: {% endraw %}{{ helm_version }}{% raw %}
 
       - name: Setup kubectl
+        if: env.RUN_JOB == 'true'
         uses: Azure/setup-kubectl@{% endraw %}{{ gha_azure_setup_kubectl }}{% raw %}
         with:
           version: {% endraw %}{{ kubectl_version }}{% raw %}
 
       - name: Get runner IP
+        if: env.RUN_JOB == 'true'
         run: |
           RUNNER_IP=$(hostname -I | awk '{print $1}')
           echo "Runner IP: $RUNNER_IP"
           echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
 
       - name: Create app namespace
+        if: env.RUN_JOB == 'true'
         run: kubectl create ns app
 
       - name: Wait for k3d node ready
+        if: env.RUN_JOB == 'true'
         run: kubectl wait --for=condition=Ready node --all --timeout=60s
 
       - name: Import images into k3d
+        if: env.RUN_JOB == 'true'
         run: |
           k3d image import {% endraw %}{{ frontend_image_name }}{% raw %}:local {% endraw %}{% if has_backend %}{{ backend_image_name }}{% raw %}:local{% endraw %}{% endif %}{% raw %} -c e2e
           # k3d image import exits 0 even when the internal `ctr images import` exec inside the node
@@ -359,6 +468,7 @@ jobs:
           docker exec k3d-e2e-server-0 ctr -n k8s.io images ls | grep -Fq -- {% endraw %}{{ backend_image_name }}{% raw %}:local{% endraw %}{% endif %}{% raw %}
 
       - name: Helm install
+        if: env.RUN_JOB == 'true'
         run: |
           helm upgrade --install e2e ./deployment/helm \
             --namespace app \
@@ -374,6 +484,7 @@ jobs:
           node-version: {% endraw %}{{ node_version }}{% raw %}
 
       - name: Wait for rollout
+        if: env.RUN_JOB == 'true'
         id: rollout
         run: kubectl -n app rollout status deploy/e2e-{% endraw %}{{ repo_name }}{% raw %} --timeout=180s
 
@@ -391,6 +502,7 @@ jobs:
         run: kubectl -n app logs deploy/e2e-{% endraw %}{{ repo_name }}{% raw %} --all-containers --tail=100 --ignore-errors || true
 
       - name: E2E Test # TODO: add more than just smoke test
+        if: env.RUN_JOB == 'true'
         run: |
           # since there's no gap after the rollout to install node dependencies, sometimes the NodePorts themselves aren't ready yet, so do a few retries
           curl -s --show-error --fail-with-body --retry 10 --retry-delay 2 --retry-connrefused --retry-all-errors http://localhost:{% endraw %}{{ backend_nodeport_number }}{% raw %}/api/healthcheck
@@ -398,7 +510,7 @@ jobs:
           curl -s --show-error --fail-with-body --retry 10 --retry-delay 2 --retry-connrefused --retry-all-errors http://localhost:{% endraw %}{{ frontend_nodeport_number }}{% raw %}/{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
 
   e2e-test-backend:
-    name: End-to-end Testing of the Backend
+    name: End-to-end Testing of the Backend${{ (fromJSON(needs.changes.outputs.classes).code && fromJSON(needs.changes.outputs.classes).backend) != true && ' (skipped, no backend code changes)' || '' }}
     timeout-minutes: {% endraw %}{{ gha_xlong_timeout_minutes }}{% raw %}
     strategy:
       matrix:
@@ -408,72 +520,89 @@ jobs:
     needs:
       - build-backend
       - check-skip-duplicate
+      - changes
     if: needs.check-skip-duplicate.outputs.should-run == 'true'
+    env:
+      RUN_JOB: ${{ fromJSON(needs.changes.outputs.classes).code && fromJSON(needs.changes.outputs.classes).backend }}
     steps:
       - name: Checkout code
+        if: env.RUN_JOB == 'true'
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
 
       - name: Install latest versions of python packages
+        if: env.RUN_JOB == 'true'
         uses: ./.github/actions/install_deps
         with:
           python-version: {% endraw %}{{ python_version }}{% raw %}
           skip-installing-ssm-plugin-manager: true
 
       - name: Download Backend Artifact
+        if: env.RUN_JOB == 'true'
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
           name: ${{ needs.build-backend.outputs.artifact-name }}
           path: deployment-package-folder{% endraw %}{% if auth_to_ecr_for_backend_e2e_in_ci %}{% raw %}
 
       - name: ECR Auth to pull images for E2E tests
+        if: env.RUN_JOB == 'true'
         uses: ./.github/actions/ecr-auth
         with:
           aws-region: {% endraw %}{{ auth_to_ecr_for_backend_e2e_in_ci_region }}{% raw %}
           role-arn: {% endraw %}{{ auth_to_ecr_for_backend_e2e_in_ci_role_arn }}{% raw %}{% endraw %}{% endif %}{% raw %}
 
       - name: Load docker images
+        if: env.RUN_JOB == 'true'
         run: |
           ls deployment-package-folder -a
           # load all images in the folder
           ls -1 deployment-package-folder/*.tar | xargs --no-run-if-empty -L 1 docker load -i
 
       - name: Retag loaded backend image to stable local name
+        if: env.RUN_JOB == 'true'
         run: docker tag ${{ needs.build-backend.outputs.full-image-tag }} {% endraw %}{{ backend_image_name }}{% raw %}:local
 
       - name: E2E test
+        if: env.RUN_JOB == 'true'
         run: uv --directory=backend run pytest tests/e2e --durations=5{% endraw %}{% endif %}{% raw %}{% endraw %}{% if install_as_windows_service %}{% raw %}
 
   e2e-test-windows-service:
-    name: Windows Service Smoke Tests
+    name: Windows Service Smoke Tests${{ (fromJSON(needs.changes.outputs.classes).code && fromJSON(needs.changes.outputs.classes).backend) != true && ' (skipped, no backend code changes)' || '' }}
     timeout-minutes: {% endraw %}{{ gha_long_timeout_minutes }}{% raw %}
     runs-on: {% endraw %}{{ gha_windows_runner }}{% raw %}
     needs:
       - build-backend
       - check-skip-duplicate
+      - changes
     if: needs.check-skip-duplicate.outputs.should-run == 'true'
+    env:
+      RUN_JOB: ${{ fromJSON(needs.changes.outputs.classes).code && fromJSON(needs.changes.outputs.classes).backend }}
     steps:
       - name: Allow long file paths
-        if: runner.os == 'Windows'
+        if: env.RUN_JOB == 'true' && runner.os == 'Windows'
         # Some tooling (e.g. vcrpy, syrupy) generates file names past the 260 character limit Windows
         # defaults to. This has to happen before the checkout that writes those files.
         run: git config --global core.longpaths true
 
       - name: Checkout code
+        if: env.RUN_JOB == 'true'
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
 
       - name: Install latest versions of python packages
+        if: env.RUN_JOB == 'true'
         uses: ./.github/actions/install_deps
         with:
           python-version: {% endraw %}{{ python_version }}{% raw %}
           skip-installing-ssm-plugin-manager: true
 
       - name: Download Built executable
+        if: env.RUN_JOB == 'true'
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
           name: built-{% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}
           path: backend/dist/{% endraw %}{{ repo_name }}{% raw %}
 
       - name: Windows service smoke tests
+        if: env.RUN_JOB == 'true'
         run: uv --directory=backend run pytest tests/windows_service --durations=5 --basetemp=dist/pytest-tmp
 
       - name: Dump service crash logs on failure
@@ -503,7 +632,8 @@ jobs:
     needs:
       - build-backend
       - check-skip-duplicate
-    if: needs.check-skip-duplicate.outputs.should-run == 'true'
+      - changes
+    if: needs.check-skip-duplicate.outputs.should-run == 'true' && fromJSON(needs.changes.outputs.classes).code
     permissions:
       contents: read
       actions: read # build-installer.yaml downloads the built bundle artifact
@@ -513,9 +643,10 @@ jobs:
 
 
   e2e-test:
-    name: End-to-end Testing
+    name: End-to-end Testing${{ fromJSON(needs.changes.outputs.classes).code != true && ' (skipped, no code changes)' || '' }}
     timeout-minutes: {% endraw %}{{ gha_xlong_timeout_minutes }}{% raw %}
     env:
+      RUN_JOB: ${{ fromJSON(needs.changes.outputs.classes).code }}
       INSTALL_PLAYWRIGHT_BROWSERS: "1"
     strategy:
       matrix:
@@ -527,61 +658,71 @@ jobs:
       - build-frontend{% endraw %}{% if has_backend %}{% raw %}
       - build-backend{% endraw %}{% endif %}{% raw %}
       - check-skip-duplicate
+      - changes
     if: needs.check-skip-duplicate.outputs.should-run == 'true'
     steps:{% endraw %}{% if use_windows_in_ci %}
       - name: Allow long file paths
-        if: runner.os == 'Windows'
+        if: env.RUN_JOB == 'true' && runner.os == 'Windows'
         # Some tooling (e.g. vcrpy, syrupy) generates file names past the 260 character limit Windows
         # defaults to. This has to happen before the checkout that writes those files.
         run: git config --global core.longpaths true
 {% endif %}{% raw %}
       - name: Checkout code
+        if: env.RUN_JOB == 'true'
         uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
 
       - name: Install latest versions of node packages
+        if: env.RUN_JOB == 'true'
         uses: ./.github/actions/install_deps
         with:
           node-version: {% endraw %}{{ node_version }}{% raw %}{% endraw %}{% if not deploy_as_executable %}{% raw %}
 {% endraw %}{% if has_backend %}{% raw %}
       - name: Download Backend Artifact
+        if: env.RUN_JOB == 'true'
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
           name: ${{ needs.build-backend.outputs.artifact-name }}
           path: deployment-package-folder{% endraw %}{% endif %}{% raw %}
 
       - name: Download Frontend Artifact
+        if: env.RUN_JOB == 'true'
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
           name: {% endraw %}{{ frontend_image_name | replace('/', '-') }}{% raw %}
           path: deployment-package-folder
 
       - name: Load docker images
+        if: env.RUN_JOB == 'true'
         run: |
           ls deployment-package-folder -a
           # load all images in the folder
           ls -1 deployment-package-folder/*.tar | xargs --no-run-if-empty -L 1 docker load -i
 
       - name: Retag loaded images to stable local names
+        if: env.RUN_JOB == 'true'
         run: |
           docker tag ${{ needs.build-frontend.outputs.full-image-tag }} {% endraw %}{{ frontend_image_name }}{% raw %}:local{% endraw %}{% if has_backend %}{% raw %}
           docker tag ${{ needs.build-backend.outputs.full-image-tag }} {% endraw %}{{ backend_image_name }}{% raw %}:local{% endraw %}{% endif %}{% raw %}
 {% endraw %}{% else %}{% raw %}
       - name: Download Built executable
+        if: env.RUN_JOB == 'true'
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
           name: built-{% endraw %}{{ repo_name }}{% raw %}-${{ matrix.os }}
           path: backend/dist/{% endraw %}{{ repo_name }}{% raw %}
       - name: Untar the artifact (on Linux)
-        if: runner.os == 'Linux'
+        if: env.RUN_JOB == 'true' && runner.os == 'Linux'
         run: tar -xvf backend/dist/{% endraw %}{{ repo_name }}{% raw %}/app.tar -C .
 {% endraw %}{% endif %}{% raw %}{% endraw %}{% if auth_to_ecr_for_e2e_in_ci %}{% raw %}
 
       - name: ECR Auth to pull images for E2E tests
+        if: env.RUN_JOB == 'true'
         uses: ./.github/actions/ecr-auth
         with:
           aws-region: {% endraw %}{{ auth_to_ecr_for_e2e_in_ci_region }}{% raw %}
           role-arn: {% endraw %}{{ auth_to_ecr_for_e2e_in_ci_role_arn }}{% raw %}{% endraw %}{% endif %}{% raw %}
       - name: E2E test
+        if: env.RUN_JOB == 'true'
         run: pnpm --dir=frontend test-e2e
 
       - name: Upload Playwright report on failure
@@ -596,36 +737,44 @@ jobs:
           retention-days: 5
 
 {% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}  package-images:
-    name: Package Images
+    name: Package Images${{ fromJSON(needs.changes.outputs.classes).code != true && ' (skipped, no code changes)' || '' }}
     timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     needs:
       - build-frontend{% endraw %}{% if has_backend %}{% raw %}
       - build-backend{% endraw %}{% endif %}{% raw %}
       - check-skip-duplicate
+      - changes
     if: needs.check-skip-duplicate.outputs.should-run == 'true'
+    env:
+      RUN_JOB: ${{ fromJSON(needs.changes.outputs.classes).code }}
     steps:
     - name: Checkout repository
+      if: env.RUN_JOB == 'true'
       uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
     - name: Prepare docker-compose file
+      if: env.RUN_JOB == 'true'
       run: |
         mkdir -p deployment-package-folder
         cp deployment/docker-compose.yaml deployment-package-folder/docker-compose.yaml
         sed -i '/image:/s/:latest/:${{ github.sha }}/g' deployment-package-folder/docker-compose.yaml{% endraw %}{% if has_backend %}{% raw %}
 
     - name: Download Backend Artifact
+      if: env.RUN_JOB == 'true'
       uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
       with:
         name: ${{ needs.build-backend.outputs.artifact-name }}
         path: deployment-package-folder{% endraw %}{% endif %}{% raw %}
 
     - name: Download Frontend Artifact
+      if: env.RUN_JOB == 'true'
       uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
       with:
         name: ${{ needs.build-frontend.outputs.artifact-name }}
         path: deployment-package-folder
 
     - name: Upload deployment package artifact
+      if: env.RUN_JOB == 'true'
       uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
       with:
         name: {% endraw %}{{ repo_name }}{% raw %}-deployment-package
@@ -634,40 +783,50 @@ jobs:
         retention-days: 5{% endraw %}{% endif %}{% raw %}{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
 
   package-firmware:
-    name: Package Firmware
+    name: Package Firmware${{ fromJSON(needs.changes.outputs.classes).code != true && ' (skipped, no code changes)' || '' }}
     timeout-minutes: {% endraw %}{{ gha_short_timeout_minutes }}{% raw %}
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     needs:
       - build-frontend
       - build-backend
       - check-skip-duplicate
+      - changes
     if: needs.check-skip-duplicate.outputs.should-run == 'true'
+    env:
+      RUN_JOB: ${{ fromJSON(needs.changes.outputs.classes).code }}
     steps:
     - name: Checkout repository
+      if: env.RUN_JOB == 'true'
       uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
 
     - name: Install latest versions of python packages
+      if: env.RUN_JOB == 'true'
       uses: ./.github/actions/install_deps
       with:
         python-version: {% endraw %}{{ python_version }}{% raw %}
         skip-installing-ssm-plugin-manager: true
 
     - name: Extract firmware version
+      if: env.RUN_JOB == 'true'
       id: get-version
       run: |
         VERSION=$(uv --directory=backend run python -c "from backend_api.firmware.src.code_lib import VERSION; print(VERSION)")
         echo "version=$VERSION" >> $GITHUB_OUTPUT
 
     - name: Install firmware dependencies
+      if: env.RUN_JOB == 'true'
       run: uv --directory=backend run python scripts/install_firmware_dependencies.py
 
     - name: Verify CircuitPython libraries installed
+      if: env.RUN_JOB == 'true'
       run: uv --directory=backend run circup --path=./src/backend_api/firmware/src/ freeze
 
     - name: Clean __pycache__ directories
+      if: env.RUN_JOB == 'true'
       run: find ./backend/src/backend_api/firmware/src -type d -name '__pycache__' -exec rm -rf {} +
 
     - name: Upload firmware artifact
+      if: env.RUN_JOB == 'true'
       uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
       with:
         name: {% endraw %}{{ repo_name.removesuffix('-driver') }}{% raw %}-firmware-v${{ steps.get-version.outputs.version }}
@@ -722,11 +881,14 @@ jobs:
         if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
         env:
           GH_TOKEN: ${{ github.token }}
+          # A status belongs to a commit: the PR's head commit on pull_request events, the merge group's head on
+          # merge_group events, whose payload carries no pull_request at all.
+          COMMIT_SHA: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
         run: |
           gh api \
             -X POST -H "Accept: application/vnd.github.v3+json" \
-            "${{ github.event.pull_request.statuses_url }}" \
-            -f state=success -f context="required-check" -f description="✅ All required checks passed in the job triggered by pull_request" \
+            "/repos/${{ github.repository }}/statuses/${COMMIT_SHA}" \
+            -f state=success -f context="required-check" -f description="✅ All required checks passed in the job triggered by ${{ github.event_name }}" \
             -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
       - name: Mark updated dependabot hash commit as succeeded
