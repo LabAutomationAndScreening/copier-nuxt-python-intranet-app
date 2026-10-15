@@ -267,4 +267,4 @@ def custom_openapi(app: FastAPI) -> dict[str, Any]:  # pyrefly: ignore[explicit-
 def register_exception_handlers(app: FastAPI) -> None:
     handler = ExceptionHandler(app)
     handler.register()
-    app.openapi = partial(custom_openapi, app)
+    app.openapi = partial(custom_openapi, app)  # pyrefly: ignore[method-assign] # replacing app.openapi is how FastAPI documents installing a custom schema generator
