@@ -45,7 +45,7 @@ class AppService(win32serviceutil.ServiceFramework):
                 servicemanager.LogErrorMsg(f"{APP_NAME}: worker did not stop within 30s; SCM will force-terminate")
 
     @override
-    def SvcRun(self) -> None:  # pywin32 mandates this exact method name
+    def SvcRun(self) -> None:
         # Outermost guard pywin32 hands control to. On a slow SCM startup the status handle can already
         # be invalid by the time ReportServiceStatus runs, so a crash anywhere — startup, status
         # reporting, or SvcDoRun itself — could escape before any dump was written. Write the dump as a
