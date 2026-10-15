@@ -48,10 +48,8 @@ GQL_BOTH = """query ($value1: String!, $value2: Int!) {
 
 
 class Helper:
-    mocker: MockerFixture
-
-    def _mock_should_show_error_details(self, *, should_show: bool):
-        _ = self.mocker.patch.object(
+    def _mock_should_show_error_details(self, *, mocker: MockerFixture, should_show: bool):
+        _ = mocker.patch.object(
             fast_api_exception_handlers,
             fast_api_exception_handlers.should_show_error_details.__name__,
             autospec=True,
@@ -70,7 +68,7 @@ class TestSingleError(Helper):
     def test_Given_resolver_internal_mocked_to_error_and_error_details_should_be_displayed__Then_uuid_in_log_and_response__and_details_in_response_and_log(
         self,
     ):
-        self._mock_should_show_error_details(should_show=True)
+        self._mock_should_show_error_details(mocker=self.mocker, should_show=True)
         expected_error_message = str(uuid4())
         error_cls = random.choice(
             (ValueError, RuntimeError, KeyError, TypeError)
@@ -106,7 +104,7 @@ class TestSingleError(Helper):
     def test_Given_resolver_returns_wrong_type_for_second_query_and_error_details_should_not_be_displayed__Then_uuid_in_log_and_response__and_details_in_response_and_log_because_this_isnt_sensitive(
         self,
     ):
-        self._mock_should_show_error_details(should_show=False)
+        self._mock_should_show_error_details(mocker=self.mocker, should_show=False)
         wrong_value_1 = str(uuid4())
         _ = self.mocker.patch(f"{__name__}.{_run_other_logic.__name__}", autospec=True, return_value=wrong_value_1)
 
@@ -135,7 +133,7 @@ class TestSingleError(Helper):
     def test_Given_resolver_returns_null_value_for_second_query_not_matching_schema_and_error_details_should_not_be_displayed__Then_uuid_in_log_and_response__and_details_in_response_and_log_because_this_isnt_sensitive(
         self,
     ):
-        self._mock_should_show_error_details(should_show=False)
+        self._mock_should_show_error_details(mocker=self.mocker, should_show=False)
         wrong_value_1 = None
         _ = self.mocker.patch(f"{__name__}.{_run_other_logic.__name__}", autospec=True, return_value=wrong_value_1)
 
@@ -164,7 +162,7 @@ class TestSingleError(Helper):
     def test_Given_invalid_input_for_second_query_and_error_details_should_not_be_displayed__Then_uuid_in_log_and_response__and_details_in_response_and_log_because_this_isnt_sensitive(
         self,
     ):
-        self._mock_should_show_error_details(should_show=False)
+        self._mock_should_show_error_details(mocker=self.mocker, should_show=False)
         wrong_value_2 = random.choice([True, False])
 
         result = schema.execute_sync(
@@ -202,7 +200,7 @@ class TestExceptionHandlersForMultipleErrors(Helper):
     def test_Given_invalid_input_for_both_queries_and_error_details_should_not_be_displayed__Then_uuid_in_log_and_response__and_details_in_response_and_log_because_this_isnt_sensitive(
         self,
     ):
-        self._mock_should_show_error_details(should_show=False)
+        self._mock_should_show_error_details(mocker=self.mocker, should_show=False)
         wrong_value_1 = random.randint(1, 100)
         wrong_value_2 = random.choice([True, False])
         expected_num_errors = 2
