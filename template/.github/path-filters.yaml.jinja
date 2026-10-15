@@ -14,3 +14,18 @@ code:
   - '!*.code-workspace'
   - '!.github/ISSUE_TEMPLATE/**'
   - '!LICENSE'
+  # unit-level tests never reach a build artifact; their own classes still run them{% if has_backend %}
+  - '!backend/tests/unit/**'{% endif %}
+  - '!frontend/tests/unit/**'
+  - '!frontend/tests/compiled/**'
+frontend:
+  - 'frontend/**'
+  - 'pnpm-lock.yaml'
+  - 'pnpm-workspace.yaml'{% if has_backend %}
+  - 'backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json'
+backend:
+  - 'backend/**'
+  - 'pytest.ini'{% endif %}{% if install_as_windows_service %}
+installer:
+  - 'installer/**'
+  - '!installer/**/*.md'{% endif %}
