@@ -29,6 +29,13 @@
         DowngradeErrorMessage="A newer version of {% endraw %}{{ human_friendly_app_name }}{% raw %} is already installed."
         Schedule="afterInstallInitialize" />
 
+    <!-- Upgrades must not stop on the "close the application or reboot" prompt. Restart Manager
+         flags the running service's locked exe at InstallValidate, but the service is stopped later
+         by the old product's CA_RemoveService (inside RemoveExistingProducts) before any file is
+         replaced. The legacy files-in-use check lists only windowed processes, so it ignores the
+         session-0 service and the upgrade proceeds without user interaction. -->
+    <Property Id="MSIRESTARTMANAGERCONTROL" Value="Disable" />
+
     <MediaTemplate EmbedCab="yes" />
 
     <Icon Id="{% endraw %}{{ product_id }}{% raw %}Icon" SourceFile="$(BrandingDir)\favicon.ico" />
@@ -56,7 +63,12 @@
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Open {% endraw %}{{ human_friendly_app_name }}{% raw %}" />
     <WixVariable Id="WixUILicenseRtf" Value="$(LicenseRtf)" />
-
+{% endraw %}{% if installer_banner_bmp or installer_dialog_bmp %}{% raw %}
+    <!-- Replace WiX's default red-disc artwork. Paths are relative to the repo root (this file
+         lives in installer\wix\). Banner is 493x58; dialog is 493x312 with branding in the left 164px. -->
+{% endraw %}{% endif %}{% if installer_banner_bmp %}{% raw %}    <WixVariable Id="WixUIBannerBmp" Value="$(sys.SOURCEFILEDIR)..\..\{% endraw %}{{ installer_banner_bmp | replace('/', '\\') }}{% raw %}" />
+{% endraw %}{% endif %}{% if installer_dialog_bmp %}{% raw %}    <WixVariable Id="WixUIDialogBmp" Value="$(sys.SOURCEFILEDIR)..\..\{% endraw %}{{ installer_dialog_bmp | replace('/', '\\') }}{% raw %}" />
+{% endraw %}{% endif %}{% raw %}
     <Feature Id="{% endraw %}{{ product_id }}{% raw %}" Title="{% endraw %}{{ human_friendly_app_name }}{% raw %}" Level="1">
       <ComponentGroupRef Id="StagedFiles" />
       <ComponentGroupRef Id="DataFolder" />
