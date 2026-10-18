@@ -549,14 +549,7 @@ jobs:
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
           name: ${{ needs.build-backend.outputs.artifact-name }}
-          path: deployment-package-folder{% endraw %}{% if auth_to_ecr_for_backend_e2e_in_ci %}{% raw %}
-
-      - name: ECR Auth to pull images for E2E tests
-        if: env.RUN_JOB == 'true'
-        uses: ./.github/actions/ecr-auth
-        with:
-          aws-region: {% endraw %}{{ auth_to_ecr_for_backend_e2e_in_ci_region }}{% raw %}
-          role-arn: {% endraw %}{{ auth_to_ecr_for_backend_e2e_in_ci_role_arn }}{% raw %}{% endraw %}{% endif %}{% raw %}
+          path: deployment-package-folder
 
       - name: Load docker images
         if: env.RUN_JOB == 'true'
@@ -567,7 +560,14 @@ jobs:
 
       - name: Retag loaded backend image to stable local name
         if: env.RUN_JOB == 'true'
-        run: docker tag ${{ needs.build-backend.outputs.full-image-tag }} {% endraw %}{{ backend_image_name }}{% raw %}:local
+        run: docker tag ${{ needs.build-backend.outputs.full-image-tag }} {% endraw %}{{ backend_image_name }}{% raw %}:local{% endraw %}{% if auth_to_ecr_for_backend_e2e_in_ci %}{% raw %}
+
+      - name: ECR Auth to pull images for E2E tests
+        if: env.RUN_JOB == 'true'
+        uses: ./.github/actions/ecr-auth
+        with:
+          aws-region: {% endraw %}{{ auth_to_ecr_for_backend_e2e_in_ci_region }}{% raw %}
+          role-arn: {% endraw %}{{ auth_to_ecr_for_backend_e2e_in_ci_role_arn }}{% raw %}{% endraw %}{% endif %}{% raw %}
 
       - name: E2E test
         if: env.RUN_JOB == 'true'

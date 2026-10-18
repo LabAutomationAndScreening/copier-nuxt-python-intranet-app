@@ -22,7 +22,8 @@ frontend:
   - 'frontend/**'
   - 'pnpm-lock.yaml'
   - 'pnpm-workspace.yaml'{% if has_backend %}
-  - 'backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json'
+  - 'backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json'{% if frontend_uses_graphql %}
+  - 'backend/src/backend_api/graphql/schema.graphql'{% endif %}
 backend:
   - 'backend/**'
   - 'pytest.ini'{% endif %}{% if install_as_windows_service %}
