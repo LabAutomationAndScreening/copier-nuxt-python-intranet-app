@@ -8,10 +8,10 @@ from pathlib import Path
 from typing import override
 
 # pywin32 is win32-only, so the per-import missing-import ignores are required in CI/Linux but appear unnecessary on Windows dev machines.
-import servicemanager  # pyrefly: ignore[missing-import,missing-source,unused-ignore] # pywin32 only installs on Windows; its types-pywin32 stubs type it on every platform
-import win32service  # pyrefly: ignore[missing-import,missing-source,unused-ignore] # pywin32 only installs on Windows; its types-pywin32 stubs type it on every platform
-import win32serviceutil  # pyrefly: ignore[missing-import,missing-source,unused-ignore] # pywin32 only installs on Windows; its types-pywin32 stubs type it on every platform
-import winerror  # pyrefly: ignore[missing-import,missing-source,unused-ignore] # pywin32 only installs on Windows; its types-pywin32 stubs type it on every platform
+import servicemanager  # pyrefly: ignore[missing-source] # pywin32 only installs on Windows; its types-pywin32 stubs type it on every platform
+import win32service  # pyrefly: ignore[missing-source] # pywin32 only installs on Windows; its types-pywin32 stubs type it on every platform
+import win32serviceutil  # pyrefly: ignore[missing-source] # pywin32 only installs on Windows; its types-pywin32 stubs type it on every platform
+import winerror  # pyrefly: ignore[missing-source] # pywin32 only installs on Windows; its types-pywin32 stubs type it on every platform
 
 from .. import app_runner
 from ..jinja_constants import APP_NAME
