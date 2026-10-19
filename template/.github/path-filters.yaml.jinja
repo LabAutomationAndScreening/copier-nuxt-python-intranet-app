@@ -14,7 +14,7 @@ code:
   - '!*.code-workspace'
   - '!.github/ISSUE_TEMPLATE/**'
   - '!LICENSE'
-  # unit-level tests never reach a build artifact; their own classes still run them{% if has_backend %}
+  # these test trees reach no build artifact; the jobs running them gate on their own class and wait on no build{% if has_backend %}
   - '!backend/tests/unit/**'{% endif %}
   - '!frontend/tests/unit/**'
   - '!frontend/tests/compiled/**'

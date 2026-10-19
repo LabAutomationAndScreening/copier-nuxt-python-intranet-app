@@ -359,8 +359,7 @@ jobs:
       RUN_JOB: ${{ fromJSON(needs.changes.outputs.classes).frontend }}
       INSTALL_PLAYWRIGHT_BROWSERS: "1" # createPage() drives a real browser
     needs:
-      - build-frontend{% endraw %}{% if has_backend %}{% raw %}
-      - build-backend{% endraw %}{% endif %}{% raw %}
+      - unit-test-frontend
       - check-skip-duplicate
       - changes
     if: needs.check-skip-duplicate.outputs.should-run == 'true'
