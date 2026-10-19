@@ -163,7 +163,7 @@ jobs:
           retention-days: 5{% endraw %}{% if has_backend %}{% raw %}
 
   unit-test-backend:
-    name: Unit Test Backend${{ fromJSON(needs.changes.outputs.classes).backend != true && ' (skipped, no backend changes)' || '' }}
+    name: Unit Test Backend (${{ matrix.os }})${{ fromJSON(needs.changes.outputs.classes).backend != true && ' (skipped, no backend changes)' || '' }}
     timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     needs:
       - lint
@@ -291,7 +291,7 @@ jobs:
       - build-frontend
       - check-skip-duplicate
       - changes
-    name: Build Backend${{ fromJSON(needs.changes.outputs.classes).code != true && ' (skipped, no code changes)' || '' }}
+    name: Build Backend (${{ matrix.os }})${{ fromJSON(needs.changes.outputs.classes).code != true && ' (skipped, no code changes)' || '' }}
     if: needs.check-skip-duplicate.outputs.should-run == 'true'
     env:
       RUN_JOB: ${{ fromJSON(needs.changes.outputs.classes).code }}
@@ -524,7 +524,7 @@ jobs:
           curl -s --show-error --fail-with-body --retry 10 --retry-delay 2 --retry-connrefused --retry-all-errors http://localhost:{% endraw %}{{ frontend_nodeport_number }}{% raw %}/{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
 
   e2e-test-backend:
-    name: End-to-end Testing of the Backend${{ (fromJSON(needs.changes.outputs.classes).code && fromJSON(needs.changes.outputs.classes).backend) != true && ' (skipped, no backend code changes)' || '' }}
+    name: End-to-end Testing of the Backend (${{ matrix.os }})${{ (fromJSON(needs.changes.outputs.classes).code && fromJSON(needs.changes.outputs.classes).backend) != true && ' (skipped, no backend code changes)' || '' }}
     timeout-minutes: {% endraw %}{{ gha_xlong_timeout_minutes }}{% raw %}
     strategy:
       matrix:
@@ -657,7 +657,7 @@ jobs:
 
 
   e2e-test:
-    name: End-to-end Testing${{ fromJSON(needs.changes.outputs.classes).code != true && ' (skipped, no code changes)' || '' }}
+    name: End-to-end Testing (${{ matrix.os }})${{ fromJSON(needs.changes.outputs.classes).code != true && ' (skipped, no code changes)' || '' }}
     timeout-minutes: {% endraw %}{{ gha_xlong_timeout_minutes }}{% raw %}
     env:
       RUN_JOB: ${{ fromJSON(needs.changes.outputs.classes).code }}
