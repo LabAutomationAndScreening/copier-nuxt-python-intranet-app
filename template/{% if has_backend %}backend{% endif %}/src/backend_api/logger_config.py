@@ -138,7 +138,7 @@ def configure_logging(
                     "filename": log_filename,
                     "formatter": "json",
                     "maxBytes": log_size_max_bytes,
-                    "backupCount": 5,
+                    "backupCount": 9,
                 },
             },
             "loggers": {
