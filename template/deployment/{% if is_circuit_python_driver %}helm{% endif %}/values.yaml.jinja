@@ -31,7 +31,10 @@ persistence:
   # on Windows WSL, the local-path storage class will put files in a path you can access on windows like: \\wsl$\rancher-desktop\var\lib\rancher\k3s\storage\
   backend:
     enabled: true # set this to True for Windows Rancher Desktop deployment, Pulumi will override to False for local deployment
-    size: 150Mi # 5 log files at 25 MB each
+    # 10 log files at 25Mi each (see logger_config.py), plus headroom. local-path ignores this capacity limit
+    # (https://github.com/rancher/local-path-provisioner#compare-to-built-in-local-persistent-volume-feature-in-kubernetes),
+    # so keep it sized to the real log budget for storage classes that do enforce it.
+    size: 300Mi
     accessMode: ReadWriteOnce
     storageClass: local-path
     mountPath: /app/logs
