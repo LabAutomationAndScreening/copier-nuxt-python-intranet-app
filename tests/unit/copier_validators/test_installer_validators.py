@@ -56,3 +56,32 @@ class TestWindowsServiceOrgPrefixValidator:
     def test_rejects_illegal_service_name_characters_and_length(self, value: str) -> None:
         with pytest.raises(ValueError, match="windows_service_org_prefix"):
             validate_installer_answers(windows_service_org_prefix=value)
+
+
+class TestInstallerBitmapValidators:
+    @pytest.mark.parametrize("field", ["installer_banner_bmp", "installer_dialog_bmp"])
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "",  # blank keeps WiX's default artwork
+            "installer/branding/banner.bmp",
+            "assets/Dialog.BMP",
+        ],
+    )
+    def test_accepts_blank_and_repo_relative_bmp_paths(self, field: str, value: str) -> None:
+        validate_installer_answers(**{field: value})
+
+    @pytest.mark.parametrize("field", ["installer_banner_bmp", "installer_dialog_bmp"])
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "installer/branding/logo.png",  # WixUI bitmaps must be .bmp
+            "/abs/banner.bmp",  # must be relative to the repo root
+            "C:/art/banner.bmp",  # drive-letter absolute path
+            'a"b.bmp',  # closes the double-quoted XML attribute
+            "a&b.bmp",  # invalid raw XML entity
+        ],
+    )
+    def test_rejects_non_bmp_absolute_and_xml_unsafe_paths(self, field: str, value: str) -> None:
+        with pytest.raises(ValueError, match=field):
+            validate_installer_answers(**{field: value})
