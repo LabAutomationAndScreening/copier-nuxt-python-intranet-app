@@ -31,8 +31,9 @@ RUN pnpm list && pnpm --filter ./frontend generate
 # ------------ Stage 2: Production ------------
 FROM nginx:{% endraw %}{{ nginx_image_version }}{% raw %}-alpine{% endraw %}{{ alpine_image_version }}{% raw %}-slim AS production
 
-# bring in envsubst (part of gettext) (no particular reason for this version, just pinning for best practice)
-RUN apk add --no-cache gettext~=0.24.1
+# bring in envsubst (part of gettext) (no particular reason for this version, just pinning for best practice), and take
+# the newest trust store at build time instead of the one frozen into the base image
+RUN apk add --no-cache gettext~=0.24.1 "ca-certificates>=20261020-r0"
 COPY default.conf.template /etc/nginx/conf.d/default.conf.template
 COPY --from=builder /app/frontend/.output/public /usr/share/nginx/html
 

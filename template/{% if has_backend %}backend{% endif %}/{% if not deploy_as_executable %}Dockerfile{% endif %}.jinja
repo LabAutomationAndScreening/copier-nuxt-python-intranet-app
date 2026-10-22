@@ -33,6 +33,15 @@ FROM python:{% endraw %}{{ python_version }}{% raw %}-slim-{% endraw %}{{ debian
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
+# Take the newest trust store at build time instead of the one frozen into the base image, so a rebuild picks up CA
+# changes published after the image was. Unpinned on purpose; the floor check fails the build if the Debian security
+# repo doesn't serve at least that release.
+# hadolint ignore=DL3008
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' ca-certificates)" ge 20250419+deb13u1 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder /usr/local/lib/python{% endraw %}{{ python_version.split('.')[:2]|join('.') }}{% raw %}/site-packages /usr/local/lib/python{% endraw %}{{ python_version.split('.')[:2]|join('.') }}{% raw %}/site-packages
 
 WORKDIR /app
