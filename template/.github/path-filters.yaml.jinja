@@ -14,6 +14,15 @@ code:
   - '!*.code-workspace'
   - '!.github/ISSUE_TEMPLATE/**'
   - '!LICENSE'
+  # only the devcontainer build reads these; CI reads, or may come to read, the rest of .devcontainer/
+  - '!.devcontainer/devcontainer.json'
+  - '!.devcontainer/Dockerfile'
+  - '!.devcontainer/docker-compose.yml'
+  - '!.devcontainer/initialize-command.sh'
+  - '!.devcontainer/on-create-command.sh'
+  - '!.devcontainer/on-create-command-boilerplate.sh'
+  - '!.devcontainer/post-start-command.sh'
+  - '!.devcontainer/windows-host-helper.sh'
   # these test trees reach no build artifact; the jobs running them gate on their own class and wait on no build{% if has_backend %}
   - '!backend/tests/unit/**'{% endif %}
   - '!frontend/tests/unit/**'
