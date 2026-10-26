@@ -36,9 +36,35 @@
 
     <!-- Service runtime + account selection. The UI sets these interactively;
          a silent install (msiexec /qn) sets them on the command line. -->
-    <Property Id="PORT" Value="{% endraw %}{{ backend_deployed_port_number }}{% raw %}" Secure="yes" />
-    <Property Id="SERVICE_ACCOUNT" Value="LocalSystem" Secure="yes" />
+    <!-- PORT carries across upgrades. A major upgrade uninstalls the old product before laying down
+         the new one, so without this the service would come back on the default port rather than
+         the one the previous install used. The search writes REMEMBERED_PORT rather than PORT
+         directly, because a search bound to PORT would also overwrite a PORT= given on the command
+         line. Precedence therefore runs command line, then remembered value, then default. -->
+    <Property Id="PORT" Secure="yes" />
+    <Property Id="REMEMBERED_PORT" Secure="yes">
+      <RegistrySearch Id="RememberedPort" Root="HKLM" Key="Software\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}" Name="Port" Type="raw" />
+    </Property>
+    <SetProperty Id="PORT" Action="SetPortFromRemembered" Value="[REMEMBERED_PORT]" After="AppSearch" Sequence="both" Condition="REMEMBERED_PORT AND NOT PORT" />
+    <SetProperty Id="PORT" Action="SetPortDefault" Value="{% endraw %}{{ backend_deployed_port_number }}{% raw %}" After="SetPortFromRemembered" Sequence="both" Condition="NOT PORT" />
+    <!-- The account choice is remembered the same way, so an upgrade shows the operator the account
+         the service is actually running under instead of silently defaulting back to LocalSystem.
+         SERVICE_PASSWORD is deliberately never persisted: it would sit in the registry in clear text
+         for any local administrator to read. The operator retypes it on an upgrade, and the account
+         dialog keeps Next disabled until they do. -->
+    <Property Id="SERVICE_ACCOUNT" Secure="yes" />
+    <Property Id="REMEMBERED_SERVICE_ACCOUNT" Secure="yes">
+      <RegistrySearch Id="RememberedServiceAccount" Root="HKLM" Key="Software\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}" Name="ServiceAccount" Type="raw" />
+    </Property>
+    <SetProperty Id="SERVICE_ACCOUNT" Action="SetServiceAccountFromRemembered" Value="[REMEMBERED_SERVICE_ACCOUNT]" After="AppSearch" Sequence="both" Condition="REMEMBERED_SERVICE_ACCOUNT AND NOT SERVICE_ACCOUNT" />
+    <SetProperty Id="SERVICE_ACCOUNT" Action="SetServiceAccountDefault" Value="LocalSystem" After="SetServiceAccountFromRemembered" Sequence="both" Condition="NOT SERVICE_ACCOUNT" />
+
     <Property Id="SERVICE_USER" Secure="yes" />
+    <Property Id="REMEMBERED_SERVICE_USER" Secure="yes">
+      <RegistrySearch Id="RememberedServiceUser" Root="HKLM" Key="Software\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}" Name="ServiceUser" Type="raw" />
+    </Property>
+    <SetProperty Id="SERVICE_USER" Action="SetServiceUserFromRemembered" Value="[REMEMBERED_SERVICE_USER]" After="AppSearch" Sequence="both" Condition="REMEMBERED_SERVICE_USER AND NOT SERVICE_USER" />
+
     <Property Id="SERVICE_PASSWORD" Secure="yes" Hidden="yes" />
 
     <!-- Keep the service password out of the verbose MSI log (/l*v). CA_InstallService is the
@@ -91,6 +117,10 @@
           <util:PermissionEx User="Administrators" GenericAll="yes" />
         </CreateFolder>
         <RegistryValue Root="HKLM" Key="Software\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}" Name="DataStamped" Type="integer" Value="1" KeyPath="yes" />
+        <!-- Read back by the RememberedPort and RememberedService* searches on the next install. -->
+        <RegistryValue Root="HKLM" Key="Software\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}" Name="Port" Type="string" Value="[PORT]" />
+        <RegistryValue Root="HKLM" Key="Software\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}" Name="ServiceAccount" Type="string" Value="[SERVICE_ACCOUNT]" />
+        <RegistryValue Root="HKLM" Key="Software\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}" Name="ServiceUser" Type="string" Value="[SERVICE_USER]" />
       </Component>
     </ComponentGroup>
 
@@ -164,12 +194,12 @@
         <Control Id="UserEdit" Type="Edit" X="120" Y="103" Width="210" Height="16" Property="SERVICE_USER" />
         <Control Id="PwdLabel" Type="Text" X="35" Y="129" Width="80" Height="15" Text="Password:" />
         <Control Id="PwdEdit" Type="Edit" X="120" Y="127" Width="210" Height="16" Property="SERVICE_PASSWORD" Password="yes" />
-        <Control Id="Hint" Type="Text" X="35" Y="152" Width="315" Height="40" Transparent="yes" NoPrefix="yes" Text="Enter a local account as .\name or DOMAIN\name. It is granted 'Log on as a service'." />
+        <Control Id="Hint" Type="Text" X="35" Y="152" Width="315" Height="40" Transparent="yes" NoPrefix="yes" Text="Enter a local account as .\name or DOMAIN\name. It is granted 'Log on as a service'. A group managed service account (the name ends with $) needs no password." />
 
         <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="!(loc.WixUIBack)" />
         <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="!(loc.WixUINext)"
-                 DisableCondition="SERVICE_ACCOUNT = &quot;custom&quot; AND (SERVICE_USER = &quot;&quot; OR SERVICE_PASSWORD = &quot;&quot;)"
-                 EnableCondition="SERVICE_ACCOUNT &lt;&gt; &quot;custom&quot; OR (SERVICE_USER &lt;&gt; &quot;&quot; AND SERVICE_PASSWORD &lt;&gt; &quot;&quot;)" />
+                 DisableCondition="SERVICE_ACCOUNT = &quot;custom&quot; AND (SERVICE_USER = &quot;&quot; OR (SERVICE_PASSWORD = &quot;&quot; AND NOT SERVICE_USER &gt;&gt; &quot;$&quot;))"
+                 EnableCondition="SERVICE_ACCOUNT &lt;&gt; &quot;custom&quot; OR (SERVICE_USER &lt;&gt; &quot;&quot; AND (SERVICE_PASSWORD &lt;&gt; &quot;&quot; OR SERVICE_USER &gt;&gt; &quot;$&quot;))" />
         <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="!(loc.WixUICancel)">
           <Publish Event="SpawnDialog" Value="CancelDlg" />
         </Control>

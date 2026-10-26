@@ -45,7 +45,11 @@ if ($ServiceAccount -ieq 'custom') {
     if ([string]::IsNullOrWhiteSpace($User)) {
         throw "A custom service account was selected but no user name was supplied."
     }
-    if ([string]::IsNullOrWhiteSpace($Password)) {
+    # A trailing $ tells SCM the account is AD-managed and to fetch the rotating password itself, so
+    # only those may arrive without one; a supplied password still wins, since $ is legal in an
+    # ordinary name. https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/group-managed-service-accounts/group-managed-service-accounts/manage-group-managed-service-accounts
+    $isManagedAccount = $User.EndsWith('$')
+    if (-not $isManagedAccount -and [string]::IsNullOrWhiteSpace($Password)) {
         throw "A custom service account was selected but no password was supplied."
     }
     $account = if ($User.Contains('\')) { $User } else { ".\$User" }
@@ -67,7 +71,9 @@ if ($ServiceAccount -ieq 'custom') {
     # in-memory HandleCommandLine arg list. The var name must match SERVICE_INSTALL_PASSWORD_ENV
     # in backend_api.entrypoint.service_install_password.
     $installArgs += @('--username', $account)
-    $env:WINDOWS_SERVICE_INSTALL_PASSWORD = $Password
+    if (-not [string]::IsNullOrWhiteSpace($Password)) {
+        $env:WINDOWS_SERVICE_INSTALL_PASSWORD = $Password
+    }
 }
 
 $installArgs += @('--startup', 'auto', 'install', '--', '--port', $Port, '--log-folder', $LogDir)

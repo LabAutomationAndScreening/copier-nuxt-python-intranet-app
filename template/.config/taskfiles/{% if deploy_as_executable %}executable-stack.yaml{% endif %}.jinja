@@ -34,7 +34,9 @@ tasks:
     cmds:
       - task: bundle-executable
         vars:
-          PYINSTALLER_ARGS: --log-level=DEBUG
+          # --noconfirm because this runs against a dist directory an earlier build may already
+          # have filled, and the prompt PyInstaller raises then has no terminal to answer it.
+          PYINSTALLER_ARGS: --noconfirm --log-level=DEBUG
 
   run-stack:
     desc: Build the full stack and run it
