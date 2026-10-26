@@ -103,8 +103,9 @@ place and keeps the data under C:\ProgramData\{% endraw %}{{ company_id }}{% raw
 An interactive upgrade shows a "Files in Use" dialog listing the running
 {% endraw %}{{ human_friendly_app_name }}{% raw %} service. Leave "Close the applications and attempt to restart them"
 selected and click OK: setup stops the service, replaces the files and starts the new
-version. No reboot is needed. To skip the dialog, stop the service first from an
-elevated prompt:
+version. When the service is the only thing holding the files, no reboot is needed; if
+another listed application can't be closed, setup asks for a reboot to finish. To skip
+the dialog, stop the service first from an elevated prompt:
 
    net stop {% endraw %}{{ service_name }}{% raw %}
 
