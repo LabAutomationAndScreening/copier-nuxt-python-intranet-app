@@ -122,36 +122,22 @@ jobs:
           if-no-files-found: error
           retention-days: ${{ inputs.artifact-retention-days }}
 
-      - name: Download the bumped bundle for the upgrade test
-        # Only CI builds the upgrade bundle, and it keeps it for a day. A manual dispatch resolves to
-        # an older CI run whose bundle has expired, so the upgrade leg is skipped there.
-        if: ${{ inputs.artifact-run-id == '' && github.event_name != 'workflow_dispatch' }}
-        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
-        with:
-          name: built-{% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}-upgrade
-          path: upgrade-bundle/{% endraw %}{{ repo_name }}{% raw %}
-          run-id: ${{ steps.resolve-run.outputs.run-id }}
-          github-token: ${{ github.token }}
-
       - name: Build the upgrade installer
-        if: ${{ inputs.artifact-run-id == '' && github.event_name != 'workflow_dispatch' }}
+        if: ${{ inputs.artifact-run-id == '' }}
         shell: pwsh
-        # package.ps1 harvests whatever sits in the staged bundle directory, so the bumped
-        # bundle replaces the released one before this second build.
-        run: |
-          Remove-Item -Recurse -Force backend/dist/{% endraw %}{{ repo_name }}{% raw %}
-          Move-Item upgrade-bundle/{% endraw %}{{ repo_name }}{% raw %} backend/dist/{% endraw %}{{ repo_name }}{% raw %}
-          ./installer/package.ps1 -Version 9.9.9
+        # Every wix build generates a fresh ProductCode, so a second build of the same bundle at the
+        # same version is a distinct product that MajorUpgrade (AllowSameVersionUpgrades) replaces.
+        # It overwrites the first MSI in dist/, which has already been uploaded above.
+        run: ./installer/package.ps1 -SkipStage
 
       - name: Upload the upgrade installer
-        if: ${{ inputs.artifact-run-id == '' && github.event_name != 'workflow_dispatch' }}
+        if: ${{ inputs.artifact-run-id == '' }}
         uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
         with:
           name: {% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}-installer-upgrade
-          path: installer/dist/{% endraw %}{{ product_id }}{% raw %}-9.9.9.msi
+          path: installer/dist/{% endraw %}{{ product_id }}{% raw %}-*.msi
           if-no-files-found: error
-          # Only upgrade-test in this run reads it. Installed on a real machine, 9.9.9 would make
-          # every real release look like a downgrade, so it should not stay around to be downloaded.
+          # Only the upgrade tests in this run read it.
           retention-days: 1
 
   install-test:
@@ -276,7 +262,7 @@ jobs:
   upgrade-test:
     name: In-place upgrade
     needs: build-installer
-    if: ${{ inputs.artifact-run-id == '' && github.event_name != 'workflow_dispatch' }}
+    if: ${{ inputs.artifact-run-id == '' }}
     runs-on: {% endraw %}{{ gha_windows_runner }}{% raw %}
     timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     steps:
@@ -303,11 +289,25 @@ jobs:
           )
           if ($proc.ExitCode -ne 0) { throw "msiexec exited $($proc.ExitCode)" }
 
-      - name: Record what v1 reports
+      - name: Record v1's product code and check it serves
         shell: pwsh
+        # Both MSIs carry the same version, so the product code is what tells v1 and v2 apart.
         # Start-Service returns as soon as SCM reports RUNNING, which is before uvicorn has bound the
         # socket, so poll instead of firing a single request into a connection refusal.
         run: |
+          # Reading the uninstall keys rather than Win32_Product, which reconfigures every
+          # installed MSI just to enumerate them.
+          $uninstallKeys = @(
+            'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*'
+            'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
+          )
+          $installed = @(
+            Get-ItemProperty $uninstallKeys -ErrorAction SilentlyContinue |
+              Where-Object { $_.DisplayName -eq '{% endraw %}{{ human_friendly_app_name | replace("'", "''") }}{% raw %}' }
+          )
+          if ($installed.Count -ne 1) { throw "expected 1 installed product, found $($installed.Count)" }
+          "V1_PRODUCT_CODE=$($installed[0].PSChildName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
           $deadline = (Get-Date).AddSeconds(120)
           while ($true) {
             try { $healthcheck = Invoke-RestMethod -Uri 'http://127.0.0.1:8123/api/healthcheck' -TimeoutSec 10; break }
@@ -316,8 +316,7 @@ jobs:
               Start-Sleep -Seconds 2
             }
           }
-          if ($healthcheck.version -eq '9.9.9') { throw 'v1 already reports the upgrade version' }
-          Write-Host "v1 reports $($healthcheck.version)"
+          Write-Host "v1 is $($installed[0].PSChildName) and reports $($healthcheck.version)"
 
       - name: Install v2 over the running v1
         shell: pwsh
@@ -342,17 +341,16 @@ jobs:
               Where-Object { $_.DisplayName -eq '{% endraw %}{{ human_friendly_app_name | replace("'", "''") }}{% raw %}' }
           )
           if ($installed.Count -ne 1) { throw "expected 1 installed product, found $($installed.Count)" }
-          if ($installed[0].DisplayVersion -ne '9.9.9') { throw "ARP reports $($installed[0].DisplayVersion)" }
+          if ($installed[0].PSChildName -eq $env:V1_PRODUCT_CODE) { throw "v1 ($env:V1_PRODUCT_CODE) is still the installed product" }
 
           $deadline = (Get-Date).AddSeconds(120)
           while ($true) {
-            try { $healthcheck = Invoke-RestMethod -Uri 'http://127.0.0.1:8123/api/healthcheck' -TimeoutSec 10; break }
+            try { Invoke-RestMethod -Uri 'http://127.0.0.1:8123/api/healthcheck' -TimeoutSec 10 | Out-Null; break }
             catch {
               if ((Get-Date) -gt $deadline) { throw }
               Start-Sleep -Seconds 2
             }
           }
-          if ($healthcheck.version -ne '9.9.9') { throw "healthcheck reports $($healthcheck.version)" }
 
       - name: Upload logs
         if: always()
@@ -368,7 +366,7 @@ jobs:
   upgrade-test-custom-account:
     name: In-place upgrade under a custom service account
     needs: build-installer
-    if: ${{ inputs.artifact-run-id == '' && github.event_name != 'workflow_dispatch' }}
+    if: ${{ inputs.artifact-run-id == '' }}
     runs-on: {% endraw %}{{ gha_windows_runner }}{% raw %}
     timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     steps:
@@ -444,13 +442,12 @@ jobs:
 
           $deadline = (Get-Date).AddSeconds(120)
           while ($true) {
-            try { $healthcheck = Invoke-RestMethod -Uri 'http://127.0.0.1:8123/api/healthcheck' -TimeoutSec 10; break }
+            try { Invoke-RestMethod -Uri 'http://127.0.0.1:8123/api/healthcheck' -TimeoutSec 10 | Out-Null; break }
             catch {
               if ((Get-Date) -gt $deadline) { throw }
               Start-Sleep -Seconds 2
             }
           }
-          if ($healthcheck.version -ne '9.9.9') { throw "healthcheck reports $($healthcheck.version)" }
 
       - name: Redact the password from the logs before they are uploaded
         if: always()
