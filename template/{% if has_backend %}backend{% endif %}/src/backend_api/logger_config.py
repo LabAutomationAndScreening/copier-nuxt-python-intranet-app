@@ -2,12 +2,17 @@ import socket
 from logging.config import dictConfig
 from pathlib import Path
 
+import anyio
+import fastapi
+import starlette
 import structlog
+import uvicorn
 
 from .jinja_constants import APP_NAME
 
 SYSTEM_NAME = APP_NAME
 SUBSYSTEM_NAME = "backend"
+_FRAMEWORK_PACKAGES = (anyio, fastapi, starlette, uvicorn)
 
 
 def configure_logging(
@@ -83,6 +88,11 @@ def configure_logging(
             structlog.tracebacks.ExceptionDictTransformer(
                 locals_max_length=50,  # increase from default 10
                 locals_max_string=500,  # Increase from default 80
+                # Framework frames' locals (ASGI scope, handler tables) made each logged request exception ~40KB, so a
+                # burst of errors rotated away hours of history. App frames keep their locals. The bare package names
+                # cover frozen executables, whose relative co_filename structlog resolves against the cwd rather than
+                # the module's real location.
+                suppress=[*_FRAMEWORK_PACKAGES, *(package.__name__ for package in _FRAMEWORK_PACKAGES)],
             )
         ),
         structlog.processors.EventRenamer(to="message"),
@@ -128,7 +138,7 @@ def configure_logging(
                     "filename": log_filename,
                     "formatter": "json",
                     "maxBytes": log_size_max_bytes,
-                    "backupCount": 5,
+                    "backupCount": 9,
                 },
             },
             "loggers": {
