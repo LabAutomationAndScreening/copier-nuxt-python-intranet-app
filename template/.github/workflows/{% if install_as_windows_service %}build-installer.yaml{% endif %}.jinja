@@ -150,7 +150,9 @@ jobs:
           name: {% endraw %}{{ repo_name }}{% raw %}-{% endraw %}{{ gha_windows_runner }}{% raw %}-installer-upgrade
           path: installer/dist/{% endraw %}{{ product_id }}{% raw %}-9.9.9.msi
           if-no-files-found: error
-          retention-days: ${{ inputs.artifact-retention-days }}
+          # Only upgrade-test in this run reads it. Installed on a real machine, 9.9.9 would make
+          # every real release look like a downgrade, so it should not stay around to be downloaded.
+          retention-days: 1
 
   install-test:
     name: Install and uninstall
