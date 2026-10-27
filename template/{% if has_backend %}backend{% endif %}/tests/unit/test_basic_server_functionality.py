@@ -93,7 +93,7 @@ def test_When_static_file_outside_api_requested__Then_served():
     response = client.get("/favicon.ico")
 
     assert response.status_code == codes.OK
-    assert response.headers["content-type"] == "image/vnd.microsoft.icon"
+    assert response.content == (app_def.STATIC_DIR / "favicon.ico").read_bytes()
 
 
 def test_openapi_schema(snapshot_json: SnapshotAssertion, mocker: MockerFixture):
