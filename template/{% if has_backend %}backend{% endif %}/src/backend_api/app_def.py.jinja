@@ -14,7 +14,10 @@ from fastapi import Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi_offline import FastAPIOffline
-from pydantic import Field{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
+from pydantic import Field
+from starlette.routing import Match
+from starlette.routing import Mount
+from starlette.types import Scope{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
 from zeroconf.asyncio import AsyncZeroconf{% endraw %}{% endif %}{% raw %}
 
 from .camel_case_model import CamelCaseModel{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
@@ -140,6 +143,20 @@ class ShutdownResponse(CamelCaseModel):
     )
 
 
+class RestartResponse(CamelCaseModel):
+    """Acknowledgement of a server restart request.
+
+    Returned immediately when a restart is requested; the server process exits with a non-zero code shortly
+    after this response is sent, and the supervising platform starts it again.
+    """
+
+    message: str = Field(
+        default="Restart request received. Server will restart shortly.",
+        description="Message indicating the restart request was received",
+        examples=["Restart request received. Server will restart shortly."],
+    )
+
+
 class NoCacheStaticFiles(StaticFiles):
     """Set cache control headers to prevent caching."""
 
@@ -156,6 +173,20 @@ class NoCacheStaticFiles(StaticFiles):
         return response
 
 
+class FrontendMount(Mount):
+    """Serve the frontend everywhere except the /api/ namespace.
+
+    A catch-all mount at "/" fully matches every path, which stops the router from falling back to a partial
+    (path-only) match. Excluding /api/ lets requests with the wrong method on an API route receive a 405.
+    """
+
+    @override
+    def matches(self, scope: Scope) -> tuple[Match, Scope]:
+        if scope["path"].startswith("/api/"):
+            return Match.NONE, {}
+        return super().matches(scope)
+
+
 @app.get("/api/healthcheck", summary="Check API health", tags=["system"])
 def healthcheck(
     query: Annotated[HealthcheckQuery, Query()],
@@ -163,7 +194,7 @@ def healthcheck(
     return HealthcheckResponse(version=get_version(prepend_v=query.prepend_v))
 
 
-@app.get("/api/shutdown", summary="Shut down the server", tags=["system"])
+@app.post("/api/shutdown", summary="Shut down the server", tags=["system"])
 def shutdown() -> ShutdownResponse:
     logger.info("Server shutdown request received")
 
@@ -176,6 +207,19 @@ def shutdown() -> ShutdownResponse:
 
     threading.Thread(target=do_shutdown, name="execute_shutdown").start()
     return ShutdownResponse()
+
+
+@app.post("/api/restart", summary="Restart the server", tags=["system"])
+def restart() -> RestartResponse:
+    logger.info("Server restart request received")
+
+    def do_restart():
+        time.sleep(0.1)  # Give time for the request to return a success response
+        logger.info("Server is exiting so it can be restarted.")
+        os._exit(1)  # non-zero so the supervising platform treats the exit as a failure and restarts the process
+
+    threading.Thread(target=do_restart, name="execute_restart").start()
+    return RestartResponse()
 
 
 try:
@@ -192,8 +236,8 @@ try:
     app.include_router(driver_router, prefix="/api/driver")
     app.include_router(bridges_router, prefix="/api/bridges", tags=["debug"])
     app.include_router(mdns_router, prefix="/api", tags=["mDNS"]){% endraw %}{% endif %}{% raw %}
-    app.mount(
-        "/", NoCacheStaticFiles(directory=STATIC_DIR, html=True), name="static"
+    app.router.routes.append(
+        FrontendMount("/", app=NoCacheStaticFiles(directory=STATIC_DIR, html=True), name="static")
     )  # this needs to go after any defined routes so that the routes take precedence
     register_exception_handlers(app)
 except (  # pragma: no cover # This is just logging unexpected errors, and it's very challenging to explicitly unit test

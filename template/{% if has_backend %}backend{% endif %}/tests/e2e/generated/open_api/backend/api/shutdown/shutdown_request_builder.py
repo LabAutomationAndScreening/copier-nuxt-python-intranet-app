@@ -30,13 +30,13 @@ class ShutdownRequestBuilder(BaseRequestBuilder):
         """
         super().__init__(request_adapter, "{+baseurl}/api/shutdown", path_parameters)
     
-    async def get(self,request_configuration: Optional[RequestConfiguration[QueryParameters]] = None) -> Optional[ShutdownResponse]:
+    async def post(self,request_configuration: Optional[RequestConfiguration[QueryParameters]] = None) -> Optional[ShutdownResponse]:
         """
         Shut down the server
         param request_configuration: Configuration for the request such as headers, query parameters, and middleware options.
         Returns: Optional[ShutdownResponse]
         """
-        request_info = self.to_get_request_information(
+        request_info = self.to_post_request_information(
             request_configuration
         )
         from ...models.problem_details import ProblemDetails
@@ -51,13 +51,13 @@ class ShutdownRequestBuilder(BaseRequestBuilder):
 
         return await self.request_adapter.send_async(request_info, ShutdownResponse, error_mapping)
     
-    def to_get_request_information(self,request_configuration: Optional[RequestConfiguration[QueryParameters]] = None) -> RequestInformation:
+    def to_post_request_information(self,request_configuration: Optional[RequestConfiguration[QueryParameters]] = None) -> RequestInformation:
         """
         Shut down the server
         param request_configuration: Configuration for the request such as headers, query parameters, and middleware options.
         Returns: RequestInformation
         """
-        request_info = RequestInformation(Method.GET, self.url_template, self.path_parameters)
+        request_info = RequestInformation(Method.POST, self.url_template, self.path_parameters)
         request_info.configure(request_configuration)
         request_info.headers.try_add("Accept", "application/json")
         return request_info
@@ -73,7 +73,7 @@ class ShutdownRequestBuilder(BaseRequestBuilder):
         return ShutdownRequestBuilder(self.request_adapter, raw_url)
     
     @dataclass
-    class ShutdownRequestBuilderGetRequestConfiguration(RequestConfiguration[QueryParameters]):
+    class ShutdownRequestBuilderPostRequestConfiguration(RequestConfiguration[QueryParameters]):
         """
         Configuration for the request such as headers, query parameters, and middleware options.
         """

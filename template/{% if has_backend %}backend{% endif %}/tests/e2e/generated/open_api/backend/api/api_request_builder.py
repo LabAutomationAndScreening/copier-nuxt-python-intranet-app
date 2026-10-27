@@ -7,6 +7,7 @@ from typing import Any, Optional, TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from .healthcheck.healthcheck_request_builder import HealthcheckRequestBuilder
+    from .restart.restart_request_builder import RestartRequestBuilder
     from .shutdown.shutdown_request_builder import ShutdownRequestBuilder
 
 class ApiRequestBuilder(BaseRequestBuilder):
@@ -30,6 +31,15 @@ class ApiRequestBuilder(BaseRequestBuilder):
         from .healthcheck.healthcheck_request_builder import HealthcheckRequestBuilder
 
         return HealthcheckRequestBuilder(self.request_adapter, self.path_parameters)
+    
+    @property
+    def restart(self) -> RestartRequestBuilder:
+        """
+        The restart property
+        """
+        from .restart.restart_request_builder import RestartRequestBuilder
+
+        return RestartRequestBuilder(self.request_adapter, self.path_parameters)
     
     @property
     def shutdown(self) -> ShutdownRequestBuilder:

@@ -1,12 +1,5 @@
 {% raw %}# Ignored vacuum findings, with justification.
 #
-# owasp-define-error-validation requires every operation to document a 400/422/4XX validation-error
-# response. These five endpoints take no path/query/body parameters, so there is no honest client-error
-# to document. The rule stays enabled so it enforces error documentation on all *future* endpoints; only
-# these input-less operations are exempted.
-owasp-define-error-validation:
-  - "$.paths['/api/shutdown'].get.responses"
-
 {% endraw %}{% if is_circuit_python_driver %}{% raw %}# A generated driver only ever manages a single physical device connection at a time, so its
 # resource paths are intentionally singular ("driver", not "drivers") rather than REST-collection plural.
 resources-plural:

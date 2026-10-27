@@ -287,7 +287,7 @@ def start_exe(*, port: int, env: dict[str, str] | None = None) -> subprocess.Pop
 def stop_exe(*, process: subprocess.Popen[bytes], port: int):
     shutdown_url = f"http://localhost:{port}/api/shutdown"
     try:
-        response = httpx.get(shutdown_url, timeout=5.0)
+        response = httpx.post(shutdown_url, timeout=5.0)
         if response.is_success:
             logger.info("Shutdown request sent successfully.")
         else:

@@ -17,6 +17,7 @@ async function stopBuiltBackend(): Promise<void> {
   console.log("Stopping application...");
   try {
     const res = await fetch(`${backendBaseUrl()}/api/shutdown`, {
+      method: "POST",
       signal: AbortSignal.timeout(10000), // 10 second timeout
     });
     if (!res.ok) {

@@ -72,12 +72,12 @@
       }
     },
     "/api/shutdown": {
-      "get": {
+      "post": {
         "tags": [
           "system"
         ],
         "summary": "Shut down the server",
-        "operationId": "shutdown_api_shutdown_get",
+        "operationId": "shutdown_api_shutdown_post",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -85,6 +85,47 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ShutdownResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/restart": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Restart the server",
+        "operationId": "restart_api_restart_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestartResponse"
                 }
               }
             }
@@ -237,6 +278,22 @@
         "type": "object",
         "title": "HealthcheckResponse",
         "description": "Result of an API health check.\n\nReports the running application version so a caller can confirm the server is up and identify which\nbuild is currently deployed."
+      },
+      "RestartResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Message indicating the restart request was received",
+            "default": "Restart request received. Server will restart shortly.",
+            "examples": [
+              "Restart request received. Server will restart shortly."
+            ]
+          }
+        },
+        "type": "object",
+        "title": "RestartResponse",
+        "description": "Acknowledgement of a server restart request.\n\nReturned immediately when a restart is requested; the server process exits with a non-zero code shortly\nafter this response is sent, and the supervising platform starts it again."
       },
       "ShutdownResponse": {
         "properties": {

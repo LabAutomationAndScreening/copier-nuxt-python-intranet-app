@@ -1,4 +1,5 @@
 import time
+from unittest.mock import MagicMock
 
 from backend_api import app_def
 from backend_api import fast_api_exception_handlers
@@ -45,19 +46,54 @@ def test_When_swagger_route_called__Then_rendered():
     assert "Swagger UI" in response.text
 
 
+def _wait_for_exit_thread(mocked_os_exit: MagicMock) -> None:
+    for _ in range(1000):
+        if mocked_os_exit.call_count > 0:
+            return
+        time.sleep(0.001)
+
+
 def test_When_shutdown_route_called__Then_system_exit(mocker: MockerFixture):
+    client = TestClient(app)
+    mocked_os_exit = mocker.patch.object(app_def.os, "_exit", autospec=True)
+
+    response = client.post("/api/shutdown")
+
+    assert response.status_code == codes.OK
+
+    _wait_for_exit_thread(mocked_os_exit)
+    mocked_os_exit.assert_called_once_with(0)
+
+
+def test_When_restart_route_called__Then_process_exits_with_failure_code(mocker: MockerFixture):
+    client = TestClient(app)
+    mocked_os_exit = mocker.patch.object(app_def.os, "_exit", autospec=True)
+
+    response = client.post("/api/restart")
+
+    assert response.status_code == codes.OK
+
+    _wait_for_exit_thread(mocked_os_exit)
+    mocked_os_exit.assert_called_once_with(1)
+
+
+def test_When_shutdown_route_called_with_get__Then_method_not_allowed_and_no_exit(mocker: MockerFixture):
     client = TestClient(app)
     mocked_os_exit = mocker.patch.object(app_def.os, "_exit", autospec=True)
 
     response = client.get("/api/shutdown")
 
-    assert response.status_code == codes.OK
+    assert response.status_code == codes.METHOD_NOT_ALLOWED
+    mocked_os_exit.assert_not_called()
 
-    for _ in range(1000):  # wait for the thread to finish
-        if mocked_os_exit.call_count > 0:
-            break
-        time.sleep(0.001)
-    mocked_os_exit.assert_called_once_with(0)
+
+def test_When_static_file_outside_api_requested__Then_served():
+    client = TestClient(app)
+
+    response = client.get("/favicon.ico")
+
+    assert response.status_code == codes.OK
+    assert response.headers["content-type"] == "image/vnd.microsoft.icon"
 
 
 def test_openapi_schema(snapshot_json: SnapshotAssertion, mocker: MockerFixture):
