@@ -20,9 +20,15 @@ dependencies = [
     "pywin32>=312; sys_platform == 'win32'",{% endraw %}{% endif %}{% raw %}
     "pydantic{% endraw %}{{ pydantic_version }}{% raw %}",
     "uvicorn{% endraw %}{{ uvicorn_version }}{% raw %}",
-    "structlog{% endraw %}{{ structlog_version }}{% raw %}",{% endraw %}{% if backend_source_uses_kiota %}{% raw %}
-    "httpx{% endraw %}{{ httpx_version }}{% raw %}",
-    "microsoft-kiota-bundle{% endraw %}{{ python_kiota_bundle_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+    "structlog{% endraw %}{{ structlog_version }}{% raw %}",{% endraw %}{% if backend_makes_api_calls %}{% raw %}
+    "httpx{% endraw %}{{ httpx_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if backend_source_uses_kiota %}{% raw %}
+    # Kiota's runtime packages, declared individually: the client imports modules from each of these distributions, which tach can't attribute to microsoft-kiota-bundle
+    "microsoft-kiota-abstractions{% endraw %}{{ python_kiota_version }}{% raw %}",
+    "microsoft-kiota-http{% endraw %}{{ python_kiota_version }}{% raw %}",
+    "microsoft-kiota-serialization-form{% endraw %}{{ python_kiota_version }}{% raw %}",
+    "microsoft-kiota-serialization-json{% endraw %}{{ python_kiota_version }}{% raw %}",
+    "microsoft-kiota-serialization-multipart{% endraw %}{{ python_kiota_version }}{% raw %}",
+    "microsoft-kiota-serialization-text{% endraw %}{{ python_kiota_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
     "pyserial>=3.5",
     "psutil>=7.2.2",
     "zeroconf>=0.149.0",
@@ -35,8 +41,8 @@ dev = [
     # Specific to this repository
 
 
-    # Managed by upstream template{% endraw %}{% if not backend_source_uses_kiota %}{% raw %}
-    "httpx{% endraw %}{{ httpx_version }}{% raw %}",
+    # Managed by upstream template{% endraw %}{% if not backend_makes_api_calls %}{% raw %}
+    "httpx{% endraw %}{{ httpx_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if not backend_source_uses_kiota %}{% raw %}
     "microsoft-kiota-bundle{% endraw %}{{ python_kiota_bundle_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if backend_uses_graphql %}{% raw %}
     "ariadne-codegen[subscriptions]{% endraw %}{{ ariadne_codegen_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
     "httpx2{% endraw %}{{ httpx2_version }}{% raw %}",
@@ -71,6 +77,51 @@ enable_custom_operations = true{% endraw %}{% endif %}{% raw %}
 
 [tool.uv]
 package = true
+
+[tool.tach]
+source_roots = ["src", "."]
+exclude = [".venv", "**/__pycache__", "**/*.egg-info", "mutants", "scripts"]
+
+# Never import from a conftest.py (https://docs.pytest.org/en/stable/how-to/writing_plugins.html#conftest-py-local-per-directory-plugins);
+# put shared helpers in a regular module instead. Declaring `tests` as a module is what makes tach check the tests'
+# imports at all; a file outside every module is never checked.
+[[tool.tach.modules]]
+path = "tests"
+cannot_depend_on = ["tests.**.conftest"]
+
+# Makes each conftest.py its own module, so the rule above has something to match. tach puts a file only in its most
+# specific module, so conftests are not part of `tests` and need the rule repeated to block conftest-to-conftest imports.
+# `visibility = []` also rejects any module that lists a conftest in its `depends_on`. It can't stop a module that omits
+# `depends_on`, so any other module declared under `tests` needs the same `cannot_depend_on` line.
+[[tool.tach.modules]]
+path = "tests.**.conftest"
+cannot_depend_on = ["tests.**.conftest"]
+visibility = []
+
+[tool.tach.external]
+# anyio arrives transitively through starlette; logger_config.py imports it only to locate its frames for log suppression.{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+# pyserial, psutil, zeroconf and semver are for the device driver code each project writes.{% endraw %}{% endif %}{% raw %}{% endraw %}{% if install_as_windows_service %}{% raw %}
+# pywin32 installs only on Windows, so elsewhere tach cannot map its modules back to it.{% endraw %}{% endif %}{% raw %}
+exclude = [
+    "anyio",{% endraw %}{% if backend_makes_api_calls %}{% raw %}
+    "httpx", # TODO: remove once code in backend/src imports it{% endraw %}{% endif %}{% raw %}{% endraw %}{% if backend_source_uses_kiota %}{% raw %}
+    "microsoft_kiota_abstractions", # TODO: remove once code in backend/src imports it (e.g. a Kiota client generated there for the external API)
+    "microsoft_kiota_http", # TODO: remove once code in backend/src imports it (e.g. wrapping the httpx client in HttpxRequestAdapter)
+    "microsoft_kiota_serialization_form", # TODO: remove once code in backend/src imports it (e.g. a Kiota client generated there for the external API)
+    "microsoft_kiota_serialization_json", # TODO: remove once code in backend/src imports it (e.g. a Kiota client generated there for the external API)
+    "microsoft_kiota_serialization_multipart", # TODO: remove once code in backend/src imports it (e.g. a Kiota client generated there for the external API)
+    "microsoft_kiota_serialization_text", # TODO: remove once code in backend/src imports it (e.g. a Kiota client generated there for the external API){% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+    "pyserial",
+    "psutil",
+    "zeroconf",
+    "semver",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if install_as_windows_service %}{% raw %}
+    "pywin32",
+    "servicemanager",
+    "win32security",
+    "win32service",
+    "win32serviceutil",
+    "winerror",{% endraw %}{% endif %}{% raw %}
+]
 
 [tool.mutmut]
 source_paths = [ "src/backend_api/" ]

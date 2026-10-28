@@ -291,11 +291,42 @@ repos:
               (?:.*/)?generated/.*|
           )${% endraw %}{% if has_backend %}{% raw %}
 
-  - repo: https://github.com/pylint-dev/pylint
-    rev: f5a6e3b1de17502747a40d7f92f285ccf9c6c459  # frozen: v4.0.7
+  - repo: local
     hooks:
       - id: pylint
         name: pylint
+        # Runs pylint on every changed Python file, exactly as pylint's own hook does (`entry: pylint`). It is a local
+        # hook only so that each changed skill under .claude/skills/ is checked for duplicate code on its own, together
+        # with the skill's other tracked Python files: a skill is meant to stand alone, so it may repeat a helper that
+        # another skill also has. All other code is checked together, as one group.
+        entry: |
+          python -c '
+          import os
+          import subprocess
+          import sys
+
+          groups: dict[str, set[str]] = {}
+          for path in sys.argv[1:]:
+              parts = path.split("/")
+              skill = "/".join(parts[:3]) if path.startswith(".claude/skills/") and len(parts) > 3 else ""
+              groups.setdefault(skill, set()).add(path)
+          exit_code = 0
+          for skill, files in sorted(groups.items()):
+              if skill:
+                  tracked = subprocess.run(["git", "ls-files", "-z", "--", skill], capture_output=True, text=True, check=True).stdout
+                  # a tracked file deleted but not yet staged is still listed, and pylint fails on a path that is not there
+                  files |= {
+                      f
+                      for f in tracked.split("\0")
+                      if f.endswith(".py") and not f.endswith("/__init__.py") and "/generated/" not in f and os.path.isfile(f)
+                  }
+              exit_code |= subprocess.run([sys.executable, "-m", "pylint", "--rcfile=./.config/pylintrc.toml", *sorted(files)], check=False).returncode
+          sys.exit(exit_code)
+          '
+        language: python
+        # the only place pylint's version is pinned; pre-commit autoupdate does not bump additional_dependencies
+        additional_dependencies: ['pylint==4.0.7']
+        types: [python]
         # exclude any generated code
         # flagging duplicate code for __all__ lists is a false positive
         exclude: |
@@ -303,8 +334,7 @@ repos:
               (?:.*/)?generated/.*|
               .*__init__\.py|
           )$
-        args:
-          - --rcfile=./.config/pylintrc.toml
+        require_serial: true
         verbose: true{% endraw %}{% endif %}{% raw %}{% endraw %}{% if has_backend %}{% raw %}
 
   - repo: local
@@ -324,7 +354,24 @@ repos:
         # use require_serial so that script is only called once per commit
         require_serial: true
         # print the number of files as a sanity-check
-        verbose: true{% endraw %}{% endif %}{% raw %}
+        verbose: true
+
+  - repo: local
+    hooks:
+      - id: tach
+        name: tach
+        # `uv run --with` adds tach to the backend env for this command only: check-external needs the installed packages
+        # to map distribution names to module names, while uv.lock stays free of tach's CLI dependencies and its pytest
+        # plugin never loads in test runs. Config is [tool.tach] in backend/pyproject.toml.
+        # Both checks always run and their exit codes are ORed, so neither result masks the other. check-external skips
+        # tests because tach reads only [project] dependencies, not the dev group the tests import from.
+        entry: bash -c 'uv --directory=backend run --frozen --with tach==0.35.3 tach check; internal=$?; uv --directory=backend run --frozen --with tach==0.35.3 tach check-external -e "tests/**"; external=$?; exit $((internal || external))'
+        language: system
+        files: '^backend/.+\.py$|^backend/(pyproject\.toml|uv\.lock)$'
+        # don't pass filenames else the command line sees them twice
+        pass_filenames: false
+        # use require_serial so that script is only called once per commit
+        require_serial: true{% endraw %}{% endif %}{% raw %}
 
   # Updating repo config/tooling files
   - repo: local
