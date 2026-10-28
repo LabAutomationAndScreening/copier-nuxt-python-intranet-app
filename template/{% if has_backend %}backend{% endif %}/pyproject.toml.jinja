@@ -72,6 +72,43 @@ enable_custom_operations = true{% endraw %}{% endif %}{% raw %}
 [tool.uv]
 package = true
 
+[tool.tach]
+source_roots = ["src", "."]
+exclude = [".venv", "**/__pycache__", "**/*.egg-info", "mutants", "scripts"]
+
+[[tool.tach.modules]]
+path = "tests.**.conftest"
+depends_on = ["tests"]
+# Never import from a conftest.py (https://docs.pytest.org/en/stable/how-to/writing_plugins.html#conftest-py-local-per-directory-plugins);
+# put shared helpers in a regular module instead.
+visibility = []
+
+# Declared so tach checks the tests' imports; a file outside every module is never checked.
+[[tool.tach.modules]]
+path = "tests"
+depends_on = []
+
+[tool.tach.external]
+# anyio arrives transitively through starlette; logger_config.py imports it only to locate its frames for log suppression.{% endraw %}{% if backend_source_uses_kiota %}{% raw %}
+# httpx and microsoft-kiota-bundle are for the Kiota client that codegen generates into the project.{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+# pyserial, psutil, zeroconf and semver are for the device driver code each project writes.{% endraw %}{% endif %}{% raw %}{% endraw %}{% if install_as_windows_service %}{% raw %}
+# pywin32 installs only on Windows, so elsewhere tach cannot map its modules back to it.{% endraw %}{% endif %}{% raw %}
+exclude = [
+    "anyio",{% endraw %}{% if backend_source_uses_kiota %}{% raw %}
+    "httpx",
+    "microsoft_kiota_bundle",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+    "pyserial",
+    "psutil",
+    "zeroconf",
+    "semver",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if install_as_windows_service %}{% raw %}
+    "pywin32",
+    "servicemanager",
+    "win32security",
+    "win32service",
+    "win32serviceutil",
+    "winerror",{% endraw %}{% endif %}{% raw %}
+]
+
 [tool.mutmut]
 source_paths = [ "src/backend_api/" ]
 pytest_add_cli_args_test_selection = [ "tests/unit/" ]

@@ -1,7 +1,7 @@
 import pytest
 
-from ..e2e.conftest import configure_log  # noqa: F401 # this is an autouse fixture
-from ..e2e.conftest import vcr_config  # noqa: F401 # this is an autouse fixture
+from ..e2e.autouse_fixtures import configure_log  # noqa: F401 # this is an autouse fixture
+from ..e2e.autouse_fixtures import vcr_config  # noqa: F401 # this is an autouse fixture
 
 
 def pytest_configure(config: pytest.Config):
