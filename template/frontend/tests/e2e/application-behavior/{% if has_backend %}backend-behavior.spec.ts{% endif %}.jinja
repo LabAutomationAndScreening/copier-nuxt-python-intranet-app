@@ -33,15 +33,14 @@ test.describe("API documentation", () => {
 });
 
 test.describe("API routing", () => {
-  // When the built executable serves the frontend, its static folder includes the frontend's 404.html,
-  // so this guards against an unknown API path falling through to the frontend's HTML not-found page.
-  test("When unknown path under /api/ requested, Then 404 problem details returned instead of the frontend", async ({
-    request,
-  }) => {
+  test.skip(!isBuiltBackendE2E, "only the built executable serves the frontend's 404.html from the backend");
+
+  test("When unknown path under /api/ requested, Then 404 problem details returned", async ({ request }) => {
     const unknownPath = `/api/${faker.string.uuid()}`;
 
     const response = await request.get(`${backendBaseUrl()}${unknownPath}`);
 
+    // the backend's static folder includes the frontend's 404.html, so an unknown API path must not fall through to that HTML page
     expect(response.status()).toBe(404);
     expect(response.headers()["content-type"]).toBe("application/problem+json");
   });
