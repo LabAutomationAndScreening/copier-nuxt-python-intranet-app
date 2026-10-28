@@ -76,7 +76,7 @@ def test_When_api_route_requested_with_a_method_only_the_frontend_serves__Then_m
     assert response.status_code == codes.METHOD_NOT_ALLOWED
 
 
-def test_When_static_file_outside_api_requested__Then_served():
+def test_When_path_without_api_prefix_requested__Then_frontend_static_file_served():
     client = TestClient(app)
 
     response = client.get("/favicon.ico")
