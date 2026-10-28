@@ -22,7 +22,7 @@ dependencies = [
     "uvicorn{% endraw %}{{ uvicorn_version }}{% raw %}",
     "structlog{% endraw %}{{ structlog_version }}{% raw %}",{% endraw %}{% if backend_makes_api_calls %}{% raw %}
     "httpx{% endraw %}{{ httpx_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if backend_source_uses_kiota %}{% raw %}
-    # Kiota's runtime packages, declared individually: tach can't map their imports back to the microsoft-kiota-bundle meta-package
+    # Kiota's runtime packages, declared individually: the client imports modules from each of these distributions, which tach can't attribute to microsoft-kiota-bundle
     "microsoft-kiota-abstractions{% endraw %}{{ python_kiota_version }}{% raw %}",
     "microsoft-kiota-http{% endraw %}{{ python_kiota_version }}{% raw %}",
     "microsoft-kiota-serialization-form{% endraw %}{{ python_kiota_version }}{% raw %}",
