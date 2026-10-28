@@ -81,9 +81,7 @@ async function callRouteAndObserveContainerExit({
 test.describe("Given the backend running under docker-compose", () => {
   test.skip(!isDockerComposeE2E, "observes the backend container's exit and restart through Docker");
 
-  test("When restart route called, Then container exits with code 1 after graceful shutdown and is restarted", async ({
-    request,
-  }) => {
+  test("When restart route called, Then container exits with code 1 after graceful shutdown", async ({ request }) => {
     test.slow(); // waits for the container to exit, be restarted by Docker, and become healthy again
 
     const observed = await callRouteAndObserveContainerExit({ request, route: "/api/restart" });
