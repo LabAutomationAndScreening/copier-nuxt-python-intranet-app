@@ -1,4 +1,19 @@
-{% raw %}import { expect, test } from "~~/tests/e2e/fixtures";
+{% raw %}import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+import type { APIRequestContext, APIResponse } from "@playwright/test";
+import {
+  composeServiceContainerId,
+  containerExitCodesSince,
+  containerLogsSince,
+  containerRestartCount,
+  waitForComposeHealthy,
+  waitForContainerRestart,
+} from "~~/tests/e2e/compose";
+import { expect, test } from "~~/tests/e2e/fixtures";
+import { backendBaseUrl, isDockerComposeE2E } from "~~/tests/e2e/ports";
+
+const dockerComposeFile = path.resolve(fileURLToPath(new URL("../../../../", import.meta.url)), "docker-compose.yaml");
 
 test.describe("API documentation", () => {
   test("When accessing Swagger from the frontend, Then loads correctly", async ({ page }) => {
@@ -13,4 +28,62 @@ test.describe("API documentation", () => {
     // arbitrary text that only appears after the page has loaded correctly
     await expect(page.getByText("GraphiQL is an in-browser tool")).toBeVisible();
   });{% endraw %}{% endif %}{% raw %}
+});
+
+interface ObservedContainerExit {
+  response: APIResponse;
+  exitCodes: string[];
+  logs: string;
+}
+
+async function callRouteAndObserveContainerExit({
+  request,
+  route,
+}: {
+  request: APIRequestContext;
+  route: string;
+}): Promise<ObservedContainerExit> {
+  const containerId = composeServiceContainerId({ composeFile: dockerComposeFile, service: "backend" });
+  const previousRestartCount = containerRestartCount({ containerId });
+  const requestedAt = new Date().toISOString();
+
+  const response = await request.post(`${backendBaseUrl()}${route}`);
+
+  // the compose file uses restart: unless-stopped, so Docker brings the backend back after either exit code;
+  // waiting for it to be healthy again also leaves the shared backend usable by the specs that run after this one
+  await waitForContainerRestart({ containerId, previousRestartCount });
+  await waitForComposeHealthy({ composeFile: dockerComposeFile });
+  return {
+    response,
+    exitCodes: containerExitCodesSince({ containerId, since: requestedAt }),
+    logs: containerLogsSince({ containerId, since: requestedAt }),
+  };
+}
+
+// These call the API directly rather than through the browser: there is no UI for them, and this suite is
+// what runs against the real deployed backend (container or built executable) in CI for every template variant.
+test.describe("Given the backend running under docker-compose", () => {
+  test.skip(!isDockerComposeE2E, "observes the backend container's exit and restart through Docker");
+
+  test("When restart route called, Then container exits with code 1 after graceful shutdown and is restarted", async ({
+    request,
+  }) => {
+    test.slow(); // waits for the container to exit, be restarted by Docker, and become healthy again
+
+    const observed = await callRouteAndObserveContainerExit({ request, route: "/api/restart" });
+
+    expect(observed.response.ok()).toBe(true);
+    expect(observed.exitCodes).toEqual(["1"]);
+    expect(observed.logs).toContain("Application shutdown complete.");
+  });
+
+  test("When shutdown route called, Then container exits with code 0 after graceful shutdown", async ({ request }) => {
+    test.slow(); // waits for the container to exit, be restarted by Docker, and become healthy again
+
+    const observed = await callRouteAndObserveContainerExit({ request, route: "/api/shutdown" });
+
+    expect(observed.response.ok()).toBe(true);
+    expect(observed.exitCodes).toEqual(["0"]);
+    expect(observed.logs).toContain("Application shutdown complete.");
+  });
 });{% endraw %}

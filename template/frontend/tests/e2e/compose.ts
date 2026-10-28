@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 
 interface ComposePsService {
   Service: string;
@@ -80,4 +80,70 @@ export async function waitForComposeHealthy({
     await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
   }
   throw new Error(`docker-compose containers failed to become healthy after ${maxAttempts} attempts`);
+}
+
+export function composeServiceContainerId({ composeFile, service }: { composeFile: string; service: string }): string {
+  return execFileSync("docker", ["compose", "--file", composeFile, "ps", "--quiet", service], {
+    encoding: "utf-8",
+    timeout: 10000,
+  }).trim();
+}
+
+export function containerRestartCount({ containerId }: { containerId: string }): number {
+  return Number(
+    execFileSync("docker", ["inspect", "--format", "{{.RestartCount}}", containerId], {
+      encoding: "utf-8",
+      timeout: 10000,
+    }).trim(),
+  );
+}
+
+export async function waitForContainerRestart({
+  containerId,
+  previousRestartCount,
+  maxAttempts = 60,
+  retryDelayMs = 500,
+}: {
+  containerId: string;
+  previousRestartCount: number;
+  maxAttempts?: number;
+  retryDelayMs?: number;
+}): Promise<void> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    if (containerRestartCount({ containerId }) > previousRestartCount) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+  }
+  throw new Error(`container ${containerId} was not restarted after ${maxAttempts} attempts`);
+}
+
+export function containerExitCodesSince({ containerId, since }: { containerId: string; since: string }): string[] {
+  const stdout = execFileSync(
+    "docker",
+    [
+      "events",
+      "--since",
+      since,
+      "--until",
+      new Date().toISOString(),
+      "--filter",
+      `container=${containerId}`,
+      "--filter",
+      "event=die",
+      "--format",
+      "{{.Actor.Attributes.exitCode}}",
+    ],
+    { encoding: "utf-8", timeout: 10000 },
+  );
+  return stdout.split("\n").filter((line) => line.trim().length > 0);
+}
+
+export function containerLogsSince({ containerId, since }: { containerId: string; since: string }): string {
+  // docker logs replays the container's stderr (where uvicorn logs its lifecycle) on its own stderr, so capture both
+  const result = spawnSync("docker", ["logs", "--since", since, containerId], { encoding: "utf-8", timeout: 10000 });
+  if (result.status !== 0) {
+    throw new Error(`docker logs failed for ${containerId}: ${result.stderr}`);
+  }
+  return `${result.stdout}${result.stderr}`;
 }
