@@ -1,4 +1,5 @@
 import threading
+from collections.abc import Iterator
 
 import pytest
 from backend_api import app_def
@@ -48,10 +49,12 @@ def test_When_swagger_route_called__Then_rendered():
 
 
 @pytest.fixture
-def stop_event_on_app_state(mocker: MockerFixture) -> threading.Event:
+def stop_event_on_app_state(mocker: MockerFixture) -> Iterator[threading.Event]:
     stop_event = threading.Event()
-    _ = mocker.patch.object(app.state, "server_control", ServerControl(stop_event=stop_event), create=True)
-    return stop_event
+    server_control = ServerControl(stop_event=stop_event)
+    _ = mocker.patch.object(app.state, "server_control", server_control, create=True)
+    yield stop_event
+    server_control.stop_completed()  # no server is running to do this, so cancel any force-exit timer the route started
 
 
 def test_Given_stop_event_on_app_state__When_shutdown_route_called__Then_stop_event_set(

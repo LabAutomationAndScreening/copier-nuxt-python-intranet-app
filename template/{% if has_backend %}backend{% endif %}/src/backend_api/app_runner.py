@@ -1,8 +1,10 @@
 import argparse
 import logging
+import os
 import signal
 import threading
 from dataclasses import dataclass
+from dataclasses import field
 from pathlib import Path
 
 import uvicorn
@@ -22,10 +24,25 @@ def app_specific_setup():
 class ServerControl:
     stop_event: threading.Event
     exit_code: int = 0
+    force_exit_after_seconds: float = 30.0
+    _force_exit_timer: threading.Timer | None = field(default=None, init=False)
 
     def request_stop(self, *, exit_code: int) -> None:
         self.exit_code = exit_code
         self.stop_event.set()
+        self._force_exit_timer = threading.Timer(self.force_exit_after_seconds, self._force_exit)
+        self._force_exit_timer.daemon = True
+        self._force_exit_timer.start()
+
+    def stop_completed(self) -> None:
+        if self._force_exit_timer is not None:
+            self._force_exit_timer.cancel()
+
+    def _force_exit(self) -> None:
+        logger.warning(
+            f"Server did not stop within {self.force_exit_after_seconds}s of the stop request; forcing exit with code {self.exit_code}"
+        )
+        os._exit(self.exit_code)
 
 
 def run(*, stop_event: threading.Event, host: str, port: int, log_level: str) -> int:
@@ -42,6 +59,7 @@ def run(*, stop_event: threading.Event, host: str, port: int, log_level: str) ->
     server.run()
     stop_event.set()
     watcher.join()
+    server_control.stop_completed()
     return server_control.exit_code
 
 
