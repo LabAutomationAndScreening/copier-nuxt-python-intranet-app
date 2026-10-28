@@ -194,7 +194,18 @@ def healthcheck(
 
 @app.post("/api/shutdown", summary="Shut down the server", tags=["system"])
 def shutdown(request: Request) -> ShutdownResponse:
-    logger.info("Server shutdown request received")
+{% endraw %}{% if deploy_as_executable %}{% raw %}    """Stop the server cleanly (exit code 0) once this response is sent and shutdown cleanup has finished.
+
+    The server stays stopped unless something external starts it again.
+    """
+{% endraw %}{% else %}{% raw %}    """Stop the server cleanly (exit code 0) once this response is sent and shutdown cleanup has finished.
+
+    Whether it stays stopped depends on the platform's restart policy:
+
+    - docker-compose `restart: on-failure`: stays stopped. This policy also doesn't restart the container when the Docker daemon or host restarts.
+    - docker-compose `restart: unless-stopped` / `always`, or Kubernetes/k3s: started again, so this behaves like a restart. To keep it stopped there, scale the deployment to zero or stop the container from the platform.
+    """
+{% endraw %}{% endif %}{% raw %}    logger.info("Server shutdown request received")
     # TODO: when launched directly by uvicorn (e.g. dev hot-reload) nothing has put a server_control on app.state, so this raises
     request.app.state.server_control.request_stop(exit_code=0)
     return ShutdownResponse()
@@ -202,7 +213,15 @@ def shutdown(request: Request) -> ShutdownResponse:
 
 @app.post("/api/restart", summary="Restart the server", tags=["system"])
 def restart(request: Request) -> RestartResponse:
-    logger.info("Server restart request received")
+{% endraw %}{% if deploy_as_executable %}{% raw %}    """Stop the server with a non-zero exit code once this response is sent and shutdown cleanup has finished.
+
+    The server only comes back if a supervisor (e.g. a process manager or scheduled task) is configured to restart it on failure; otherwise this behaves like a shutdown.
+    """
+{% endraw %}{% else %}{% raw %}    """Stop the server with a non-zero exit code once this response is sent and shutdown cleanup has finished.
+
+    The container platform then starts it again and records the exit as a failure. Works with Kubernetes/k3s and docker-compose `restart: on-failure`, `unless-stopped` or `always`. With `restart: no` the server stays stopped.
+    """
+{% endraw %}{% endif %}{% raw %}    logger.info("Server restart request received")
     request.app.state.server_control.request_stop(
         exit_code=1  # non-zero so the supervising platform treats the exit as a failure and restarts the process
     )
