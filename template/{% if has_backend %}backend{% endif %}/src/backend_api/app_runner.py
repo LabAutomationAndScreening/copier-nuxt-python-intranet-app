@@ -29,7 +29,8 @@ class ServerControl:
     _request_lock: threading.Lock = field(default_factory=threading.Lock, init=False)
 
     def request_stop(self, *, exit_code: int) -> None:
-        with self._request_lock:  # the routes run in the threadpool, so overlapping requests must not both pass the check
+        # the routes run in the threadpool, so overlapping requests must not both pass the check
+        with self._request_lock:
             if self._force_exit_timer is not None:
                 return
             self.exit_code = exit_code
