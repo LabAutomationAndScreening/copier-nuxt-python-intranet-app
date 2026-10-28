@@ -2,6 +2,7 @@ import argparse
 import logging
 import signal
 import threading
+from dataclasses import dataclass
 from pathlib import Path
 
 import uvicorn
@@ -17,8 +18,20 @@ def app_specific_setup():
     pass
 
 
+@dataclass
+class ServerControl:
+    stop_event: threading.Event
+    exit_code: int = 0
+
+    def request_stop(self, *, exit_code: int) -> None:
+        self.exit_code = exit_code
+        self.stop_event.set()
+
+
 def run(*, stop_event: threading.Event, host: str, port: int, log_level: str) -> int:
     server = uvicorn.Server(uvicorn.Config(app, host=host, port=port, log_level=log_level))
+    server_control = ServerControl(stop_event=stop_event)
+    app.state.server_control = server_control
 
     def watch_for_stop():
         _ = stop_event.wait()
@@ -29,7 +42,7 @@ def run(*, stop_event: threading.Event, host: str, port: int, log_level: str) ->
     server.run()
     stop_event.set()
     watcher.join()
-    return 0
+    return server_control.exit_code
 
 
 def start_app(cli_args: argparse.Namespace, *, stop_event: threading.Event | None = None) -> int:

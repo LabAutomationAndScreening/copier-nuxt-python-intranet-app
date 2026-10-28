@@ -1,7 +1,4 @@
-{% raw %}import logging
-import os
-import threading
-import time{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
+{% raw %}import logging{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
 from contextlib import asynccontextmanager{% endraw %}{% endif %}{% raw %}
 from pathlib import Path
 from typing import Annotated
@@ -11,6 +8,7 @@ from typing import override
 from backend_api.lib import parse_port
 from fastapi import FastAPI{% endraw %}{% endif %}{% raw %}
 from fastapi import Query
+from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi_offline import FastAPIOffline
@@ -195,30 +193,19 @@ def healthcheck(
 
 
 @app.post("/api/shutdown", summary="Shut down the server", tags=["system"])
-def shutdown() -> ShutdownResponse:
+def shutdown(request: Request) -> ShutdownResponse:
     logger.info("Server shutdown request received")
-
-    def do_shutdown():
-        time.sleep(0.1)  # Give time for the request to return a success response
-        logger.info("Server is shutting down.")
-        os._exit(
-            0
-        )  # sys.exit just causes an internal server error, it doesn't actually stop the server. So a hard exit is needed
-
-    threading.Thread(target=do_shutdown, name="execute_shutdown").start()
+    # TODO: when launched directly by uvicorn (e.g. dev hot-reload) nothing has put a server_control on app.state, so this raises
+    request.app.state.server_control.request_stop(exit_code=0)
     return ShutdownResponse()
 
 
 @app.post("/api/restart", summary="Restart the server", tags=["system"])
-def restart() -> RestartResponse:
+def restart(request: Request) -> RestartResponse:
     logger.info("Server restart request received")
-
-    def do_restart():
-        time.sleep(0.1)  # Give time for the request to return a success response
-        logger.info("Server is exiting so it can be restarted.")
-        os._exit(1)  # non-zero so the supervising platform treats the exit as a failure and restarts the process
-
-    threading.Thread(target=do_restart, name="execute_restart").start()
+    request.app.state.server_control.request_stop(
+        exit_code=1  # non-zero so the supervising platform treats the exit as a failure and restarts the process
+    )
     return RestartResponse()
 
 

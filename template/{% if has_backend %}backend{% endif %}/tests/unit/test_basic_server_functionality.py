@@ -1,10 +1,11 @@
-import time
-from unittest.mock import MagicMock
+import threading
 
+import pytest
 from backend_api import app_def
 from backend_api import fast_api_exception_handlers
 from backend_api.app_def import HealthcheckResponse
 from backend_api.app_def import app
+from backend_api.app_runner import ServerControl
 from fastapi.testclient import TestClient
 from httpx import codes
 from pytest_mock import MockerFixture
@@ -46,45 +47,33 @@ def test_When_swagger_route_called__Then_rendered():
     assert "Swagger UI" in response.text
 
 
-def _wait_for_exit_thread(mocked_os_exit: MagicMock) -> None:
-    for _ in range(1000):
-        if mocked_os_exit.call_count > 0:
-            return
-        time.sleep(0.001)
+@pytest.fixture
+def stop_event_on_app_state(mocker: MockerFixture) -> threading.Event:
+    stop_event = threading.Event()
+    _ = mocker.patch.object(app.state, "server_control", ServerControl(stop_event=stop_event), create=True)
+    return stop_event
 
 
-def test_When_shutdown_route_called__Then_system_exit(mocker: MockerFixture):
+def test_Given_stop_event_on_app_state__When_shutdown_route_called__Then_stop_event_set(
+    stop_event_on_app_state: threading.Event,
+):
     client = TestClient(app)
-    mocked_os_exit = mocker.patch.object(app_def.os, "_exit", autospec=True)
 
     response = client.post("/api/shutdown")
 
     assert response.status_code == codes.OK
-
-    _wait_for_exit_thread(mocked_os_exit)
-    mocked_os_exit.assert_called_once_with(0)
+    assert stop_event_on_app_state.is_set()
 
 
-def test_When_restart_route_called__Then_process_exits_with_failure_code(mocker: MockerFixture):
+def test_Given_stop_event_on_app_state__When_shutdown_route_called_with_get__Then_method_not_allowed_and_server_not_stopped(
+    stop_event_on_app_state: threading.Event,
+):
     client = TestClient(app)
-    mocked_os_exit = mocker.patch.object(app_def.os, "_exit", autospec=True)
-
-    response = client.post("/api/restart")
-
-    assert response.status_code == codes.OK
-
-    _wait_for_exit_thread(mocked_os_exit)
-    mocked_os_exit.assert_called_once_with(1)
-
-
-def test_When_shutdown_route_called_with_get__Then_method_not_allowed_and_no_exit(mocker: MockerFixture):
-    client = TestClient(app)
-    mocked_os_exit = mocker.patch.object(app_def.os, "_exit", autospec=True)
 
     response = client.get("/api/shutdown")
 
     assert response.status_code == codes.METHOD_NOT_ALLOWED
-    mocked_os_exit.assert_not_called()
+    assert not stop_event_on_app_state.is_set()
 
 
 def test_When_static_file_outside_api_requested__Then_served():
