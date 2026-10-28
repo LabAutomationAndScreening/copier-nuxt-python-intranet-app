@@ -1,6 +1,7 @@
 {% raw %}import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { faker } from "@faker-js/faker";
 import type { APIRequestContext, APIResponse } from "@playwright/test";
 import { startSeparateBuiltBackend } from "~~/tests/e2e/built-backend";
 import {
@@ -29,6 +30,21 @@ test.describe("API documentation", () => {
     // arbitrary text that only appears after the page has loaded correctly
     await expect(page.getByText("GraphiQL is an in-browser tool")).toBeVisible();
   });{% endraw %}{% endif %}{% raw %}
+});
+
+test.describe("API routing", () => {
+  // When the built executable serves the frontend, its static folder includes the frontend's 404.html,
+  // so this guards against an unknown API path falling through to the frontend's HTML not-found page.
+  test("When unknown path under /api/ requested, Then 404 problem details returned instead of the frontend", async ({
+    request,
+  }) => {
+    const unknownPath = `/api/${faker.string.uuid()}`;
+
+    const response = await request.get(`${backendBaseUrl()}${unknownPath}`);
+
+    expect(response.status()).toBe(404);
+    expect(response.headers()["content-type"]).toBe("application/problem+json");
+  });
 });
 
 interface ObservedContainerExit {
