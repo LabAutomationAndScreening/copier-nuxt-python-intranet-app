@@ -35,7 +35,7 @@ def force_exit_recorder(mocker: MockerFixture) -> ForceExitRecorder:
     """
     called = threading.Event()
 
-    def record_force_exit(_code: int) -> None:  # noqa: ARG001 # must accept the same argument as os._exit
+    def record_force_exit(_: int) -> None:
         called.set()
 
     _ = mocker.patch.object(ServerControl, _REAL_FORCE_EXIT.__name__, _REAL_FORCE_EXIT)

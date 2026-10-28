@@ -77,8 +77,8 @@ def start_app(cli_args: argparse.Namespace, *, stop_event: threading.Event | Non
     logger.info(f"Starting uvicorn server based on CLI arguments: {cli_args}")
     if stop_event is None:
         effective_stop_event = threading.Event()
-        _ = signal.signal(signal.SIGINT, lambda _sig, _frame: effective_stop_event.set())  # noqa: ARG005 # signal handler signature requires these args but they are unused
-        _ = signal.signal(signal.SIGTERM, lambda _sig, _frame: effective_stop_event.set())  # noqa: ARG005 # signal handler signature requires these args but they are unused
+        _ = signal.signal(signal.SIGINT, lambda _, __: effective_stop_event.set())
+        _ = signal.signal(signal.SIGTERM, lambda _, __: effective_stop_event.set())
     else:
         effective_stop_event = stop_event
     assert isinstance(cli_args.log_level, str), f"Expected log_level to be a str, got {type(cli_args.log_level)}"
