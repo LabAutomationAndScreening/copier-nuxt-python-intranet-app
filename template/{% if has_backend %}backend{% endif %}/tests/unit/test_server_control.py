@@ -76,3 +76,20 @@ def test_Given_stop_requested__When_stop_completed_before_deadline__Then_process
     assert server_control.stop_event.is_set()
     assert forced_exit_happened is False
     force_exit_recorder.os_exit.assert_not_called()
+
+
+def test_Given_stop_requested__When_another_stop_requested__Then_first_exit_code_kept_and_not_force_exited_after_stop_completed(
+    force_exit_recorder: ForceExitRecorder,
+):
+    first_exit_code, second_exit_code = random.sample(range(256), 2)
+    force_exit_after_seconds = 0.05
+    server_control = ServerControl(stop_event=threading.Event(), force_exit_after_seconds=force_exit_after_seconds)
+    server_control.request_stop(exit_code=first_exit_code)
+
+    server_control.request_stop(exit_code=second_exit_code)
+    server_control.stop_completed()
+
+    forced_exit_happened = force_exit_recorder.called.wait(timeout=force_exit_after_seconds * 10)
+
+    assert server_control.exit_code == first_exit_code
+    assert forced_exit_happened is False

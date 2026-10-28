@@ -26,13 +26,17 @@ class ServerControl:
     exit_code: int = 0
     force_exit_after_seconds: float = 30.0
     _force_exit_timer: threading.Timer | None = field(default=None, init=False)
+    _request_lock: threading.Lock = field(default_factory=threading.Lock, init=False)
 
     def request_stop(self, *, exit_code: int) -> None:
-        self.exit_code = exit_code
-        self.stop_event.set()
-        self._force_exit_timer = threading.Timer(self.force_exit_after_seconds, self._force_exit)
-        self._force_exit_timer.daemon = True
-        self._force_exit_timer.start()
+        with self._request_lock:  # the routes run in the threadpool, so overlapping requests must not both pass the check
+            if self._force_exit_timer is not None:
+                return
+            self.exit_code = exit_code
+            self.stop_event.set()
+            self._force_exit_timer = threading.Timer(self.force_exit_after_seconds, self._force_exit)
+            self._force_exit_timer.daemon = True
+            self._force_exit_timer.start()
 
     def stop_completed(self) -> None:
         if self._force_exit_timer is not None:
