@@ -1,9 +1,13 @@
 import { spawn } from "node:child_process";
-import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { APP_NAME, DEPLOYED_BACKEND_PORT_NUMBER } from "../setup/constants";
+import { DEPLOYED_BACKEND_PORT_NUMBER } from "../setup/constants";
+import {
+  assertBuiltBackendExecutableExists,
+  builtBackendExecutablePath,
+  waitForHttpHealthcheck,
+} from "./built-backend";
 import { composeUp, waitForComposeHealthy } from "./compose";
 import { backendBaseUrl, isBuiltBackendE2E, isDockerComposeE2E } from "./ports";
 
@@ -11,43 +15,15 @@ import { backendBaseUrl, isBuiltBackendE2E, isDockerComposeE2E } from "./ports";
 // the Playwright run; global-teardown.ts brings it back down. Two backends are supported, selected by
 // env var (see ports.ts): a single built executable serving frontend + API, or a docker-compose stack.
 
-const executableExtension = process.platform === "win32" ? ".exe" : "";
 const repoRoot = path.resolve(fileURLToPath(new URL("../../../", import.meta.url)));
 const dockerComposeFile = path.resolve(repoRoot, "docker-compose.yaml");
-const executablePath = path.resolve(repoRoot, `./backend/dist/${APP_NAME}/${APP_NAME}${executableExtension}`);
-
-async function waitForHttpHealthcheck({
-  url,
-  maxAttempts = 10,
-  requestTimeoutMs = 5000,
-}: {
-  url: string;
-  maxAttempts?: number;
-  requestTimeoutMs?: number;
-}): Promise<void> {
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(requestTimeoutMs) });
-      if (res.ok) {
-        return;
-      }
-    } catch {
-      // ignore errors // TODO: make this more specific (e.g., only ignore network errors)
-    }
-    console.log(`Waiting for ${url} to become available... Attempt ${attempt}`);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
-  throw new Error(`Timeout waiting for ${url}`);
-}
 
 function startBuiltBackend(): void {
-  if (!fs.existsSync(executablePath) || !fs.statSync(executablePath).isFile()) {
-    throw new Error(`File not found: ${executablePath}`);
-  }
+  assertBuiltBackendExecutableExists();
   const port = new URL(backendBaseUrl()).port;
-  console.log(`Starting app at ${executablePath} ...`);
+  console.log(`Starting app at ${builtBackendExecutablePath} ...`);
   const child = spawn(
-    executablePath,
+    builtBackendExecutablePath,
     [
       "--host",
       "0.0.0.0", // TODO: could this just be 127.0.0.1 ?

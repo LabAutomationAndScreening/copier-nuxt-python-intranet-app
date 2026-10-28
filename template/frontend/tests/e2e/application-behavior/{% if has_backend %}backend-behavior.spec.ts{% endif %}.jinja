@@ -2,6 +2,7 @@
 import { fileURLToPath } from "node:url";
 
 import type { APIRequestContext, APIResponse } from "@playwright/test";
+import { startSeparateBuiltBackend } from "~~/tests/e2e/built-backend";
 import {
   composeServiceContainerId,
   containerExitCodesSince,
@@ -11,7 +12,7 @@ import {
   waitForContainerRestart,
 } from "~~/tests/e2e/compose";
 import { expect, test } from "~~/tests/e2e/fixtures";
-import { backendBaseUrl, isDockerComposeE2E } from "~~/tests/e2e/ports";
+import { backendBaseUrl, getRandomOpenPort, isBuiltBackendE2E, isDockerComposeE2E } from "~~/tests/e2e/ports";
 
 const dockerComposeFile = path.resolve(fileURLToPath(new URL("../../../../", import.meta.url)), "docker-compose.yaml");
 
@@ -85,5 +86,52 @@ test.describe("Given the backend running under docker-compose", () => {
     expect(observed.response.ok()).toBe(true);
     expect(observed.exitCodes).toEqual(["0"]);
     expect(observed.logs).toContain("Application shutdown complete.");
+  });
+});
+
+interface ObservedProcessExit {
+  response: APIResponse;
+  exitCode: number | null;
+  output: string;
+}
+
+async function callRouteAndObserveProcessExit({
+  request,
+  route,
+}: {
+  request: APIRequestContext;
+  route: string;
+}): Promise<ObservedProcessExit> {
+  const backend = await startSeparateBuiltBackend({ port: await getRandomOpenPort() });
+  try {
+    const response = await request.post(`${backend.baseUrl}${route}`);
+    const exitCode = await backend.exited;
+    return { response, exitCode, output: backend.output() };
+  } finally {
+    backend.stop();
+  }
+}
+
+test.describe("Given the backend running as a built executable", () => {
+  test.skip(!isBuiltBackendE2E, "starts its own instance of the built executable and observes its exit code");
+
+  test("When restart route called, Then process exits with code 1 after graceful shutdown", async ({ request }) => {
+    test.slow(); // starts a second backend process and waits for it to exit
+
+    const observed = await callRouteAndObserveProcessExit({ request, route: "/api/restart" });
+
+    expect(observed.response.ok()).toBe(true);
+    expect(observed.exitCode).toBe(1);
+    expect(observed.output).toContain("Application shutdown complete.");
+  });
+
+  test("When shutdown route called, Then process exits with code 0 after graceful shutdown", async ({ request }) => {
+    test.slow(); // starts a second backend process and waits for it to exit
+
+    const observed = await callRouteAndObserveProcessExit({ request, route: "/api/shutdown" });
+
+    expect(observed.response.ok()).toBe(true);
+    expect(observed.exitCode).toBe(0);
+    expect(observed.output).toContain("Application shutdown complete.");
   });
 });{% endraw %}
