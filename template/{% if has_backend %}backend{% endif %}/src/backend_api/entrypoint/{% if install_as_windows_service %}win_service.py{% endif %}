@@ -74,9 +74,10 @@ class AppService(win32serviceutil.ServiceFramework):
         service_argv = sys.argv[2:]  # sys.argv[0] = exe path, sys.argv[1] = 'service', sys.argv[2:] = runtime args
         crash_dump_path = resolve_crash_dump_path(service_argv)
         crash_traceback: str | None = None
+        app_exit_code = 0
 
         def _run() -> None:
-            nonlocal crash_traceback
+            nonlocal crash_traceback, app_exit_code
             try:
                 # SCM detaches stdio: sys.stdout/sys.stderr are None. uvicorn's DefaultFormatter
                 # calls sys.stdout.isatty() during __init__ and crashes. Redirect to devnull;
@@ -84,7 +85,7 @@ class AppService(win32serviceutil.ServiceFramework):
                 sys.stdout = Path(os.devnull).open("w", encoding="utf-8")  # noqa: SIM115 # service-lifetime handle; closing would break later writes
                 sys.stderr = Path(os.devnull).open("w", encoding="utf-8")  # noqa: SIM115 # service-lifetime handle; closing would break later writes
                 cli_args = parser.parse_args(service_argv)
-                _ = app_runner.start_app(cli_args, stop_event=self._stop_event)
+                app_exit_code = app_runner.start_app(cli_args, stop_event=self._stop_event)
             except BaseException:  # noqa: BLE001 # service-of-last-resort: must also catch SystemExit from argparse (--version/--help/parse errors) so the failure surfaces to SCM + crash dump instead of silently exiting
                 crash_traceback = traceback.format_exc()
                 self._stop_event.set()
@@ -113,6 +114,16 @@ class AppService(win32serviceutil.ServiceFramework):
                 win32service.SERVICE_STOPPED,
                 win32ExitCode=winerror.ERROR_SERVICE_SPECIFIC_ERROR,
                 svcExitCode=1,
+            )
+        elif app_exit_code != 0:
+            # The app stopped itself and asked for a non-zero exit (the restart route). Report it the same way
+            # as a crash so SCM's restart-on-failure recovery starts the service again; a zero exit (the
+            # shutdown route, or an admin stop) falls through to pywin32's clean SERVICE_STOPPED.
+            servicemanager.LogInfoMsg(f"{APP_NAME}: stopped with exit code {app_exit_code}")
+            self.ReportServiceStatus(
+                win32service.SERVICE_STOPPED,
+                win32ExitCode=winerror.ERROR_SERVICE_SPECIFIC_ERROR,
+                svcExitCode=app_exit_code,
             )
 
 

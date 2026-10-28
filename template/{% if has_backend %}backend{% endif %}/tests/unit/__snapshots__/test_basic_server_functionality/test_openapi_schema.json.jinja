@@ -77,7 +77,8 @@
           "system"
         ],
         "summary": "Shut down the server",
-{% endraw %}{% if deploy_as_executable %}{% raw %}        "description": "Stop the server cleanly (exit code 0) once this response is sent and shutdown cleanup has finished.\n\nThe server stays stopped unless something external starts it again.",
+{% endraw %}{% if install_as_windows_service %}{% raw %}        "description": "Stop the Windows service cleanly. Windows leaves it stopped; start it again from the Services console or with sc start.",
+{% endraw %}{% elif deploy_as_executable %}{% raw %}        "description": "Stop the server cleanly (exit code 0) once this response is sent and shutdown cleanup has finished.\n\nThe server stays stopped unless something external starts it again.",
 {% endraw %}{% else %}{% raw %}        "description": "Stop the server cleanly (exit code 0) once this response is sent and shutdown cleanup has finished.\n\nWhether it stays stopped depends on the platform's restart policy:\n\n- docker-compose `restart: on-failure`: stays stopped. This policy also doesn't restart the container when the Docker daemon or host restarts.\n- docker-compose `restart: unless-stopped` / `always`, or Kubernetes/k3s: started again, so this behaves like a restart. To keep it stopped there, scale the deployment to zero or stop the container from the platform.",
 {% endraw %}{% endif %}{% raw %}        "operationId": "shutdown_api_shutdown_post",
         "responses": {
@@ -120,7 +121,8 @@
           "system"
         ],
         "summary": "Restart the server",
-{% endraw %}{% if deploy_as_executable %}{% raw %}        "description": "Stop the server with a non-zero exit code once this response is sent and shutdown cleanup has finished.\n\nThe server only comes back if a supervisor (e.g. a process manager or scheduled task) is configured to restart it on failure; otherwise this behaves like a shutdown.",
+{% endraw %}{% if install_as_windows_service %}{% raw %}        "description": "Stop the Windows service and report a failure, so the restart-on-failure recovery configured at install starts it again.",
+{% endraw %}{% elif deploy_as_executable %}{% raw %}        "description": "Stop the server with a non-zero exit code once this response is sent and shutdown cleanup has finished.\n\nThe server only comes back if a supervisor (e.g. a process manager or scheduled task) is configured to restart it on failure; otherwise this behaves like a shutdown.",
 {% endraw %}{% else %}{% raw %}        "description": "Stop the server with a non-zero exit code once this response is sent and shutdown cleanup has finished.\n\nThe container platform then starts it again and records the exit as a failure. Works with Kubernetes/k3s and docker-compose `restart: on-failure`, `unless-stopped` or `always`. With `restart: no` the server stays stopped.",
 {% endraw %}{% endif %}{% raw %}        "operationId": "restart_api_restart_post",
         "responses": {
