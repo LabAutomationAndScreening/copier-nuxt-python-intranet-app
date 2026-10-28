@@ -139,7 +139,7 @@ backend_rest_api_description:
 
 backend_makes_api_calls:
     type: bool
-    help: Will the backend make calls to an external API?
+    help: Will the backend make calls to an external API? (adds httpx as a runtime dependency)
     default: "{{ is_circuit_python_driver }}"
     when: "{{ has_backend and not is_circuit_python_driver }}"
 

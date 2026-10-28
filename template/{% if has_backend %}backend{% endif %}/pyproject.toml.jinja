@@ -20,9 +20,15 @@ dependencies = [
     "pywin32>=312; sys_platform == 'win32'",{% endraw %}{% endif %}{% raw %}
     "pydantic{% endraw %}{{ pydantic_version }}{% raw %}",
     "uvicorn{% endraw %}{{ uvicorn_version }}{% raw %}",
-    "structlog{% endraw %}{{ structlog_version }}{% raw %}",{% endraw %}{% if backend_source_uses_kiota %}{% raw %}
-    "httpx{% endraw %}{{ httpx_version }}{% raw %}",
-    "microsoft-kiota-bundle{% endraw %}{{ python_kiota_bundle_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+    "structlog{% endraw %}{{ structlog_version }}{% raw %}",{% endraw %}{% if backend_makes_api_calls %}{% raw %}
+    "httpx{% endraw %}{{ httpx_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if backend_source_uses_kiota %}{% raw %}
+    # Kiota's runtime packages, declared individually: the client imports modules from each of these distributions, which tach can't attribute to microsoft-kiota-bundle
+    "microsoft-kiota-abstractions{% endraw %}{{ python_kiota_version }}{% raw %}",
+    "microsoft-kiota-http{% endraw %}{{ python_kiota_version }}{% raw %}",
+    "microsoft-kiota-serialization-form{% endraw %}{{ python_kiota_version }}{% raw %}",
+    "microsoft-kiota-serialization-json{% endraw %}{{ python_kiota_version }}{% raw %}",
+    "microsoft-kiota-serialization-multipart{% endraw %}{{ python_kiota_version }}{% raw %}",
+    "microsoft-kiota-serialization-text{% endraw %}{{ python_kiota_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
     "pyserial>=3.5",
     "psutil>=7.2.2",
     "zeroconf>=0.149.0",
@@ -35,8 +41,8 @@ dev = [
     # Specific to this repository
 
 
-    # Managed by upstream template{% endraw %}{% if not backend_source_uses_kiota %}{% raw %}
-    "httpx{% endraw %}{{ httpx_version }}{% raw %}",
+    # Managed by upstream template{% endraw %}{% if not backend_makes_api_calls %}{% raw %}
+    "httpx{% endraw %}{{ httpx_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if not backend_source_uses_kiota %}{% raw %}
     "microsoft-kiota-bundle{% endraw %}{{ python_kiota_bundle_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if backend_uses_graphql %}{% raw %}
     "ariadne-codegen[subscriptions]{% endraw %}{{ ariadne_codegen_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}
     "httpx2{% endraw %}{{ httpx2_version }}{% raw %}",
@@ -93,14 +99,18 @@ cannot_depend_on = ["tests.**.conftest"]
 visibility = []
 
 [tool.tach.external]
-# anyio arrives transitively through starlette; logger_config.py imports it only to locate its frames for log suppression.{% endraw %}{% if backend_source_uses_kiota %}{% raw %}
-# httpx and microsoft-kiota-bundle are for the Kiota client that codegen generates into the project.{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+# anyio arrives transitively through starlette; logger_config.py imports it only to locate its frames for log suppression.{% endraw %}{% if is_circuit_python_driver %}{% raw %}
 # pyserial, psutil, zeroconf and semver are for the device driver code each project writes.{% endraw %}{% endif %}{% raw %}{% endraw %}{% if install_as_windows_service %}{% raw %}
 # pywin32 installs only on Windows, so elsewhere tach cannot map its modules back to it.{% endraw %}{% endif %}{% raw %}
 exclude = [
-    "anyio",{% endraw %}{% if backend_source_uses_kiota %}{% raw %}
-    "httpx",
-    "microsoft_kiota_bundle",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+    "anyio",{% endraw %}{% if backend_makes_api_calls %}{% raw %}
+    "httpx", # TODO: remove once code in backend/src imports it{% endraw %}{% endif %}{% raw %}{% endraw %}{% if backend_source_uses_kiota %}{% raw %}
+    "microsoft_kiota_abstractions", # TODO: remove once code in backend/src imports it (e.g. a Kiota client generated there for the external API)
+    "microsoft_kiota_http", # TODO: remove once code in backend/src imports it (e.g. wrapping the httpx client in HttpxRequestAdapter)
+    "microsoft_kiota_serialization_form", # TODO: remove once code in backend/src imports it (e.g. a Kiota client generated there for the external API)
+    "microsoft_kiota_serialization_json", # TODO: remove once code in backend/src imports it (e.g. a Kiota client generated there for the external API)
+    "microsoft_kiota_serialization_multipart", # TODO: remove once code in backend/src imports it (e.g. a Kiota client generated there for the external API)
+    "microsoft_kiota_serialization_text", # TODO: remove once code in backend/src imports it (e.g. a Kiota client generated there for the external API){% endraw %}{% endif %}{% raw %}{% endraw %}{% if is_circuit_python_driver %}{% raw %}
     "pyserial",
     "psutil",
     "zeroconf",
