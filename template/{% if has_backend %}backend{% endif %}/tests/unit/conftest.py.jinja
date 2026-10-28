@@ -9,6 +9,7 @@ from backend_api.app_runner import ServerControl{% endraw %}{% if has_circuit_py
 from backend_api.common import DEVICE_SOURCE_BRIDGE_ALLOW_LIST_ENV_VAR_NAME
 from backend_api.common import reset_servers_container{% endraw %}{% endif %}{% raw %}
 from fastapi import FastAPI
+from pytest_mock import MockerFixture
 
 {% endraw %}{% if configure_python_asyncio %}{% raw %}from .asyncio_fixtures import fail_on_background_task_errors  # noqa: F401 # this is an autouse fixture
 {% endraw %}{% endif %}{% raw %}from .snapshot import snapshot_json  # noqa: F401 # this is a fixture we need in conftest scope{% endraw %}{% if configure_vcrpy %}{% raw %}
@@ -39,16 +40,14 @@ def _refuse_force_exit(server_control: ServerControl) -> None:
 
 
 @pytest.fixture(autouse=True, scope="session")
-def refuse_unexpected_force_exit():
+def refuse_unexpected_force_exit(session_mocker: MockerFixture):
     # A force-exit timer left running would call os._exit with the requested code (often 0) and end the test run as if it had passed.
     # Raising instead surfaces it as an unhandled thread exception, which pytest.ini turns into a test failure.
-    with pytest.MonkeyPatch.context() as monkeypatch:
-        monkeypatch.setattr(
-            ServerControl,
-            ServerControl._force_exit.__name__,  # noqa: SLF001 # the guard intentionally replaces this private method
-            _refuse_force_exit,
-        )
-        yield
+    _ = session_mocker.patch.object(
+        ServerControl,
+        ServerControl._force_exit.__name__,  # noqa: SLF001 # the guard intentionally replaces this private method
+        _refuse_force_exit,
+    )
 
 
 def _get_all_state_attributes(app: FastAPI) -> set[str]:
