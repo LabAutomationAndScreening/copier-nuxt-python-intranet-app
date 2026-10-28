@@ -21,6 +21,12 @@ _STOP_TIMEOUT = 30
 _CRASH_DUMP_POLL_TIMEOUT = 60
 _EXE = str(EXE_FILE_PATH)
 _ERROR_SERVICE_SPECIFIC_ERROR = "1066"  # Windows WIN32_EXIT_CODE indicating app-specific failure
+_EXPECTED_FAILURE_COUNT_RESET_SECONDS = "86400"
+_EXPECTED_RESTART_ACTIONS = [
+    "RESTART -- Delay = 15000 milliseconds.",
+    "RESTART -- Delay = 15000 milliseconds.",
+    "RESTART -- Delay = 60000 milliseconds.",
+]
 
 
 @dataclass(frozen=True)
@@ -46,6 +52,11 @@ def _run_sc(*args: str, check: bool = False) -> subprocess.CompletedProcess[byte
         timeout=_SC_TIMEOUT,
         check=check,
     )
+
+
+def _sc_field_values(output: str, *, field: str) -> list[str]:
+    # sc prints `FIELD : value`, with continuation lines for multi-valued fields indented under the value
+    return [line.split(":", 1)[-1].strip() for line in output.splitlines() if field in line]
 
 
 def _install_service(*, port: int, log_folder: Path, extra_runtime_args: Sequence[str] = ()) -> None:
@@ -104,6 +115,31 @@ def test_When_service_installed__Then_imagepath_contains_service_token():
     )
     # ImagePath format: "<exe>" service --port <n> --host 0.0.0.0 --log-folder <path>
     assert " service " in binary_path_line
+
+
+@pytest.mark.usefixtures(installed_service.__name__)
+def test_When_service_installed__Then_scm_restarts_it_after_failures():
+    result = _run_sc("qfailure", WINDOWS_SERVICE_NAME, check=True)
+
+    output = result.stdout.decode()
+    assert _sc_field_values(output, field="RESTART --") == _EXPECTED_RESTART_ACTIONS, (
+        f"unexpected failure actions;\nsc qfailure output:\n{output}"
+    )
+    assert _sc_field_values(output, field="RESET_PERIOD") == [_EXPECTED_FAILURE_COUNT_RESET_SECONDS], (
+        f"unexpected failure count reset period;\nsc qfailure output:\n{output}"
+    )
+
+
+@pytest.mark.usefixtures(installed_service.__name__)
+def test_When_service_installed__Then_failure_actions_also_apply_to_non_crash_failures():
+    # The restart route stops the service cleanly but reports a non-zero exit code; SCM only applies the
+    # failure actions to that kind of stop when this flag is set.
+    result = _run_sc("qfailureflag", WINDOWS_SERVICE_NAME, check=True)
+
+    output = result.stdout.decode()
+    assert _sc_field_values(output, field="FAILURE_ACTIONS_ON_NONCRASH_FAILURES") == ["TRUE"], (
+        f"flag not set;\nsc qfailureflag output:\n{output}"
+    )
 
 
 @pytest.mark.timeout(60)
@@ -180,6 +216,9 @@ class TestServiceWorkerCrash:
         crash_dump_path = log_folder / CRASH_DUMP_FILENAME
         _install_service(port=port, log_folder=log_folder, extra_runtime_args=["--log-level", bad_log_level])
         try:
+            # Turn off the restart-on-failure recovery that install configures: SCM would otherwise restart the
+            # crashing service, and these tests could catch it starting again instead of STOPPED with 1066.
+            _ = _run_sc("failure", WINDOWS_SERVICE_NAME, "reset=", "0", "actions=", "", check=True)
             # SCM may report start success briefly before the worker thread crashes; ignore returncode.
             start_result = _run_app("service", "start", check=False)
             deadline = time.monotonic() + _CRASH_DUMP_POLL_TIMEOUT

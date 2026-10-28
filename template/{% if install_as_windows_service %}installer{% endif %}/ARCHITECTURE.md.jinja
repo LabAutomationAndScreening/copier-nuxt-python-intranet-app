@@ -48,6 +48,13 @@ This is deliberate:
 - It puts the LocalSystem-vs-custom-account branching in one PowerShell script instead of
   conditional WiX components.
 
+The same `service install` verb also sets the service's recovery actions: Windows restarts it 15s after
+the first and second failure and 60s after every later one, and resets the failure count after a day. It
+also turns on "failure actions on non-crash failures", so a service that stops itself and reports a
+failure exit code is restarted the same way as one whose process crashed. Because this lives in the
+install verb, MSI upgrades (which reinstall the service) and the Windows service smoke tests get the same
+configuration.
+
 Uninstall mirrors this via `remove-service.ps1` (`service stop` + `service remove`).
 
 ## Service account
