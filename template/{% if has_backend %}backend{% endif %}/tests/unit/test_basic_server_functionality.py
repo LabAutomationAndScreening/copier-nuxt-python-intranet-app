@@ -68,15 +68,12 @@ def test_Given_stop_event_on_app_state__When_shutdown_route_called__Then_stop_ev
     assert stop_event_on_app_state.is_set()
 
 
-def test_Given_stop_event_on_app_state__When_shutdown_route_called_with_get__Then_method_not_allowed_and_server_not_stopped(
-    stop_event_on_app_state: threading.Event,
-):
+def test_When_api_route_requested_with_a_method_only_the_frontend_serves__Then_method_not_allowed():
     client = TestClient(app)
 
-    response = client.get("/api/shutdown")
+    response = client.head("/api/healthcheck")  # GET-only API route; the frontend mount would serve HEAD
 
     assert response.status_code == codes.METHOD_NOT_ALLOWED
-    assert not stop_event_on_app_state.is_set()
 
 
 def test_When_static_file_outside_api_requested__Then_served():
