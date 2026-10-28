@@ -70,15 +70,16 @@ export async function startSeparateBuiltBackend({ port }: { port: number }): Pro
     });
   });
   const baseUrl = `http://127.0.0.1:${port}`;
-  await waitForHttpHealthcheck({ url: `${baseUrl}/api/healthcheck` });
-  return {
-    baseUrl,
-    exited,
-    output: () => chunks.join(""),
-    stop: () => {
-      if (child.exitCode === null && child.signalCode === null) {
-        child.kill();
-      }
-    },
+  const stop = () => {
+    if (child.exitCode === null && child.signalCode === null) {
+      child.kill();
+    }
   };
+  try {
+    await waitForHttpHealthcheck({ url: `${baseUrl}/api/healthcheck` });
+  } catch (error) {
+    stop(); // the caller never receives stop when this throws, so the process would otherwise outlive the test
+    throw error;
+  }
+  return { baseUrl, exited, output: () => chunks.join(""), stop };
 }
