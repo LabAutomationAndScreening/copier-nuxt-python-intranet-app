@@ -79,7 +79,7 @@ def test_When_api_route_requested_with_a_method_only_the_frontend_serves__Then_m
 def test_When_path_without_api_prefix_requested__Then_frontend_static_file_served():
     client = TestClient(app)
 
-    response = client.get("/favicon.ico")
+    response = client.get("/favicon.ico")  # any static file works; this is the only one in every deployment mode
 
     assert response.status_code == codes.OK
     assert response.content == (app_def.STATIC_DIR / "favicon.ico").read_bytes()
