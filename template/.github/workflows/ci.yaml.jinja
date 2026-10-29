@@ -160,7 +160,10 @@ jobs:
           path: frontend/.coverage
           if-no-files-found: error
           include-hidden-files: true
-          retention-days: 5{% endraw %}{% if has_backend %}{% raw %}
+          retention-days: 5
+
+      - uses: ./.github/actions/confirm-git-tree-clean
+        if: env.RUN_JOB == 'true'{% endraw %}{% if has_backend %}{% raw %}
 
   unit-test-backend:
     name: Unit Test Backend (${{ matrix.os }})${{ fromJSON(needs.changes.outputs.classes).backend != true && ' (skipped, no backend changes)' || '' }}
@@ -207,7 +210,10 @@ jobs:
           name: backend-test-coverage-${{ matrix.os }}
           path: backend/coverage-report-pytest
           if-no-files-found: error
-          retention-days: 5{% endraw %}{% endif %}{% raw %}
+          retention-days: 5
+
+      - uses: ./.github/actions/confirm-git-tree-clean
+        if: env.RUN_JOB == 'true'{% endraw %}{% endif %}{% raw %}
 
   build-frontend:
     needs:
@@ -260,6 +266,9 @@ jobs:
           path: frontend/.output/public/**/*
           if-no-files-found: error
           retention-days: 5
+
+      - uses: ./.github/actions/confirm-git-tree-clean
+        if: env.RUN_JOB == 'true'
 
 {% endraw %}{% endif %}{% raw %}
 
@@ -332,7 +341,7 @@ jobs:
         run: task bundle-executable-from-staged-static
       - name: Tar files to preserve permissions on Linux during artifact upload # https://github.com/actions/upload-artifact?tab=readme-ov-file#permission-loss
         if: env.RUN_JOB == 'true'
-        run: tar -cvf app.tar backend/dist/{% endraw %}{{ repo_name }}{% raw %}
+        run: tar -cvf "${{ runner.temp }}/app.tar" backend/dist/{% endraw %}{{ repo_name }}{% raw %}
       - name: Upload application artifact (Windows)
         if: env.RUN_JOB == 'true' && runner.os == 'Windows'
         uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
@@ -346,9 +355,12 @@ jobs:
         uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
         with:
           name: built-{% endraw %}{{ repo_name }}{% raw %}-${{ matrix.os }}
-          path: app.tar
+          path: ${{ runner.temp }}/app.tar
           if-no-files-found: error
-          retention-days: 5{% endraw %}{% endif %}{% raw %}{% endraw %}{% endif %}{% raw %}
+          retention-days: 5
+
+      - uses: ./.github/actions/confirm-git-tree-clean
+        if: env.RUN_JOB == 'true'{% endraw %}{% endif %}{% raw %}{% endraw %}{% endif %}{% raw %}
 
 
   test-compiled-frontend-dev:
@@ -377,7 +389,10 @@ jobs:
 
       - name: Test
         if: env.RUN_JOB == 'true'
-        run: pnpm --dir=frontend test-compiled-dev{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+        run: pnpm --dir=frontend test-compiled-dev
+
+      - uses: ./.github/actions/confirm-git-tree-clean
+        if: env.RUN_JOB == 'true'{% endraw %}{% if is_circuit_python_driver %}{% raw %}
 
   e2e-test-k3d:
     name: End-to-end Testing on k3d${{ fromJSON(needs.changes.outputs.classes).code != true && ' (skipped, no code changes)' || '' }}
@@ -401,21 +416,21 @@ jobs:
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
           name: ${{ needs.build-backend.outputs.artifact-name }}
-          path: deployment-package-folder
+          path: ${{ runner.temp }}/deployment-package
 
       - name: Download Frontend Artifact
         if: env.RUN_JOB == 'true'
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
           name: {% endraw %}{{ frontend_image_name | replace('/', '-') }}{% raw %}
-          path: deployment-package-folder
+          path: ${{ runner.temp }}/deployment-package
 
       - name: Load docker images
         if: env.RUN_JOB == 'true'
         run: |
-          ls deployment-package-folder -a
+          ls "${{ runner.temp }}/deployment-package" -a
           # load all images in the folder
-          ls -1 deployment-package-folder/*.tar | xargs --no-run-if-empty -L 1 docker load -i
+          find "${{ runner.temp }}/deployment-package" -maxdepth 1 -name '*.tar' -print0 | xargs --no-run-if-empty -0 -n 1 docker load -i
 
       - name: Retag loaded images to stable local names
         if: env.RUN_JOB == 'true'
@@ -521,7 +536,10 @@ jobs:
           # since there's no gap after the rollout to install node dependencies, sometimes the NodePorts themselves aren't ready yet, so do a few retries
           curl -s --show-error --fail-with-body --retry 10 --retry-delay 2 --retry-connrefused --retry-all-errors http://localhost:{% endraw %}{{ backend_nodeport_number }}{% raw %}/api/healthcheck
           curl -s --show-error --fail-with-body --retry 10 --retry-delay 2 --retry-connrefused --retry-all-errors http://localhost:{% endraw %}{{ frontend_nodeport_number }}{% raw %}/api/healthcheck
-          curl -s --show-error --fail-with-body --retry 10 --retry-delay 2 --retry-connrefused --retry-all-errors http://localhost:{% endraw %}{{ frontend_nodeport_number }}{% raw %}/{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
+          curl -s --show-error --fail-with-body --retry 10 --retry-delay 2 --retry-connrefused --retry-all-errors http://localhost:{% endraw %}{{ frontend_nodeport_number }}{% raw %}/
+
+      - uses: ./.github/actions/confirm-git-tree-clean
+        if: env.RUN_JOB == 'true'{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
 
   e2e-test-backend:
     name: End-to-end Testing of the Backend (${{ matrix.os }})${{ (fromJSON(needs.changes.outputs.classes).code && fromJSON(needs.changes.outputs.classes).backend) != true && ' (skipped, no backend code changes)' || '' }}
@@ -555,14 +573,14 @@ jobs:
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
           name: ${{ needs.build-backend.outputs.artifact-name }}
-          path: deployment-package-folder
+          path: ${{ runner.temp }}/deployment-package
 
       - name: Load docker images
         if: env.RUN_JOB == 'true'
         run: |
-          ls deployment-package-folder -a
+          ls "${{ runner.temp }}/deployment-package" -a
           # load all images in the folder
-          ls -1 deployment-package-folder/*.tar | xargs --no-run-if-empty -L 1 docker load -i
+          find "${{ runner.temp }}/deployment-package" -maxdepth 1 -name '*.tar' -print0 | xargs --no-run-if-empty -0 -n 1 docker load -i
 
       - name: Retag loaded backend image to stable local name
         if: env.RUN_JOB == 'true'
@@ -577,7 +595,10 @@ jobs:
 
       - name: E2E test
         if: env.RUN_JOB == 'true'
-        run: uv --directory=backend run pytest tests/e2e --durations=5{% endraw %}{% endif %}{% raw %}{% endraw %}{% if install_as_windows_service %}{% raw %}
+        run: uv --directory=backend run pytest tests/e2e --durations=5
+
+      - uses: ./.github/actions/confirm-git-tree-clean
+        if: env.RUN_JOB == 'true'{% endraw %}{% endif %}{% raw %}{% endraw %}{% if install_as_windows_service %}{% raw %}
 
   e2e-test-windows-service:
     name: Windows Service Smoke Tests${{ (fromJSON(needs.changes.outputs.classes).code && fromJSON(needs.changes.outputs.classes).backend) != true && ' (skipped, no backend code changes)' || '' }}
@@ -642,6 +663,9 @@ jobs:
           if-no-files-found: warn
           retention-days: 5
 
+      - uses: ./.github/actions/confirm-git-tree-clean
+        if: env.RUN_JOB == 'true'
+
   build-installer:
     needs:
       - build-backend
@@ -696,21 +720,21 @@ jobs:
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
           name: ${{ needs.build-backend.outputs.artifact-name }}
-          path: deployment-package-folder{% endraw %}{% endif %}{% raw %}
+          path: ${{ runner.temp }}/deployment-package{% endraw %}{% endif %}{% raw %}
 
       - name: Download Frontend Artifact
         if: env.RUN_JOB == 'true'
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
           name: {% endraw %}{{ frontend_image_name | replace('/', '-') }}{% raw %}
-          path: deployment-package-folder
+          path: ${{ runner.temp }}/deployment-package
 
       - name: Load docker images
         if: env.RUN_JOB == 'true'
         run: |
-          ls deployment-package-folder -a
+          ls "${{ runner.temp }}/deployment-package" -a
           # load all images in the folder
-          ls -1 deployment-package-folder/*.tar | xargs --no-run-if-empty -L 1 docker load -i
+          find "${{ runner.temp }}/deployment-package" -maxdepth 1 -name '*.tar' -print0 | xargs --no-run-if-empty -0 -n 1 docker load -i
 
       - name: Retag loaded images to stable local names
         if: env.RUN_JOB == 'true'
@@ -750,6 +774,9 @@ jobs:
           if-no-files-found: error
           retention-days: 5
 
+      - uses: ./.github/actions/confirm-git-tree-clean
+        if: env.RUN_JOB == 'true'
+
 {% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}  package-images:
     name: Package Images${{ fromJSON(needs.changes.outputs.classes).code != true && ' (skipped, no code changes)' || '' }}
     timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
@@ -769,30 +796,30 @@ jobs:
     - name: Prepare docker-compose file
       if: env.RUN_JOB == 'true'
       run: |
-        mkdir -p deployment-package-folder
-        cp deployment/docker-compose.yaml deployment-package-folder/docker-compose.yaml
-        sed -i '/image:/s/:latest/:${{ github.sha }}/g' deployment-package-folder/docker-compose.yaml{% endraw %}{% if has_backend %}{% raw %}
+        mkdir -p "${{ runner.temp }}/deployment-package"
+        cp deployment/docker-compose.yaml "${{ runner.temp }}/deployment-package/docker-compose.yaml"
+        sed -i '/image:/s/:latest/:${{ github.sha }}/g' "${{ runner.temp }}/deployment-package/docker-compose.yaml"{% endraw %}{% if has_backend %}{% raw %}
 
     - name: Download Backend Artifact
       if: env.RUN_JOB == 'true'
       uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
       with:
         name: ${{ needs.build-backend.outputs.artifact-name }}
-        path: deployment-package-folder{% endraw %}{% endif %}{% raw %}
+        path: ${{ runner.temp }}/deployment-package{% endraw %}{% endif %}{% raw %}
 
     - name: Download Frontend Artifact
       if: env.RUN_JOB == 'true'
       uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
       with:
         name: ${{ needs.build-frontend.outputs.artifact-name }}
-        path: deployment-package-folder
+        path: ${{ runner.temp }}/deployment-package
 
     - name: Upload deployment package artifact
       if: env.RUN_JOB == 'true'
       uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
       with:
         name: {% endraw %}{{ repo_name }}{% raw %}-deployment-package
-        path: deployment-package-folder/**/*
+        path: ${{ runner.temp }}/deployment-package/**/*
         if-no-files-found: error
         retention-days: 5{% endraw %}{% endif %}{% raw %}{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
 
