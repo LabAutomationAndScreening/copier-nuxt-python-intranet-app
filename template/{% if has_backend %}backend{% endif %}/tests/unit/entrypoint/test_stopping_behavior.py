@@ -1,11 +1,19 @@
+import logging
 import os
 import signal
+import socket
 import sys
 import threading
+from collections.abc import Iterator
+from dataclasses import dataclass
+from pathlib import Path
+from typing import override
 
+import httpx
 import pytest
 import uvicorn
 from backend_api.entrypoint.cli import entrypoint
+from httpx import codes
 from pytest_mock import MockerFixture
 
 from .fixtures import GENERIC_REQUIRED_CLI_ARGS
@@ -111,3 +119,98 @@ def test_Given_signal_received__Then_entrypoint_exits(mocker: MockerFixture, sig
 
     t.join(timeout=2)
     assert not t.is_alive()
+
+
+class _RecordingHandler(logging.Handler):
+    def __init__(self) -> None:
+        super().__init__()
+        self.messages: list[str] = []
+
+    @override
+    def emit(self, record: logging.LogRecord) -> None:
+        self.messages.append(record.getMessage())
+
+
+def _get_open_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+    assert isinstance(port, int)
+    return port
+
+
+def _wait_until_healthy(*, base_url: str) -> None:
+    for _ in range(100):
+        try:
+            if httpx.get(f"{base_url}/api/healthcheck", timeout=1.0).is_success:
+                return
+        except httpx.TransportError:
+            pass
+        _ = threading.Event().wait(timeout=0.05)
+    pytest.fail(f"server at {base_url} never became healthy")
+
+
+@dataclass(frozen=True)
+class RunningServer:
+    base_url: str
+    thread: threading.Thread
+    exit_codes: list[int]
+    uvicorn_log: _RecordingHandler
+
+
+@pytest.fixture
+def running_server(tmp_path: Path) -> Iterator[RunningServer]:
+    port = _get_open_port()
+    stop_event = threading.Event()
+    exit_codes: list[int] = []
+    thread = threading.Thread(
+        target=lambda: exit_codes.append(
+            entrypoint(
+                ["--host", "127.0.0.1", "--port", str(port), "--log-folder", str(tmp_path)],
+                stop_event=stop_event,
+            )
+        ),
+        daemon=True,
+    )
+    thread.start()
+    base_url = f"http://127.0.0.1:{port}"
+    _wait_until_healthy(base_url=base_url)
+    uvicorn_log = _RecordingHandler()
+    uvicorn_error_logger = logging.getLogger(
+        "uvicorn.error"
+    )  # attached after startup because uvicorn reconfigures its loggers while starting
+    uvicorn_error_logger.addHandler(uvicorn_log)
+    try:
+        yield RunningServer(base_url=base_url, thread=thread, exit_codes=exit_codes, uvicorn_log=uvicorn_log)
+    finally:
+        uvicorn_error_logger.removeHandler(uvicorn_log)
+        stop_event.set()
+        thread.join(timeout=10)
+
+
+@pytest.mark.timeout(30)
+def test_When_shutdown_route_called_on_running_server__Then_lifespan_shut_down_and_entrypoint_returns_zero(
+    running_server: RunningServer,
+):
+    response = httpx.post(f"{running_server.base_url}/api/shutdown", timeout=5.0)
+
+    running_server.thread.join(timeout=10)
+
+    assert response.status_code == codes.OK
+    assert not running_server.thread.is_alive()
+    assert running_server.exit_codes == [0]
+    assert "Application shutdown complete." in running_server.uvicorn_log.messages
+
+
+@pytest.mark.timeout(30)
+def test_When_restart_route_called_on_running_server__Then_lifespan_shut_down_and_entrypoint_returns_one(
+    running_server: RunningServer,
+):
+    response = httpx.post(f"{running_server.base_url}/api/restart", timeout=5.0)
+
+    running_server.thread.join(timeout=10)
+
+    assert response.status_code == codes.OK
+    assert not running_server.thread.is_alive()
+    assert running_server.exit_codes == [1]
+    assert "Application shutdown complete." in running_server.uvicorn_log.messages

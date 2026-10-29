@@ -23,6 +23,8 @@ from .parser import parser
 from .service_install_password import inject_install_password
 
 _SERVICE_MANAGEMENT_COMMANDS = frozenset({"install", "start", "stop", "remove", "debug"})
+_RESTART_DELAYS_MS = (15_000, 15_000, 60_000)  # SCM repeats the last action for every failure beyond the list
+_FAILURE_COUNT_RESET_SECONDS = 24 * 60 * 60
 
 
 class AppService(win32serviceutil.ServiceFramework):
@@ -72,9 +74,10 @@ class AppService(win32serviceutil.ServiceFramework):
         service_argv = sys.argv[2:]  # sys.argv[0] = exe path, sys.argv[1] = 'service', sys.argv[2:] = runtime args
         crash_dump_path = resolve_crash_dump_path(service_argv)
         crash_traceback: str | None = None
+        app_exit_code = 0
 
         def _run() -> None:
-            nonlocal crash_traceback
+            nonlocal crash_traceback, app_exit_code
             try:
                 # SCM detaches stdio: sys.stdout/sys.stderr are None. uvicorn's DefaultFormatter
                 # calls sys.stdout.isatty() during __init__ and crashes. Redirect to devnull;
@@ -82,7 +85,7 @@ class AppService(win32serviceutil.ServiceFramework):
                 sys.stdout = Path(os.devnull).open("w", encoding="utf-8")  # noqa: SIM115 # service-lifetime handle; closing would break later writes
                 sys.stderr = Path(os.devnull).open("w", encoding="utf-8")  # noqa: SIM115 # service-lifetime handle; closing would break later writes
                 cli_args = parser.parse_args(service_argv)
-                _ = app_runner.start_app(cli_args, stop_event=self._stop_event)
+                app_exit_code = app_runner.start_app(cli_args, stop_event=self._stop_event)
             except BaseException:  # noqa: BLE001 # service-of-last-resort: must also catch SystemExit from argparse (--version/--help/parse errors) so the failure surfaces to SCM + crash dump instead of silently exiting
                 crash_traceback = traceback.format_exc()
                 self._stop_event.set()
@@ -112,6 +115,51 @@ class AppService(win32serviceutil.ServiceFramework):
                 win32ExitCode=winerror.ERROR_SERVICE_SPECIFIC_ERROR,
                 svcExitCode=1,
             )
+        elif app_exit_code != 0:
+            # The app stopped itself and asked for a non-zero exit (the restart route). Report it the same way
+            # as a crash so SCM's restart-on-failure recovery starts the service again; a zero exit (the
+            # shutdown route, or an admin stop) falls through to pywin32's clean SERVICE_STOPPED.
+            servicemanager.LogInfoMsg(f"{APP_NAME}: stopped with exit code {app_exit_code}")
+            self.ReportServiceStatus(
+                win32service.SERVICE_STOPPED,
+                win32ExitCode=winerror.ERROR_SERVICE_SPECIFIC_ERROR,
+                svcExitCode=app_exit_code,
+            )
+
+
+def _configure_restart_on_failure() -> None:
+    # Without recovery actions SCM's default is "Take no action", so a service that stops with a failure
+    # (a worker crash, or the restart route) would stay stopped. FAILURE_ACTIONS_FLAG is what makes SCM
+    # also apply the actions when the service itself reports SERVICE_STOPPED with a non-zero exit code;
+    # without it they only fire when the process dies unexpectedly.
+    scm_handle = win32service.OpenSCManager(None, None, win32service.SC_MANAGER_CONNECT)
+    try:
+        service_handle = win32service.OpenService(
+            scm_handle,
+            WINDOWS_SERVICE_NAME,
+            win32service.SERVICE_CHANGE_CONFIG
+            | win32service.SERVICE_START,  # SC_ACTION_RESTART requires SERVICE_START access on the handle
+        )
+        try:
+            win32service.ChangeServiceConfig2(
+                service_handle,
+                win32service.SERVICE_CONFIG_FAILURE_ACTIONS,
+                {
+                    "ResetPeriod": _FAILURE_COUNT_RESET_SECONDS,
+                    "RebootMsg": None,
+                    "Command": None,
+                    "Actions": [(win32service.SC_ACTION_RESTART, delay_ms) for delay_ms in _RESTART_DELAYS_MS],
+                },
+            )
+            win32service.ChangeServiceConfig2(
+                service_handle,
+                win32service.SERVICE_CONFIG_FAILURE_ACTIONS_FLAG,
+                True,  # noqa: FBT003 # pywin32 takes the flag value as a positional-only argument
+            )
+        finally:
+            win32service.CloseServiceHandle(service_handle)
+    finally:
+        win32service.CloseServiceHandle(scm_handle)
 
 
 def dispatch_windows_service(argv: Sequence[str]) -> int:
@@ -140,6 +188,9 @@ def dispatch_windows_service(argv: Sequence[str]) -> int:
             # CreateService without ever appearing in the exe's process command line.
             install_args = inject_install_password(install_args)
         win32serviceutil.HandleCommandLine(AppService, argv=[sys.argv[0], *install_args])
+        if service_subcommand == "install":
+            # Opening the service also confirms the install succeeded: HandleCommandLine only prints its errors.
+            _configure_restart_on_failure()
     else:
         servicemanager.Initialize()
         servicemanager.PrepareToHostSingle(AppService)

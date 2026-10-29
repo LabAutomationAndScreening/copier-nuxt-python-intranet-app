@@ -17,7 +17,7 @@ var ALLOWLIST = [
   // uncountable / mass nouns
   "data", "series", "telemetry", "equipment", "info", "metadata", "media", "config", "configuration",
   // health / status / lifecycle singletons
-  "health", "healthcheck", "healthz", "readyz", "livez", "status", "shutdown", "ping", "version",
+  "health", "healthcheck", "healthz", "readyz", "livez", "status", "shutdown", "restart", "ping", "version",
   // common actions, filters and singleton sub-resources
   "me", "self", "search", "online", "offline", "push", "polling", "dashboard", "summary", "latest", "current",
   // non-REST endpoints (not resource collections)

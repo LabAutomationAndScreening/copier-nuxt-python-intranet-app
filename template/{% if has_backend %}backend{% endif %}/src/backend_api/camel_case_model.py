@@ -5,7 +5,7 @@ from pydantic.fields import ComputedFieldInfo
 from pydantic.fields import FieldInfo
 
 
-def _title_from_field_name(field_name: str, _info: FieldInfo | ComputedFieldInfo) -> str:  # noqa: ARG001  # signature fixed by pydantic field_title_generator
+def _title_from_field_name(field_name: str, _: FieldInfo | ComputedFieldInfo) -> str:
     """Generate the JSON-schema ``title`` from the snake_case field name.
 
     Without this, pydantic derives ``title`` from the camelCase alias (``remoteUrl`` -> "Remoteurl").

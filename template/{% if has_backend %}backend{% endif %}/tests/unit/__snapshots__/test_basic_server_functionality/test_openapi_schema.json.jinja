@@ -72,12 +72,15 @@
       }
     },
     "/api/shutdown": {
-      "get": {
+      "post": {
         "tags": [
           "system"
         ],
         "summary": "Shut down the server",
-        "operationId": "shutdown_api_shutdown_get",
+{% endraw %}{% if install_as_windows_service %}{% raw %}        "description": "Stop the Windows service cleanly. Windows leaves it stopped; start it again from the Services console or with sc start.",
+{% endraw %}{% elif deploy_as_executable %}{% raw %}        "description": "Stop the server cleanly (exit code 0) once this response is sent and shutdown cleanup has finished.\n\nThe server stays stopped unless something external starts it again.",
+{% endraw %}{% else %}{% raw %}        "description": "Stop the server cleanly (exit code 0) once this response is sent and shutdown cleanup has finished.\n\nWhether it stays stopped depends on the platform's restart policy:\n\n- docker-compose `restart: on-failure`: stays stopped. This policy also doesn't restart the container when the Docker daemon or host restarts.\n- docker-compose `restart: unless-stopped` / `always`, or Kubernetes/k3s: started again, so this behaves like a restart. To keep it stopped there, scale the deployment to zero or stop the container from the platform.",
+{% endraw %}{% endif %}{% raw %}        "operationId": "shutdown_api_shutdown_post",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -85,6 +88,50 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ShutdownResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/restart": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Restart the server",
+{% endraw %}{% if install_as_windows_service %}{% raw %}        "description": "Stop the Windows service and report a failure, so the restart-on-failure recovery configured at install starts it again.",
+{% endraw %}{% elif deploy_as_executable %}{% raw %}        "description": "Stop the server with a non-zero exit code once this response is sent and shutdown cleanup has finished.\n\nThe server only comes back if a supervisor (e.g. a process manager or scheduled task) is configured to restart it on failure; otherwise this behaves like a shutdown.",
+{% endraw %}{% else %}{% raw %}        "description": "Stop the server with a non-zero exit code once this response is sent and shutdown cleanup has finished.\n\nThe container platform then starts it again and records the exit as a failure. Works with Kubernetes/k3s and docker-compose `restart: on-failure`, `unless-stopped` or `always`. With `restart: no` the server stays stopped.",
+{% endraw %}{% endif %}{% raw %}        "operationId": "restart_api_restart_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestartResponse"
                 }
               }
             }
@@ -237,6 +284,22 @@
         "type": "object",
         "title": "HealthcheckResponse",
         "description": "Result of an API health check.\n\nReports the running application version so a caller can confirm the server is up and identify which\nbuild is currently deployed."
+      },
+      "RestartResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Message indicating the restart request was received",
+            "default": "Restart request received. Server will restart shortly.",
+            "examples": [
+              "Restart request received. Server will restart shortly."
+            ]
+          }
+        },
+        "type": "object",
+        "title": "RestartResponse",
+        "description": "Acknowledgement of a server restart request.\n\nReturned immediately when a restart is requested; the server process exits with a non-zero code shortly\nafter this response is sent, and the supervising platform starts it again."
       },
       "ShutdownResponse": {
         "properties": {

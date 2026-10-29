@@ -21,6 +21,21 @@ _STOP_TIMEOUT = 30
 _CRASH_DUMP_POLL_TIMEOUT = 60
 _EXE = str(EXE_FILE_PATH)
 _ERROR_SERVICE_SPECIFIC_ERROR = "1066"  # Windows WIN32_EXIT_CODE indicating app-specific failure
+_EXPECTED_FAILURE_COUNT_RESET_SECONDS = "86400"
+_FIRST_RESTART_DELAY_SECONDS = 15
+_HEALTHY_AFTER_RESTART_MAX_RETRIES = 30  # covers the SCM restart delay plus the service starting up again
+_EXPECTED_RESTART_ACTIONS = [
+    "RESTART -- Delay = 15000 milliseconds.",
+    "RESTART -- Delay = 15000 milliseconds.",
+    "RESTART -- Delay = 60000 milliseconds.",
+]
+
+
+@dataclass(frozen=True)
+class ServiceStatus:
+    stopped: bool
+    win32_exit_code: str
+    pid: str
 
 
 @dataclass(frozen=True)
@@ -46,6 +61,29 @@ def _run_sc(*args: str, check: bool = False) -> subprocess.CompletedProcess[byte
         timeout=_SC_TIMEOUT,
         check=check,
     )
+
+
+def _sc_field_values(output: str, *, field: str) -> list[str]:
+    # sc prints `FIELD : value`, with continuation lines for multi-valued fields indented under the value
+    return [line.split(":", 1)[-1].strip() for line in output.splitlines() if field in line]
+
+
+def _query_service_status() -> ServiceStatus:
+    output = _run_sc("queryex", WINDOWS_SERVICE_NAME, check=True).stdout.decode()
+    return ServiceStatus(
+        stopped="STOPPED" in _sc_field_values(output, field="STATE")[0],
+        win32_exit_code=_sc_field_values(output, field="WIN32_EXIT_CODE")[0].split()[0],  # e.g. `1066  (0x42a)`
+        pid=_sc_field_values(output, field="PID")[0],
+    )
+
+
+def _wait_for_service_stopped() -> ServiceStatus:
+    deadline = time.monotonic() + _STOP_TIMEOUT
+    status = _query_service_status()
+    while not status.stopped and time.monotonic() < deadline:
+        time.sleep(0.5)
+        status = _query_service_status()
+    return status
 
 
 def _install_service(*, port: int, log_folder: Path, extra_runtime_args: Sequence[str] = ()) -> None:
@@ -88,7 +126,7 @@ def installed_service(tmp_path: Path):
 
 
 @pytest.mark.usefixtures(installed_service.__name__)
-def test_Given_service_installed__Then_registered_in_scm():
+def test_When_service_installed__Then_registered_in_scm():
     result = _run_sc("query", WINDOWS_SERVICE_NAME)
 
     assert result.returncode == 0
@@ -104,6 +142,31 @@ def test_When_service_installed__Then_imagepath_contains_service_token():
     )
     # ImagePath format: "<exe>" service --port <n> --host 0.0.0.0 --log-folder <path>
     assert " service " in binary_path_line
+
+
+@pytest.mark.usefixtures(installed_service.__name__)
+def test_When_service_installed__Then_scm_recovery_configured_to_restart_on_failure():
+    result = _run_sc("qfailure", WINDOWS_SERVICE_NAME, check=True)
+
+    output = result.stdout.decode()
+    assert _sc_field_values(output, field="RESTART --") == _EXPECTED_RESTART_ACTIONS, (
+        f"unexpected failure actions;\nsc qfailure output:\n{output}"
+    )
+    assert _sc_field_values(output, field="RESET_PERIOD") == [_EXPECTED_FAILURE_COUNT_RESET_SECONDS], (
+        f"unexpected failure count reset period;\nsc qfailure output:\n{output}"
+    )
+
+
+@pytest.mark.usefixtures(installed_service.__name__)
+def test_When_service_installed__Then_failure_actions_also_apply_to_non_crash_failures():
+    # The restart route stops the service cleanly but reports a non-zero exit code; SCM only applies the
+    # failure actions to that kind of stop when this flag is set.
+    result = _run_sc("qfailureflag", WINDOWS_SERVICE_NAME, check=True)
+
+    output = result.stdout.decode()
+    assert _sc_field_values(output, field="FAILURE_ACTIONS_ON_NONCRASH_FAILURES") == ["TRUE"], (
+        f"flag not set;\nsc qfailureflag output:\n{output}"
+    )
 
 
 @pytest.mark.timeout(60)
@@ -180,6 +243,9 @@ class TestServiceWorkerCrash:
         crash_dump_path = log_folder / CRASH_DUMP_FILENAME
         _install_service(port=port, log_folder=log_folder, extra_runtime_args=["--log-level", bad_log_level])
         try:
+            # Turn off the restart-on-failure recovery that install configures: SCM would otherwise restart the
+            # crashing service, and these tests could catch it starting again instead of STOPPED with 1066.
+            _ = _run_sc("failure", WINDOWS_SERVICE_NAME, "reset=", "0", "actions=", "", check=True)
             # SCM may report start success briefly before the worker thread crashes; ignore returncode.
             start_result = _run_app("service", "start", check=False)
             deadline = time.monotonic() + _CRASH_DUMP_POLL_TIMEOUT
@@ -247,6 +313,51 @@ def test_When_install_with_startup_option_before_subcommand__Then_service_regist
         assert "AUTO_START" in output, f"service not registered with AUTO_START;\nsc qc output:\n{output}"
     finally:
         _uninstall_service()
+
+
+@pytest.mark.timeout(180)
+def test_Given_service_started__When_restart_route_called__Then_service_stops_with_failure_and_scm_restarts_it(
+    installed_service: InstalledService,
+):
+    _ = _run_app("service", "start")
+    wait_for_backend_to_be_healthy(port=installed_service.port)
+    pid_before_restart = _query_service_status().pid
+
+    response = httpx.post(f"http://localhost:{installed_service.port}/api/restart", timeout=5.0)
+
+    stopped_status = _wait_for_service_stopped()
+
+    assert response.is_success
+    assert stopped_status.stopped
+    assert stopped_status.win32_exit_code == _ERROR_SERVICE_SPECIFIC_ERROR
+
+    wait_for_backend_to_be_healthy(port=installed_service.port, max_retries=_HEALTHY_AFTER_RESTART_MAX_RETRIES)
+
+    restarted_status = _query_service_status()
+
+    assert restarted_status.pid != pid_before_restart
+
+
+@pytest.mark.timeout(120)
+def test_Given_service_started__When_shutdown_route_called__Then_service_stops_cleanly_and_stays_stopped(
+    installed_service: InstalledService,
+):
+    _ = _run_app("service", "start")
+    wait_for_backend_to_be_healthy(port=installed_service.port)
+
+    response = httpx.post(f"http://localhost:{installed_service.port}/api/shutdown", timeout=5.0)
+
+    stopped_status = _wait_for_service_stopped()
+
+    assert response.is_success
+    assert stopped_status.stopped
+    assert stopped_status.win32_exit_code == "0"
+
+    time.sleep(_FIRST_RESTART_DELAY_SECONDS + 5)  # long enough that SCM recovery would have restarted it
+
+    status_after_restart_delay = _query_service_status()
+
+    assert status_after_restart_delay.stopped
 
 
 @pytest.mark.timeout(120)

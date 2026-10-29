@@ -1,7 +1,4 @@
-{% raw %}import logging
-import os
-import threading
-import time{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
+{% raw %}import logging{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
 from contextlib import asynccontextmanager{% endraw %}{% endif %}{% raw %}
 from pathlib import Path
 from typing import Annotated
@@ -11,10 +8,14 @@ from typing import override
 from backend_api.lib import parse_port
 from fastapi import FastAPI{% endraw %}{% endif %}{% raw %}
 from fastapi import Query
+from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi_offline import FastAPIOffline
-from pydantic import Field{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
+from pydantic import Field
+from starlette.routing import Match
+from starlette.routing import Mount
+from starlette.types import Scope{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
 from zeroconf.asyncio import AsyncZeroconf{% endraw %}{% endif %}{% raw %}
 
 from .camel_case_model import CamelCaseModel{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
@@ -140,6 +141,20 @@ class ShutdownResponse(CamelCaseModel):
     )
 
 
+class RestartResponse(CamelCaseModel):
+    """Acknowledgement of a server restart request.
+
+    Returned immediately when a restart is requested; the server process exits with a non-zero code shortly
+    after this response is sent, and the supervising platform starts it again.
+    """
+
+    message: str = Field(
+        default="Restart request received. Server will restart shortly.",
+        description="Message indicating the restart request was received",
+        examples=["Restart request received. Server will restart shortly."],
+    )
+
+
 class NoCacheStaticFiles(StaticFiles):
     """Set cache control headers to prevent caching."""
 
@@ -156,6 +171,20 @@ class NoCacheStaticFiles(StaticFiles):
         return response
 
 
+class FrontendMount(Mount):
+    """Serve the frontend everywhere except the /api/ namespace.
+
+    A catch-all mount at "/" fully matches every path, which stops the router from falling back to a partial
+    (path-only) match. Excluding /api/ lets requests with the wrong method on an API route receive a 405.
+    """
+
+    @override
+    def matches(self, scope: Scope) -> tuple[Match, Scope]:
+        if scope["path"].startswith("/api/"):
+            return Match.NONE, {}
+        return super().matches(scope)
+
+
 @app.get("/api/healthcheck", summary="Check API health", tags=["system"])
 def healthcheck(
     query: Annotated[HealthcheckQuery, Query()],
@@ -163,19 +192,42 @@ def healthcheck(
     return HealthcheckResponse(version=get_version(prepend_v=query.prepend_v))
 
 
-@app.get("/api/shutdown", summary="Shut down the server", tags=["system"])
-def shutdown() -> ShutdownResponse:
-    logger.info("Server shutdown request received")
+@app.post("/api/shutdown", summary="Shut down the server", tags=["system"])
+def shutdown(request: Request) -> ShutdownResponse:
+{% endraw %}{% if install_as_windows_service %}{% raw %}    """Stop the Windows service cleanly. Windows leaves it stopped; start it again from the Services console or with sc start."""
+{% endraw %}{% elif deploy_as_executable %}{% raw %}    """Stop the server cleanly (exit code 0) once this response is sent and shutdown cleanup has finished.
 
-    def do_shutdown():
-        time.sleep(0.1)  # Give time for the request to return a success response
-        logger.info("Server is shutting down.")
-        os._exit(
-            0
-        )  # sys.exit just causes an internal server error, it doesn't actually stop the server. So a hard exit is needed
+    The server stays stopped unless something external starts it again.
+    """
+{% endraw %}{% else %}{% raw %}    """Stop the server cleanly (exit code 0) once this response is sent and shutdown cleanup has finished.
 
-    threading.Thread(target=do_shutdown, name="execute_shutdown").start()
+    Whether it stays stopped depends on the platform's restart policy:
+
+    - docker-compose `restart: on-failure`: stays stopped. This policy also doesn't restart the container when the Docker daemon or host restarts.
+    - docker-compose `restart: unless-stopped` / `always`, or Kubernetes/k3s: started again, so this behaves like a restart. To keep it stopped there, scale the deployment to zero or stop the container from the platform.
+    """
+{% endraw %}{% endif %}{% raw %}    logger.info("Server shutdown request received")
+    # TODO: when launched directly by uvicorn (e.g. dev hot-reload) nothing has put a server_control on app.state, so this raises
+    request.app.state.server_control.request_stop(exit_code=0)
     return ShutdownResponse()
+
+
+@app.post("/api/restart", summary="Restart the server", tags=["system"])
+def restart(request: Request) -> RestartResponse:
+{% endraw %}{% if install_as_windows_service %}{% raw %}    """Stop the Windows service and report a failure, so the restart-on-failure recovery configured at install starts it again."""
+{% endraw %}{% elif deploy_as_executable %}{% raw %}    """Stop the server with a non-zero exit code once this response is sent and shutdown cleanup has finished.
+
+    The server only comes back if a supervisor (e.g. a process manager or scheduled task) is configured to restart it on failure; otherwise this behaves like a shutdown.
+    """
+{% endraw %}{% else %}{% raw %}    """Stop the server with a non-zero exit code once this response is sent and shutdown cleanup has finished.
+
+    The container platform then starts it again and records the exit as a failure. Works with Kubernetes/k3s and docker-compose `restart: on-failure`, `unless-stopped` or `always`. With `restart: no` the server stays stopped.
+    """
+{% endraw %}{% endif %}{% raw %}    logger.info("Server restart request received")
+    request.app.state.server_control.request_stop(
+        exit_code=1  # non-zero so the supervising platform treats the exit as a failure and restarts the process
+    )
+    return RestartResponse()
 
 
 try:
@@ -192,8 +244,8 @@ try:
     app.include_router(driver_router, prefix="/api/driver")
     app.include_router(bridges_router, prefix="/api/bridges", tags=["debug"])
     app.include_router(mdns_router, prefix="/api", tags=["mDNS"]){% endraw %}{% endif %}{% raw %}
-    app.mount(
-        "/", NoCacheStaticFiles(directory=STATIC_DIR, html=True), name="static"
+    app.router.routes.append(
+        FrontendMount("/", app=NoCacheStaticFiles(directory=STATIC_DIR, html=True), name="static")
     )  # this needs to go after any defined routes so that the routes take precedence
     register_exception_handlers(app)
 except (  # pragma: no cover # This is just logging unexpected errors, and it's very challenging to explicitly unit test

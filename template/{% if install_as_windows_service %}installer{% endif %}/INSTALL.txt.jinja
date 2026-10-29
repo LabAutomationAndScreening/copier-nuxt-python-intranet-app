@@ -92,6 +92,9 @@ AFTER INSTALL
 - Service status:  Get-Service {% endraw %}{{ service_name }}{% raw %}   (should be Running)
 - App:             http://127.0.0.1:{% endraw %}{{ backend_deployed_port_number }}{% raw %}/
 - Logs:            C:\ProgramData\{% endraw %}{{ company_id }}{% raw %}\{% endraw %}{{ product_id }}{% raw %}\logs\
+- Recovery:        Windows restarts the service 15s after its first and second
+                   failure and 60s after later ones; the failure count resets
+                   after a day. View it with: sc qfailure {% endraw %}{{ service_name }}{% raw %}
 
 
 UPGRADE

@@ -1,9 +1,12 @@
-import time
+import threading
+from collections.abc import Iterator
 
+import pytest
 from backend_api import app_def
 from backend_api import fast_api_exception_handlers
 from backend_api.app_def import HealthcheckResponse
 from backend_api.app_def import app
+from backend_api.app_runner import ServerControl
 from fastapi.testclient import TestClient
 from httpx import codes
 from pytest_mock import MockerFixture
@@ -45,19 +48,41 @@ def test_When_swagger_route_called__Then_rendered():
     assert "Swagger UI" in response.text
 
 
-def test_When_shutdown_route_called__Then_system_exit(mocker: MockerFixture):
-    client = TestClient(app)
-    mocked_os_exit = mocker.patch.object(app_def.os, "_exit", autospec=True)
+@pytest.fixture
+def stop_event_on_app_state(mocker: MockerFixture) -> Iterator[threading.Event]:
+    stop_event = threading.Event()
+    server_control = ServerControl(stop_event=stop_event)
+    _ = mocker.patch.object(app.state, "server_control", server_control, create=True)
+    yield stop_event
+    server_control.stop_completed()  # no server is running to do this, so cancel any force-exit timer the route started
 
-    response = client.get("/api/shutdown")
+
+def test_Given_stop_event_on_app_state__When_shutdown_route_called__Then_stop_event_set(
+    stop_event_on_app_state: threading.Event,
+):
+    client = TestClient(app)
+
+    response = client.post("/api/shutdown")
 
     assert response.status_code == codes.OK
+    assert stop_event_on_app_state.is_set()
 
-    for _ in range(1000):  # wait for the thread to finish
-        if mocked_os_exit.call_count > 0:
-            break
-        time.sleep(0.001)
-    mocked_os_exit.assert_called_once_with(0)
+
+def test_When_api_route_requested_with_a_method_only_the_frontend_serves__Then_method_not_allowed():
+    client = TestClient(app)
+
+    response = client.head("/api/healthcheck")  # GET-only API route; the frontend mount would serve HEAD
+
+    assert response.status_code == codes.METHOD_NOT_ALLOWED
+
+
+def test_When_path_without_api_prefix_requested__Then_frontend_static_file_served():
+    client = TestClient(app)
+
+    response = client.get("/favicon.ico")  # any static file works; this is the only one in every deployment mode
+
+    assert response.status_code == codes.OK
+    assert response.content == (app_def.STATIC_DIR / "favicon.ico").read_bytes()
 
 
 def test_openapi_schema(snapshot_json: SnapshotAssertion, mocker: MockerFixture):

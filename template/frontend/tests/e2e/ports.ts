@@ -16,7 +16,7 @@ export const isDockerComposeE2E = Boolean(process.env.USE_DOCKER_COMPOSE_FOR_E2E
 // config, globalSetup, and the test workers building the backend client — agrees on the same port.
 const BUILT_BACKEND_PORT_ENV = "E2E_BUILT_BACKEND_PORT";
 
-function getRandomOpenPort(): Promise<number> {
+export function getRandomOpenPort(): Promise<number> {
   return new Promise((resolve, reject) => {
     const server = createServer();
     server.on("error", (err) => {
