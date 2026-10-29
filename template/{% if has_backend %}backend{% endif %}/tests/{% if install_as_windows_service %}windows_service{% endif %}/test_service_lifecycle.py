@@ -126,7 +126,7 @@ def installed_service(tmp_path: Path):
 
 
 @pytest.mark.usefixtures(installed_service.__name__)
-def test_Given_service_installed__Then_registered_in_scm():
+def test_When_service_installed__Then_registered_in_scm():
     result = _run_sc("query", WINDOWS_SERVICE_NAME)
 
     assert result.returncode == 0
@@ -145,7 +145,7 @@ def test_When_service_installed__Then_imagepath_contains_service_token():
 
 
 @pytest.mark.usefixtures(installed_service.__name__)
-def test_When_service_installed__Then_scm_restarts_it_after_failures():
+def test_When_service_installed__Then_scm_recovery_configured_to_restart_on_failure():
     result = _run_sc("qfailure", WINDOWS_SERVICE_NAME, check=True)
 
     output = result.stdout.decode()
