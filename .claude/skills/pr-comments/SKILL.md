@@ -75,7 +75,8 @@ to the file when that isn't already its last line (never write the footer yourse
 A reply about a commit links it: write `[COMMIT LINK]` where the commit goes and pass
 `--commit <full sha>`, which fills it with `[abc1234](https://github.com/OWNER/NAME/pull/N/changes/<sha>)`,
 the PR-scoped view GitHub ties to the PR. A placeholder left without `--commit`, or `--commit`
-with nothing to fill, is refused.
+with nothing to fill, is refused, unless the file already holds that commit's link, as it does
+after a failed post, so a retry with the same arguments works.
 
 A reply goes out under the user's account, so the permission settings put this script under
 ask, and the user approves its text before it goes. Draft it without the footer, then ask with
@@ -87,7 +88,8 @@ the draft itself in the question (never only a path), "Post now or edit first?":
   done. Then read it back and ask again, with its current text and your opinion of it, "Ready to
   post, or edit again?", until they say post.
 
-Once approved, never write to the file again: post it exactly as it is on disk.
+Once approved, never write to the file again: post it as it is on disk, with `--commit` filling
+`[COMMIT LINK]` as the only change.
 
 ## Markers
 
