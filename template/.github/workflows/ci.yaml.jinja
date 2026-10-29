@@ -160,7 +160,10 @@ jobs:
           path: frontend/.coverage
           if-no-files-found: error
           include-hidden-files: true
-          retention-days: 5{% endraw %}{% if has_backend %}{% raw %}
+          retention-days: 5
+
+      - uses: ./.github/actions/confirm-git-tree-clean
+        if: env.RUN_JOB == 'true'{% endraw %}{% if has_backend %}{% raw %}
 
   unit-test-backend:
     name: Unit Test Backend (${{ matrix.os }})${{ fromJSON(needs.changes.outputs.classes).backend != true && ' (skipped, no backend changes)' || '' }}
@@ -207,7 +210,10 @@ jobs:
           name: backend-test-coverage-${{ matrix.os }}
           path: backend/coverage-report-pytest
           if-no-files-found: error
-          retention-days: 5{% endraw %}{% endif %}{% raw %}
+          retention-days: 5
+
+      - uses: ./.github/actions/confirm-git-tree-clean
+        if: env.RUN_JOB == 'true'{% endraw %}{% endif %}{% raw %}
 
   build-frontend:
     needs:
@@ -260,6 +266,9 @@ jobs:
           path: frontend/.output/public/**/*
           if-no-files-found: error
           retention-days: 5
+
+      - uses: ./.github/actions/confirm-git-tree-clean
+        if: env.RUN_JOB == 'true'
 
 {% endraw %}{% endif %}{% raw %}
 
@@ -348,7 +357,10 @@ jobs:
           name: built-{% endraw %}{{ repo_name }}{% raw %}-${{ matrix.os }}
           path: ${{ runner.temp }}/app.tar
           if-no-files-found: error
-          retention-days: 5{% endraw %}{% endif %}{% raw %}{% endraw %}{% endif %}{% raw %}
+          retention-days: 5
+
+      - uses: ./.github/actions/confirm-git-tree-clean
+        if: env.RUN_JOB == 'true'{% endraw %}{% endif %}{% raw %}{% endraw %}{% endif %}{% raw %}
 
 
   test-compiled-frontend-dev:
@@ -377,7 +389,10 @@ jobs:
 
       - name: Test
         if: env.RUN_JOB == 'true'
-        run: pnpm --dir=frontend test-compiled-dev{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+        run: pnpm --dir=frontend test-compiled-dev
+
+      - uses: ./.github/actions/confirm-git-tree-clean
+        if: env.RUN_JOB == 'true'{% endraw %}{% if is_circuit_python_driver %}{% raw %}
 
   e2e-test-k3d:
     name: End-to-end Testing on k3d${{ fromJSON(needs.changes.outputs.classes).code != true && ' (skipped, no code changes)' || '' }}
@@ -521,7 +536,10 @@ jobs:
           # since there's no gap after the rollout to install node dependencies, sometimes the NodePorts themselves aren't ready yet, so do a few retries
           curl -s --show-error --fail-with-body --retry 10 --retry-delay 2 --retry-connrefused --retry-all-errors http://localhost:{% endraw %}{{ backend_nodeport_number }}{% raw %}/api/healthcheck
           curl -s --show-error --fail-with-body --retry 10 --retry-delay 2 --retry-connrefused --retry-all-errors http://localhost:{% endraw %}{{ frontend_nodeport_number }}{% raw %}/api/healthcheck
-          curl -s --show-error --fail-with-body --retry 10 --retry-delay 2 --retry-connrefused --retry-all-errors http://localhost:{% endraw %}{{ frontend_nodeport_number }}{% raw %}/{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
+          curl -s --show-error --fail-with-body --retry 10 --retry-delay 2 --retry-connrefused --retry-all-errors http://localhost:{% endraw %}{{ frontend_nodeport_number }}{% raw %}/
+
+      - uses: ./.github/actions/confirm-git-tree-clean
+        if: env.RUN_JOB == 'true'{% endraw %}{% endif %}{% raw %}{% endraw %}{% if run_backend_e2e_in_ci %}{% raw %}
 
   e2e-test-backend:
     name: End-to-end Testing of the Backend (${{ matrix.os }})${{ (fromJSON(needs.changes.outputs.classes).code && fromJSON(needs.changes.outputs.classes).backend) != true && ' (skipped, no backend code changes)' || '' }}
@@ -577,7 +595,10 @@ jobs:
 
       - name: E2E test
         if: env.RUN_JOB == 'true'
-        run: uv --directory=backend run pytest tests/e2e --durations=5{% endraw %}{% endif %}{% raw %}{% endraw %}{% if install_as_windows_service %}{% raw %}
+        run: uv --directory=backend run pytest tests/e2e --durations=5
+
+      - uses: ./.github/actions/confirm-git-tree-clean
+        if: env.RUN_JOB == 'true'{% endraw %}{% endif %}{% raw %}{% endraw %}{% if install_as_windows_service %}{% raw %}
 
   e2e-test-windows-service:
     name: Windows Service Smoke Tests${{ (fromJSON(needs.changes.outputs.classes).code && fromJSON(needs.changes.outputs.classes).backend) != true && ' (skipped, no backend code changes)' || '' }}
@@ -641,6 +662,9 @@ jobs:
           path: backend/dist/pytest-tmp/**/service-logs/**
           if-no-files-found: warn
           retention-days: 5
+
+      - uses: ./.github/actions/confirm-git-tree-clean
+        if: env.RUN_JOB == 'true'
 
   build-installer:
     needs:
@@ -749,6 +773,9 @@ jobs:
             frontend/test-results
           if-no-files-found: error
           retention-days: 5
+
+      - uses: ./.github/actions/confirm-git-tree-clean
+        if: env.RUN_JOB == 'true'
 
 {% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}  package-images:
     name: Package Images${{ fromJSON(needs.changes.outputs.classes).code != true && ' (skipped, no code changes)' || '' }}
