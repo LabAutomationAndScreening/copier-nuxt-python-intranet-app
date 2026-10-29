@@ -332,7 +332,7 @@ jobs:
         run: task bundle-executable-from-staged-static
       - name: Tar files to preserve permissions on Linux during artifact upload # https://github.com/actions/upload-artifact?tab=readme-ov-file#permission-loss
         if: env.RUN_JOB == 'true'
-        run: tar -cvf app.tar backend/dist/{% endraw %}{{ repo_name }}{% raw %}
+        run: tar -cvf ${{ runner.temp }}/app.tar backend/dist/{% endraw %}{{ repo_name }}{% raw %}
       - name: Upload application artifact (Windows)
         if: env.RUN_JOB == 'true' && runner.os == 'Windows'
         uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
@@ -346,7 +346,7 @@ jobs:
         uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
         with:
           name: built-{% endraw %}{{ repo_name }}{% raw %}-${{ matrix.os }}
-          path: app.tar
+          path: ${{ runner.temp }}/app.tar
           if-no-files-found: error
           retention-days: 5{% endraw %}{% endif %}{% raw %}{% endraw %}{% endif %}{% raw %}
 
@@ -401,21 +401,21 @@ jobs:
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
           name: ${{ needs.build-backend.outputs.artifact-name }}
-          path: deployment-package-folder
+          path: ${{ runner.temp }}/deployment-package
 
       - name: Download Frontend Artifact
         if: env.RUN_JOB == 'true'
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
           name: {% endraw %}{{ frontend_image_name | replace('/', '-') }}{% raw %}
-          path: deployment-package-folder
+          path: ${{ runner.temp }}/deployment-package
 
       - name: Load docker images
         if: env.RUN_JOB == 'true'
         run: |
-          ls deployment-package-folder -a
+          ls ${{ runner.temp }}/deployment-package -a
           # load all images in the folder
-          ls -1 deployment-package-folder/*.tar | xargs --no-run-if-empty -L 1 docker load -i
+          ls -1 ${{ runner.temp }}/deployment-package/*.tar | xargs --no-run-if-empty -L 1 docker load -i
 
       - name: Retag loaded images to stable local names
         if: env.RUN_JOB == 'true'
@@ -555,14 +555,14 @@ jobs:
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
           name: ${{ needs.build-backend.outputs.artifact-name }}
-          path: deployment-package-folder
+          path: ${{ runner.temp }}/deployment-package
 
       - name: Load docker images
         if: env.RUN_JOB == 'true'
         run: |
-          ls deployment-package-folder -a
+          ls ${{ runner.temp }}/deployment-package -a
           # load all images in the folder
-          ls -1 deployment-package-folder/*.tar | xargs --no-run-if-empty -L 1 docker load -i
+          ls -1 ${{ runner.temp }}/deployment-package/*.tar | xargs --no-run-if-empty -L 1 docker load -i
 
       - name: Retag loaded backend image to stable local name
         if: env.RUN_JOB == 'true'
@@ -696,21 +696,21 @@ jobs:
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
           name: ${{ needs.build-backend.outputs.artifact-name }}
-          path: deployment-package-folder{% endraw %}{% endif %}{% raw %}
+          path: ${{ runner.temp }}/deployment-package{% endraw %}{% endif %}{% raw %}
 
       - name: Download Frontend Artifact
         if: env.RUN_JOB == 'true'
         uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
         with:
           name: {% endraw %}{{ frontend_image_name | replace('/', '-') }}{% raw %}
-          path: deployment-package-folder
+          path: ${{ runner.temp }}/deployment-package
 
       - name: Load docker images
         if: env.RUN_JOB == 'true'
         run: |
-          ls deployment-package-folder -a
+          ls ${{ runner.temp }}/deployment-package -a
           # load all images in the folder
-          ls -1 deployment-package-folder/*.tar | xargs --no-run-if-empty -L 1 docker load -i
+          ls -1 ${{ runner.temp }}/deployment-package/*.tar | xargs --no-run-if-empty -L 1 docker load -i
 
       - name: Retag loaded images to stable local names
         if: env.RUN_JOB == 'true'
@@ -769,30 +769,30 @@ jobs:
     - name: Prepare docker-compose file
       if: env.RUN_JOB == 'true'
       run: |
-        mkdir -p deployment-package-folder
-        cp deployment/docker-compose.yaml deployment-package-folder/docker-compose.yaml
-        sed -i '/image:/s/:latest/:${{ github.sha }}/g' deployment-package-folder/docker-compose.yaml{% endraw %}{% if has_backend %}{% raw %}
+        mkdir -p ${{ runner.temp }}/deployment-package
+        cp deployment/docker-compose.yaml ${{ runner.temp }}/deployment-package/docker-compose.yaml
+        sed -i '/image:/s/:latest/:${{ github.sha }}/g' ${{ runner.temp }}/deployment-package/docker-compose.yaml{% endraw %}{% if has_backend %}{% raw %}
 
     - name: Download Backend Artifact
       if: env.RUN_JOB == 'true'
       uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
       with:
         name: ${{ needs.build-backend.outputs.artifact-name }}
-        path: deployment-package-folder{% endraw %}{% endif %}{% raw %}
+        path: ${{ runner.temp }}/deployment-package{% endraw %}{% endif %}{% raw %}
 
     - name: Download Frontend Artifact
       if: env.RUN_JOB == 'true'
       uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
       with:
         name: ${{ needs.build-frontend.outputs.artifact-name }}
-        path: deployment-package-folder
+        path: ${{ runner.temp }}/deployment-package
 
     - name: Upload deployment package artifact
       if: env.RUN_JOB == 'true'
       uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
       with:
         name: {% endraw %}{{ repo_name }}{% raw %}-deployment-package
-        path: deployment-package-folder/**/*
+        path: ${{ runner.temp }}/deployment-package/**/*
         if-no-files-found: error
         retention-days: 5{% endraw %}{% endif %}{% raw %}{% endraw %}{% if has_circuit_python_backend_template_been_instantiated %}{% raw %}
 
