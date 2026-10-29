@@ -5,6 +5,7 @@ from typing import Any
 
 from fastapi import FastAPI
 from fastapi import Request
+from fastapi import status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
@@ -62,6 +63,12 @@ def _short(msg: str, max_len: int = 2000) -> str:
     return msg if len(msg) <= max_len else msg[:max_len] + "...(truncated)"
 
 
+def _short_single_line(msg: str) -> str:
+    return _short(
+        "".join(char if char.isprintable() else char.encode("unicode_escape").decode("ascii") for char in msg)
+    )
+
+
 def _problem_dict(
     *,
     title: str,
@@ -104,10 +111,6 @@ class ExceptionHandler:
     def handle_http_exception(self, request: Request, exc: Exception) -> JSONResponse:
         assert isinstance(exc, HTTPException), f"Expected HTTPException, got {type(exc)}"
         error_trace_id = uuid7()
-        logger.warning(
-            f"{exc.__class__.__name__} on {request.method} {request.url.path} [urn:uuid:{error_trace_id}]",
-            exc_info=exc,
-        )
         # starlette annotates HTTPException.detail as str, but FastAPI's subclass widens it to Any, so a route
         # can raise one carrying a dict or list. RFC 9457 requires detail to be a string, and json.dumps keeps
         # such a payload readable as JSON rather than rendering it as a Python repr.
@@ -115,6 +118,19 @@ class ExceptionHandler:
             detail = exc.detail
         else:
             detail = json.dumps(exc.detail)
+        message = f"{exc.__class__.__name__} on {request.method} {request.url.path} [urn:uuid:{error_trace_id}]"
+        # A 4xx is an expected client-facing outcome: the status and detail say everything a traceback would, and a
+        # client retrying one every few seconds would otherwise fill the rotated log files with identical tracebacks.
+        if exc.status_code < status.HTTP_500_INTERNAL_SERVER_ERROR:
+            cause = ""
+            if exc.__cause__ is not None:
+                # FastAPI raises a 400 "error parsing the body" from whatever failed while reading the request body,
+                # except invalid JSON (that becomes a 422 RequestValidationError); the repr keeps the root cause on
+                # the same line instead of logging a traceback for every such request
+                cause = f" (caused by {_short_single_line(repr(exc.__cause__))})"
+            logger.warning(f"{message} {exc.status_code}: {_short_single_line(detail)}{cause}")
+        else:
+            logger.warning(message, exc_info=exc)
         body = _problem_dict(
             title="HTTP Error",
             status=exc.status_code,
@@ -139,17 +155,17 @@ class ExceptionHandler:
 
     def handle_validation_exception(self, request: Request, exc: Exception) -> JSONResponse:
         error_trace_id = uuid7()
-        logger.warning(
-            f"{exc.__class__.__name__} on {request.method} {request.url.path} [urn:uuid:{error_trace_id}]", exc_info=exc
-        )
+        detail = str(exc)
+        message = f"{exc.__class__.__name__} on {request.method} {request.url.path} [urn:uuid:{error_trace_id}]"
+        logger.warning(f"{message} {status.HTTP_422_UNPROCESSABLE_CONTENT}: {_short_single_line(detail)}")
         body = _problem_dict(
             title="Validation Error",
-            status=422,
-            detail=_short(str(exc)),
+            status=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=_short(detail),
             trace_id=str(error_trace_id),
             exc_type=exc.__class__.__name__,
         )
-        return self._json_response(status_code=422, body=body)
+        return self._json_response(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, body=body)
 
     def handle_unhandled_exception(self, request: Request, exc: Exception) -> JSONResponse:
         error_trace_id = uuid7()
