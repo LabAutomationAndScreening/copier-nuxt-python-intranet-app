@@ -341,7 +341,7 @@ jobs:
         run: task bundle-executable-from-staged-static
       - name: Tar files to preserve permissions on Linux during artifact upload # https://github.com/actions/upload-artifact?tab=readme-ov-file#permission-loss
         if: env.RUN_JOB == 'true'
-        run: tar -cvf ${{ runner.temp }}/app.tar backend/dist/{% endraw %}{{ repo_name }}{% raw %}
+        run: tar -cvf "${{ runner.temp }}/app.tar" backend/dist/{% endraw %}{{ repo_name }}{% raw %}
       - name: Upload application artifact (Windows)
         if: env.RUN_JOB == 'true' && runner.os == 'Windows'
         uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
@@ -428,9 +428,9 @@ jobs:
       - name: Load docker images
         if: env.RUN_JOB == 'true'
         run: |
-          ls ${{ runner.temp }}/deployment-package -a
+          ls "${{ runner.temp }}/deployment-package" -a
           # load all images in the folder
-          ls -1 ${{ runner.temp }}/deployment-package/*.tar | xargs --no-run-if-empty -L 1 docker load -i
+          find "${{ runner.temp }}/deployment-package" -maxdepth 1 -name '*.tar' -print0 | xargs --no-run-if-empty -0 -n 1 docker load -i
 
       - name: Retag loaded images to stable local names
         if: env.RUN_JOB == 'true'
@@ -578,9 +578,9 @@ jobs:
       - name: Load docker images
         if: env.RUN_JOB == 'true'
         run: |
-          ls ${{ runner.temp }}/deployment-package -a
+          ls "${{ runner.temp }}/deployment-package" -a
           # load all images in the folder
-          ls -1 ${{ runner.temp }}/deployment-package/*.tar | xargs --no-run-if-empty -L 1 docker load -i
+          find "${{ runner.temp }}/deployment-package" -maxdepth 1 -name '*.tar' -print0 | xargs --no-run-if-empty -0 -n 1 docker load -i
 
       - name: Retag loaded backend image to stable local name
         if: env.RUN_JOB == 'true'
@@ -732,9 +732,9 @@ jobs:
       - name: Load docker images
         if: env.RUN_JOB == 'true'
         run: |
-          ls ${{ runner.temp }}/deployment-package -a
+          ls "${{ runner.temp }}/deployment-package" -a
           # load all images in the folder
-          ls -1 ${{ runner.temp }}/deployment-package/*.tar | xargs --no-run-if-empty -L 1 docker load -i
+          find "${{ runner.temp }}/deployment-package" -maxdepth 1 -name '*.tar' -print0 | xargs --no-run-if-empty -0 -n 1 docker load -i
 
       - name: Retag loaded images to stable local names
         if: env.RUN_JOB == 'true'
@@ -796,9 +796,9 @@ jobs:
     - name: Prepare docker-compose file
       if: env.RUN_JOB == 'true'
       run: |
-        mkdir -p ${{ runner.temp }}/deployment-package
-        cp deployment/docker-compose.yaml ${{ runner.temp }}/deployment-package/docker-compose.yaml
-        sed -i '/image:/s/:latest/:${{ github.sha }}/g' ${{ runner.temp }}/deployment-package/docker-compose.yaml{% endraw %}{% if has_backend %}{% raw %}
+        mkdir -p "${{ runner.temp }}/deployment-package"
+        cp deployment/docker-compose.yaml "${{ runner.temp }}/deployment-package/docker-compose.yaml"
+        sed -i '/image:/s/:latest/:${{ github.sha }}/g' "${{ runner.temp }}/deployment-package/docker-compose.yaml"{% endraw %}{% if has_backend %}{% raw %}
 
     - name: Download Backend Artifact
       if: env.RUN_JOB == 'true'
