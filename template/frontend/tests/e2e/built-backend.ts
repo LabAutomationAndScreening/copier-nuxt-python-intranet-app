@@ -78,7 +78,9 @@ export async function startSeparateBuiltBackend({ port }: { port: number }): Pro
   try {
     await waitForHttpHealthcheck({ url: `${baseUrl}/api/healthcheck` });
   } catch (error) {
-    stop(); // the caller never receives stop when this throws, so the process would otherwise outlive the test
+    // The caller never receives stop when this throws, so the process would otherwise outlive the test. Kill it
+    // outright: a backend stuck in startup may never act on a graceful stop.
+    child.kill("SIGKILL");
     throw error;
   }
   return { baseUrl, exited, output: () => chunks.join(""), stop };
