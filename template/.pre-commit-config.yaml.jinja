@@ -367,7 +367,16 @@ repos:
         # use require_serial so that script is only called once per commit
         require_serial: true{% endraw %}{% endif %}{% raw %}
 
-  # Updating repo config/tooling files
+{% endraw %}{% if install_helm %}{% raw %}  # Helm
+  - repo: https://github.com/gruntwork-io/pre-commit
+    rev: 40f924cd642f5dc98d12bd97b07f3752223553da # frozen: v0.1.30
+    hooks:
+      - id: helmlint
+        # Runs the helm on PATH, which is the pinned one install-ci-tooling.py installs; the rev pins gruntwork's hook scripts, not Helm.
+        # lint mode does not fail on `required`, so no linter_values.yaml is needed
+        files: ^deployment/helm/
+
+{% endraw %}{% endif %}{% raw %}  # Updating repo config/tooling files
   - repo: local
     hooks:
       - id: merge-claude-settings
