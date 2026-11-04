@@ -74,10 +74,6 @@ install_aws_ssm_port_forwarding_plugin:
     type: bool
     help: Should the AWS SSM Port Forwarding Plugin be installed?
     default: no
-install_helm:
-    type: bool
-    help: Should a pinned Helm be installed, and the chart in deployment/helm/ linted with it?
-    default: no
 
 configure_vcrpy:
     type: bool
@@ -170,6 +166,11 @@ deploy_as_executable:
     help: Should this application be deployed as a single standalone executable?
     default: no
     when: "{{ has_backend and not is_circuit_python_driver }}"
+
+install_helm:
+    type: bool
+    help: Should a pinned Helm be installed, and the chart in deployment/helm/ linted with it?
+    default: "{{ not deploy_as_executable }}"
 
 use_upx_for_executable:
     type: bool
