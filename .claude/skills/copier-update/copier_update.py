@@ -271,12 +271,13 @@ def resolve_answers_file(*, project: Path, answers_file: str | None) -> str:
 
 def default_branch(project: Path) -> str:
     res = _run(cmd=["git", "symbolic-ref", "--short", "refs/remotes/origin/HEAD"], cwd=project)
-    if res.returncode == 0:
-        return res.stdout.strip().split("/", 1)[-1]
-    for name in ("main", "master"):
-        if _run(cmd=["git", "rev-parse", "--verify", "-q", f"refs/heads/{name}"], cwd=project).returncode == 0:
-            return name
-    return "main"
+    if res.returncode != 0:
+        # guessing main or master would let the default-branch guard pass on a repo whose default is something else
+        raise FailError(
+            f"origin/HEAD is not set in {project}, so its default branch is unknown; "
+            "run `git remote set-head origin --auto` there first"
+        )
+    return res.stdout.strip().split("/", 1)[-1]
 
 
 def current_branch(project: Path) -> str | None:
@@ -306,12 +307,30 @@ def read_answers(*, project: Path, answers_file: str | None) -> tuple[str, dict[
     data = {key: _scalar(value) for key, value in _top_level_values(path.read_text()).items()}
     if "_src_path" not in data:
         raise FailError(f"{path} has no _src_path")
+    if _is_relative_local_path(data["_src_path"]):
+        # copier reads a relative template path from the project; the mirror is cloned from elsewhere
+        data["_src_path"] = str((project / data["_src_path"]).resolve())
     return rel, data
+
+
+def _is_relative_local_path(src_path: str) -> bool:
+    for prefix in _SHORTHANDS:
+        if src_path.startswith(prefix):
+            return False
+    if "://" in src_path:
+        return False
+    if re.match(r"^[\w.-]+@[\w.-]+:", src_path) is not None:
+        # scp-style ssh, such as git@github.com:owner/repo.git
+        return False
+    if Path(src_path).is_absolute():
+        return False
+    return True
 
 
 def template_mirror(*, src_path: str, cache_dir: str | None, stored_gh_credentials: bool) -> Path:
     url = resolve_src_url(src_path)
-    cache_root = Path(cache_dir) if cache_dir else Path(tempfile.gettempdir()) / "copier-update-cache"
+    # the clone runs from the cache directory's parent, so a relative --cache-dir would be read from there
+    cache_root = Path(cache_dir).resolve() if cache_dir else Path(tempfile.gettempdir()) / "copier-update-cache"
     dest = cache_root / (hashlib.sha256(url.encode()).hexdigest()[:16] + ".git")
     if dest.is_dir():
         _ = _git("fetch", "--prune", "--tags", "--quiet", cwd=dest, stored_gh_credentials=stored_gh_credentials)
@@ -324,11 +343,12 @@ def template_mirror(*, src_path: str, cache_dir: str | None, stored_gh_credentia
     return dest
 
 
-def show_file(*, mirror: Path, ref: str) -> str:
+def show_file(*, mirror: Path, ref: str, stored_gh_credentials: bool) -> str:
     errors: list[str] = []
     for name in COPIER_FILES:
         try:
-            return _git("show", f"{ref}:{name}", cwd=mirror)
+            # a --filter=blob:none mirror fetches the blob from the template repo here, which needs the same credentials
+            return _git("show", f"{ref}:{name}", cwd=mirror, stored_gh_credentials=stored_gh_credentials)
         except FailError as e:
             errors.append(str(e))
     raise FailError(f"no {'/'.join(COPIER_FILES)} at {ref}:\n" + "\n".join(errors))
@@ -382,7 +402,8 @@ def cmd_branch(a: argparse.Namespace) -> dict[str, Any]:
         _ = _git("switch", "-c", name, f"origin/{default}", cwd=project)
         path = project
     else:
-        path = Path(a.worktree)
+        # git runs in the project, so a relative --worktree is resolved here first, from where the command was typed
+        path = Path(a.worktree).resolve()
         _ = _git("worktree", "add", "-b", name, str(path), f"origin/{default}", cwd=project)
     return {"branch": name, "path": str(path.resolve()), "base": f"origin/{default}"}
 
@@ -427,8 +448,8 @@ def cmd_new_questions(a: argparse.Namespace) -> dict[str, Any]:
         src_path=answers["_src_path"], cache_dir=a.cache_dir, stored_gh_credentials=a.stored_gh_credentials
     )
     diff = diff_questions(
-        old_yaml=show_file(mirror=mirror, ref=current),
-        new_yaml=show_file(mirror=mirror, ref=a.ref),
+        old_yaml=show_file(mirror=mirror, ref=current, stored_gh_credentials=a.stored_gh_credentials),
+        new_yaml=show_file(mirror=mirror, ref=a.ref, stored_gh_credentials=a.stored_gh_credentials),
         answered={str(k) for k in answers if not str(k).startswith("_")},
     )
     return {
@@ -470,6 +491,17 @@ def task_copier_command(*, project: Path, task_name: str, task_vars: list[str]) 
     raise FailError(f"`task --dry {task_name}` printed no `copier update` line:\n{output.strip()}")
 
 
+def _copier_answers_file(command: list[str]) -> str:
+    for index, arg in enumerate(command):
+        if arg == "--answers-file":
+            return command[index + 1]
+        if arg == "-a":
+            return command[index + 1]
+        if arg.startswith("--answers-file="):
+            return arg.removeprefix("--answers-file=")
+    return ".copier-answers.yml"
+
+
 def unanswerable_questions(
     *, answers: dict[str, Any], ref: str, answered: set[str], a: argparse.Namespace
 ) -> list[str]:
@@ -480,8 +512,8 @@ def unanswerable_questions(
     if not current:
         raise FailError("answers file has no _commit; cannot tell which template questions are new")
     diff = diff_questions(
-        old_yaml=show_file(mirror=mirror, ref=current),
-        new_yaml=show_file(mirror=mirror, ref=ref),
+        old_yaml=show_file(mirror=mirror, ref=current, stored_gh_credentials=a.stored_gh_credentials),
+        new_yaml=show_file(mirror=mirror, ref=ref, stored_gh_credentials=a.stored_gh_credentials),
         answered={str(k) for k in answers if not str(k).startswith("_")},
     )
     missing: list[str] = []
@@ -489,6 +521,10 @@ def unanswerable_questions(
         if question["has_default"]:
             continue
         if question["name"] in answered:
+            continue
+        if re.search(r"^when\s*:", question["spec"], flags=re.MULTILINE) is not None:
+            # copier skips such a question while its `when` is false, and leaves an answer to it out of the answers
+            # file; while true, `copier update --defaults` stops with "is required" before it renders anything
             continue
         missing.append(question["name"])
     return missing
@@ -529,6 +565,15 @@ def cmd_update(a: argparse.Namespace) -> dict[str, Any]:
     if task_name not in tasks:
         raise FailError(
             f"the project has no `task {task_name}`; this skill only updates through the project's own task"
+        )
+    task_answers_file = _copier_answers_file(
+        task_copier_command(project=project, task_name=task_name, task_vars=task_vars)
+    )
+    if Path(task_answers_file) != Path(answers_file):
+        # the task would update another template's instance while this checks and reports the selected one
+        raise FailError(
+            f"`task {task_name}` updates {task_answers_file}, not the selected {answers_file}; "
+            "this skill only updates the instance the project's own task updates"
         )
     data = _parse_data(a.data)
     answered = set(data)
@@ -614,8 +659,9 @@ def cmd_conflicts(a: argparse.Namespace) -> dict[str, Any]:
     if "Traceback (most recent call last)" in output:
         raise FailError(f"`task {PRUNE_TASK}` crashed, so the .rej files left may not all be real conflicts:\n{output}")
     if res.returncode != 0:
-        if not rej_files:
-            raise FailError(f"`task {PRUNE_TASK}` failed with no .rej file left to explain it:\n{output}")
+        # a task that failed before the script ran pruned nothing, so its .rej files may still hold false positives
+        if "Remaining .rej conflicts:" not in output:
+            raise FailError(f"`task {PRUNE_TASK}` failed without listing the conflicts it left:\n{output}")
     return {
         "prune_output": output,
         "prune_returncode": res.returncode,
@@ -783,8 +829,10 @@ def cmd_commit(a: argparse.Namespace) -> dict[str, Any]:
     staged = [p for p in _git("diff", "--cached", "--name-only", "-z", cwd=project).split("\0") if p]
     if not staged:
         raise FailError("nothing staged: did the update run?")
+    # deleting a tracked artifact removes it from the tree, so only paths the commit adds or changes are checked
+    kept = [p for p in _git("diff", "--cached", "--name-only", "--diff-filter=d", "-z", cwd=project).split("\0") if p]
     leftovers: list[str] = []
-    for path in staged:
+    for path in kept:
         if path.endswith((".rej", ".orig")):
             leftovers.append(path)
             continue
@@ -801,7 +849,9 @@ def cmd_commit(a: argparse.Namespace) -> dict[str, Any]:
         raise FailError(
             "refusing to commit inline conflict markers:\n  " + "\n  ".join(f"{m['path']}:{m['line']}" for m in markers)
         )
-    _ = _git("commit", "-q", "-F", a.message_file, cwd=project, extra_env={"SKIP": ",".join(a.skip)})
+    # git runs in the project, so a relative --message-file is resolved here first, from where the command was typed
+    message_file = str(Path(a.message_file).resolve())
+    _ = _git("commit", "-q", "-F", message_file, cwd=project, extra_env={"SKIP": ",".join(a.skip)})
     return {
         **where,
         "sha": _git("rev-parse", "HEAD", cwd=project).strip(),
@@ -831,6 +881,10 @@ def _object_errors(*, value: object, spec: dict[str, Any], path: str) -> list[st
         if field.get("type") == "boolean":
             if not isinstance(field_value, bool):
                 errors.append(f"{path}/{key}: must be true or false, not {field_value!r}")
+        # the report maps over these, and one that isn't a list stops the whole page rendering
+        if field.get("type") == "array":
+            if not isinstance(field_value, list):
+                errors.append(f"{path}/{key}: must be a list, not {field_value!r}")
         if field.get("type") == "object" and "properties" in field:
             errors += _object_errors(value=field_value, spec=field, path=f"{path}/{key}")
     return errors + _conditional_errors(value=value, spec=spec, path=path)
@@ -908,8 +962,9 @@ def validate_report(report: object) -> list[str]:
 
 
 def render_report_html(report: dict[str, Any]) -> str:
-    # the JSON sits inside a <script> block, so "</" must not appear literally
-    payload = json.dumps(report, ensure_ascii=False).replace("</", "<\\/")
+    # the JSON sits inside a <script> block, where "</" ends it and "<!--" followed by "<script" keeps it from ending
+    # at all, so no "<" appears literally; JSON reads < back as "<"
+    payload = json.dumps(report, ensure_ascii=False).replace("<", "\\u003c")
     return VIEWER_PATH.read_text().replace("__REPORT_JSON__", payload)
 
 
@@ -1034,7 +1089,8 @@ def cmd_comment_report(a: argparse.Namespace) -> dict[str, Any]:
     where = guard_not_default_branch(project)
     branch = where["branch"]
     report = json.loads(Path(a.report).read_text())
-    comment = project / "tmp" / "pr-comment.md"
+    # gh runs in the project, so a path relative to where the command was typed would be read from the wrong place
+    comment = (project / "tmp" / "pr-comment.md").resolve()
     comment.parent.mkdir(exist_ok=True)
     _ = comment.write_text(report_markdown(report=report, commits=report.get("commits", [])))
     res = _run(

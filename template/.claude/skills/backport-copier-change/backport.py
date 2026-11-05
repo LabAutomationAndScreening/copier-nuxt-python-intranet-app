@@ -104,6 +104,8 @@ ANSWERS = Path(".config/.copier-answers.yml")
 
 
 MAX_CONSECUTIVE_FAILURES = 5
+# long enough for `checkout`'s clone, uv sync and npm ci; a hung gh or git call otherwise outlives every wait's deadline
+SUBPROCESS_TIMEOUT_SECONDS = 900
 TRANSIENT = re.compile(r"HTTP 5\d\d|connection reset|timed out|TLS handshake|EOF", re.IGNORECASE)
 
 
@@ -119,7 +121,13 @@ def _attempt(*, cmd: list[str], cwd: Path | None = None) -> subprocess.Completed
     env = dict(os.environ)
     _ = env.pop("GITHUB_TOKEN", None)
     _ = env.pop("GH_TOKEN", None)
-    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, env=env, check=False)  # noqa: S603 # argv lists, never a shell; the variable parts come from this script's own CLI arguments
+    try:
+        return subprocess.run(  # noqa: S603 # argv lists, never a shell; the variable parts come from this script's own CLI arguments
+            cmd, cwd=cwd, capture_output=True, text=True, env=env, check=False, timeout=SUBPROCESS_TIMEOUT_SECONDS
+        )
+    except subprocess.TimeoutExpired as e:
+        # transient, so a wait counts it as one failed check and tries again
+        raise TransientError(f"{' '.join(cmd)} timed out after {SUBPROCESS_TIMEOUT_SECONDS}s") from e
 
 
 def _run(*, cmd: list[str], cwd: Path | None = None) -> str:
@@ -884,10 +892,16 @@ def cmd_ci(a: argparse.Namespace) -> dict[str, Any]:
     than guess which events will run, this takes every push and pull_request run that appears for the commit, and
     judges by all of them together.
     """
+    # gh filters runs by commit only on the full SHA
+    if re.fullmatch(r"[0-9a-f]{40}", a.sha) is None:
+        raise FailError(f"--sha must be a full 40-character commit SHA, such as push prints, not {a.sha!r}")
 
     def find_runs() -> list[int] | None:
-        runs = _gh_json("run", "list", "--repo", a.repo, "--limit", "50", "--json", "databaseId,headSha,event")
-        ids = [r["databaseId"] for r in runs if r["headSha"].startswith(a.sha) and r["event"] in CI_EVENTS]
+        # filtered by GitHub, so no run for the commit can scroll out of a page of the repo's newest runs
+        runs = _gh_json(
+            "run", "list", "--repo", a.repo, "--commit", a.sha, "--limit", "100", "--json", "databaseId,event"
+        )
+        ids = [r["databaseId"] for r in runs if r["event"] in CI_EVENTS]
         return ids or None
 
     run_ids = _wait(timeout=600, interval=15, what=f"a CI run for {a.sha}", probe=find_runs)
@@ -973,25 +987,35 @@ def _pr_review_state(*, repo: str, pr: str, reviewers: list[ModuleType]) -> dict
     Review and comment bodies are kept apart, oldest first: a review of the head is a verdict even in wording a
     reviewer module does not know, while a comment (a walkthrough, a summary) may still be waiting to be refreshed.
     """
-    view = _gh_json("pr", "view", pr, "--repo", repo, "--json", "headRefOid,comments,reviews,commits")
+    view = _gh_json("pr", "view", pr, "--repo", repo, "--json", "headRefOid,reviews,commits")
+    # gh pr view leaves out when a comment was last edited, and a note in a comment the reviewer rewrites in place
+    # (such as when its next review is available) counts from that edit, not from now
+    pages = _gh_json("api", "--paginate", "--slurp", f"repos/{repo}/issues/{pr}/comments")
     bodies: dict[str, dict[str, list[str]]] = {r.NAME: {"reviews": [], "comments": []} for r in reviewers}
+    comments: dict[str, list[dict[str, str]]] = {r.NAME: [] for r in reviewers}
     last_reviewed: dict[str, str | None] = {r.NAME: None for r in reviewers}
-    for kind, stamp in (("reviews", "submittedAt"), ("comments", "createdAt")):
-        for item in sorted(view[kind], key=lambda i: i.get(stamp) or ""):
-            for reviewer in reviewers:
-                if not reviewer.LOGIN.search(item["author"]["login"]):
-                    continue
-                bodies[reviewer.NAME][kind].append(item["body"])
-                if not item.get("commit"):
-                    continue
-                if not item["body"]:
-                    # a review with no text is the reviewer answering a thread, not a review of that commit
-                    continue
-                last_reviewed[reviewer.NAME] = item["commit"]["oid"]
+    for item in sorted(view["reviews"], key=lambda i: i.get("submittedAt") or ""):
+        for reviewer in reviewers:
+            if not reviewer.LOGIN.search(item["author"]["login"]):
+                continue
+            bodies[reviewer.NAME]["reviews"].append(item["body"])
+            if not item.get("commit"):
+                continue
+            if not item["body"]:
+                # a review with no text is the reviewer answering a thread, not a review of that commit
+                continue
+            last_reviewed[reviewer.NAME] = item["commit"]["oid"]
+    for item in sorted((c for page in pages for c in page), key=lambda i: i["created_at"]):
+        for reviewer in reviewers:
+            if not reviewer.LOGIN.search(item["user"]["login"]):
+                continue
+            bodies[reviewer.NAME]["comments"].append(item["body"])
+            comments[reviewer.NAME].append({"body": item["body"], "edited_at": item["updated_at"]})
     return {
         "head": view["headRefOid"],
         "head_committed_at": view["commits"][-1]["committedDate"],
         "bodies": bodies,
+        "comments": comments,
         "last_reviewed": last_reviewed,
     }
 
@@ -1010,9 +1034,11 @@ def _summed_count(total: str | None, count: str) -> str:
 def _changes_since(*, checkout: Path, since: str, head: str) -> list[dict[str, str]]:
     """List each file the branch's own commits changed after `since`, with the lines they added and removed.
 
-    Merges and commits already on the default branch are left out, so merging the default branch in (update-branch)
-    is not counted as a change the reviewer hasn't seen. A file's counts are summed over the commits that touched it.
+    Commits already on the default branch are left out, so merging the default branch in (update-branch) is not
+    counted as a change the reviewer hasn't seen. What such a merge resolved by hand is counted, though: the lines of
+    its combined diff, which differ from every parent. A file's counts are summed over the commits that touched it.
     """
+    default = f"origin/{_default_branch(checkout)}"
     cmd = [
         "git",
         "log",
@@ -1021,7 +1047,7 @@ def _changes_since(*, checkout: Path, since: str, head: str) -> list[dict[str, s
         "--format=",
         f"{since}..{head}",
         "--not",
-        f"origin/{_default_branch(checkout)}",
+        default,
     ]
     res = _attempt(cmd=cmd, cwd=checkout)
     if res.returncode != 0:
@@ -1038,7 +1064,44 @@ def _changes_since(*, checkout: Path, since: str, head: str) -> list[dict[str, s
         lines_added, lines_removed, path = line.split("\t", 2)
         added[path] = _summed_count(added.get(path), lines_added)
         removed[path] = _summed_count(removed.get(path), lines_removed)
+    merges = _git("rev-list", "--merges", f"{since}..{head}", "--not", default, cwd=checkout).split()
+    for merge in merges:
+        for path, lines_added, lines_removed in _merge_resolution_counts(checkout=checkout, merge=merge):
+            added[path] = _summed_count(added.get(path), lines_added)
+            removed[path] = _summed_count(removed.get(path), lines_removed)
     return [{"file": path, "added": added[path], "removed": removed[path]} for path in added]
+
+
+def _merge_resolution_counts(*, checkout: Path, merge: str) -> list[tuple[str, str, str]]:
+    """Count, per file, the lines a merge's combined diff shows: what the merge changed from every one of its parents.
+
+    That is a conflict resolution (or an edit made in the merge itself); a file the merge took unchanged from one
+    parent doesn't appear. In a hunk, each line starts with one column per parent, and a `+` or `-` in any of them
+    marks it added or removed against that parent.
+    """
+    counts: dict[str, list[int]] = {}
+    path = ""
+    parents = 0
+    for line in _git("show", "--cc", "--format=", merge, cwd=checkout).splitlines():
+        if line.startswith("diff --cc "):
+            path = line.removeprefix("diff --cc ")
+            counts[path] = [0, 0]
+            # the file's own header lines (`--- a/...`, `+++ b/...`) come before its first hunk
+            parents = 0
+            continue
+        if line.startswith("@@"):
+            parents = len(line) - len(line.lstrip("@")) - 1
+            continue
+        if not path:
+            continue
+        if not parents:
+            continue
+        columns = line[:parents]
+        if "+" in columns:
+            counts[path][0] += 1
+        if "-" in columns:
+            counts[path][1] += 1
+    return [(name, str(added), str(removed)) for name, (added, removed) in counts.items()]
 
 
 def _quiet_on_head(*, reviewer: ModuleType, state: dict[str, Any], checkout: Path) -> dict[str, Any] | None:
@@ -1062,7 +1125,7 @@ def _quiet_on_head(*, reviewer: ModuleType, state: dict[str, Any], checkout: Pat
         "verdict": "head_not_reviewed",
         "last_reviewed": last,
         "minutes_since_head_commit": int(quiet // 60),
-        "held_back": reviewer.held_back(state["bodies"][reviewer.NAME]["comments"]),
+        "held_back": reviewer.held_back(state["comments"][reviewer.NAME]),
         "changed_since_last_review": _changes_since(checkout=checkout, since=last, head=state["head"]),
     }
 
@@ -1248,11 +1311,22 @@ def cmd_tag(a: argparse.Namespace) -> dict[str, Any]:
     return {"merge_commit": merge_sha, "tag": tag}
 
 
-def _merged_pr(*, repo: str, branch: str) -> int:
-    prs = _gh_json("pr", "list", "--repo", repo, "--head", branch, "--state", "merged", "--json", "number")
+def _merged_pr(*, repo: str, branch: str) -> dict[str, Any]:
+    prs = _gh_json("pr", "list", "--repo", repo, "--head", branch, "--state", "merged", "--json", "number,headRefOid")
     if not prs:
         raise FailError(f"{repo} has no merged PR from {branch}")
-    return prs[0]["number"]
+    return prs[0]
+
+
+def _require_remote_tip_merged(*, checkout: Path, branch: str, merged_head: str) -> None:
+    tip = _git("ls-remote", "origin", f"refs/heads/{branch}", cwd=checkout).split()
+    if not tip:
+        raise FailError(f"origin has no {branch} to delete")
+    if tip[0] != merged_head:
+        raise FailError(
+            f"origin/{branch} is at {tip[0]}, not {merged_head}, the head its PR merged; "
+            "deleting it would delete the commits pushed since"
+        )
 
 
 def _require_downstream_off_branch(*, checkout: Path, branch: str, downstream: Path) -> str:
@@ -1321,14 +1395,17 @@ def _require_branch_pushed(*, checkout: Path, branch: str) -> None:
         )
 
 
-def _delete_branch(*, checkout: Path, branch: str) -> bool:
+def _delete_branch(*, checkout: Path, branch: str, merged_head: str) -> bool:
     has_local = _has_ref(checkout=checkout, ref=f"refs/heads/{branch}")
     switch_to = None
     if has_local:
         _require_branch_pushed(checkout=checkout, branch=branch)
         if _git("symbolic-ref", "--short", "HEAD", cwd=checkout).strip() == branch:
             switch_to = _default_to_switch_to(checkout)
-    _ = _git("push", "origin", "--delete", branch, cwd=checkout)
+    # the lease refuses the delete if a push moved the branch after _require_remote_tip_merged looked
+    _ = _git(
+        "push", f"--force-with-lease=refs/heads/{branch}:{merged_head}", "origin", "--delete", branch, cwd=checkout
+    )
     if not has_local:
         return False
     if switch_to is not None:
@@ -1353,13 +1430,14 @@ def cmd_delete_branch(a: argparse.Namespace) -> dict[str, Any]:
     current: dict[str, str] = {}
     for path in downstream:
         current[str(path)] = _require_downstream_off_branch(checkout=checkout, branch=a.branch, downstream=path)
+    _require_remote_tip_merged(checkout=checkout, branch=a.branch, merged_head=merged_pr["headRefOid"])
     deleted_local = False
     if not a.dry_run:
-        deleted_local = _delete_branch(checkout=checkout, branch=a.branch)
+        deleted_local = _delete_branch(checkout=checkout, branch=a.branch, merged_head=merged_pr["headRefOid"])
     return {
         "repo": a.repo,
         "branch": a.branch,
-        "merged_pr": merged_pr,
+        "merged_pr": merged_pr["number"],
         "downstream_commits": current,
         "dry_run": a.dry_run,
         "deleted_local": deleted_local,
@@ -1381,7 +1459,7 @@ def _require_feature_branch(*, checkout: Path, branch: str) -> None:
 
 
 def _branch_commits(*, checkout: Path, since: str, paths: list[str]) -> dict[str, list[str]]:
-    """List the feature branch's own commits touching each conflicted file, newest first.
+    """List the feature branch's own commits touching each conflicted file, oldest first.
 
     A file the branch changed after the backport copied it (an add/add conflict on a helper or a skill) is resolved
     from the default branch's side with those commits re-applied; one the branch never changed since takes the
@@ -1389,7 +1467,7 @@ def _branch_commits(*, checkout: Path, since: str, paths: list[str]) -> dict[str
     """
     commits: dict[str, list[str]] = {}
     for path in paths:
-        log = _git("log", "--format=%h %s", f"{since}..HEAD", "--", path, cwd=checkout)
+        log = _git("log", "--reverse", "--format=%h %s", f"{since}..HEAD", "--", path, cwd=checkout)
         commits[path] = [line for line in log.splitlines() if line]
     return commits
 
