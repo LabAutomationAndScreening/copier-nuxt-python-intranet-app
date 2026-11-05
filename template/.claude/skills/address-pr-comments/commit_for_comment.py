@@ -92,8 +92,11 @@ def _commit(*, repo_root: Path, files: list[str], message: str) -> str:
         _fail(f"git commit did not finish within {COMMIT_TIMEOUT_SECONDS}s. Check `git log -1` before running again.")
     after = _git_output("rev-parse", "HEAD", cwd=repo_root)
     if result.returncode != 0:
+        # git leaves --files staged when a hook fails; unstaged, they pass the guard above when this is run again
+        _ = run(["git", "reset", "-q", "--", *files], cwd=repo_root)
         _fail(f"Nothing committed: git commit failed (a pre-commit hook, most likely):\n{result.stdout}{result.stderr}")
     if after == before:
+        _ = run(["git", "reset", "-q", "--", *files], cwd=repo_root)
         _fail(f"Nothing committed: HEAD did not move.\n{result.stdout}{result.stderr}")
     return after
 
@@ -120,7 +123,7 @@ def _close_bd_issue(*, bd_root: Path, issue_id: str, commit: str, reply_file: Pa
     description = json.loads(shown.stdout)[0].get("description") or ""
     reply = reply_file.read_text(encoding="utf-8").strip()
     updated = f"{description}\n\ncommit: {commit}\nreply: {reply}".strip()
-    errors: list[str] = []
+    # each step needs the one before it: an issue closed without its commit and reply recorded would look settled
     steps: list[tuple[list[str], str | None]] = [
         (["bd", "update", issue_id, "--stdin", "--json"], updated),
         (["bd", "close", issue_id, "--reason", "Addressed in PR review", "--json"], None),
@@ -129,8 +132,8 @@ def _close_bd_issue(*, bd_root: Path, issue_id: str, commit: str, reply_file: Pa
     for command, stdin in steps:
         result = run(command, cwd=bd_root, stdin=stdin)
         if result.returncode != 0:
-            errors.append(f"{' '.join(command[:3])}: {result.stderr.strip()}")
-    return errors
+            return [f"{' '.join(command[:3])}: {result.stderr.strip()}"]
+    return []
 
 
 def main() -> None:
