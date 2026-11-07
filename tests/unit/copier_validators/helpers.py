@@ -34,9 +34,18 @@ _INSTALLER_ANSWERS: dict[str, object] = {
 
 
 def validate_installer_answers(**overrides: object) -> None:
+    _ = rendered_answers(**overrides)
+
+
+def rendered_answers(**overrides: object) -> dict[str, object]:
+    """Return every answer copier settles on for the fixture answers with `overrides` applied.
+
+    A question the data leaves out comes back with the default copier derived for it from the other answers, which
+    is how a test checks a computed default.
+    """
     data = {**_INSTALLER_ANSWERS, **overrides}
     with tempfile.TemporaryDirectory() as tmp:
-        _ = copier.run_copy(
+        worker = copier.run_copy(
             str(PROJECT_ROOT),
             tmp,
             data=data,
@@ -46,3 +55,4 @@ def validate_installer_answers(**overrides: object) -> None:
             vcs_ref="HEAD",
             pretend=True,
         )
+    return dict(worker.answers.combined)

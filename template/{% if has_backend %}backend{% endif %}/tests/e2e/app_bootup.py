@@ -205,28 +205,28 @@ def start_compose(
         services_to_start is None or "frontend" not in services_to_start
     ):
         extra_up_args.extend(["--scale", "frontend=0"])
-    _ = subprocess.run(  # noqa: S603 # we trust this input
-        [  # noqa: S607 # docker should definitely be in PATH
-            "docker",
-            "compose",
-            "--file",
-            str(compose_file),
-            "up",
-            "--detach",
-            "--no-build",  # without this, the frontend will attempt to be built even though scale=0. We already prebuild the images in an earlier step anyway
-            "--force-recreate",
-            "--renew-anon-volumes",
-            "--remove-orphans",
-            *extra_up_args,
-            *start_targets,
-        ],
-        check=True,
-        timeout=60,
-    )
     try:
+        _ = subprocess.run(  # noqa: S603 # we trust this input
+            [  # noqa: S607 # docker should definitely be in PATH
+                "docker",
+                "compose",
+                "--file",
+                str(compose_file),
+                "up",
+                "--detach",
+                "--no-build",  # without this, the frontend will attempt to be built even though scale=0. We already prebuild the images in an earlier step anyway
+                "--force-recreate",
+                "--renew-anon-volumes",
+                "--remove-orphans",
+                *extra_up_args,
+                *start_targets,
+            ],
+            check=True,
+            timeout=300,  # even with --detach, up waits for every depends_on service_healthy dependency, so this has to cover their cold starts
+        )
         wait_for_service_to_be_healthy(compose_file=compose_file)
     except Exception:
-        logger.exception("Failed to verify service health, cleaning up...")
+        logger.exception("Failed to start services, cleaning up...")
         stop_compose(compose_file=compose_file)
         raise
 

@@ -333,6 +333,14 @@ repos:
 
   - repo: local
     hooks:
+      - id: test-name-clause-separator
+        name: separate mid-name Then/When clauses in test names with a double underscore, and start a leading clause with a single one
+        entry: '^\s*(async\s+)?def test_(_|\w*[^_]_(Then|When)_)'
+        language: pygrep
+        files: (^|/)test_[^/]*\.py$
+
+  - repo: local
+    hooks:
       - id: pyrefly
         name: pyrefly
         entry: bash -c "uv --directory=backend run --frozen pyrefly check -c ../.config/pyrefly.toml"
@@ -367,7 +375,16 @@ repos:
         # use require_serial so that script is only called once per commit
         require_serial: true{% endraw %}{% endif %}{% raw %}
 
-  # Updating repo config/tooling files
+{% endraw %}{% if install_helm %}{% raw %}  # Helm
+  - repo: https://github.com/gruntwork-io/pre-commit
+    rev: 40f924cd642f5dc98d12bd97b07f3752223553da # frozen: v0.1.30
+    hooks:
+      - id: helmlint
+        # Runs the helm on PATH, which is the pinned one install-ci-tooling.py installs; the rev pins gruntwork's hook scripts, not Helm.
+        # lint mode does not fail on `required`, so no linter_values.yaml is needed
+        files: ^deployment/helm/
+
+{% endraw %}{% endif %}{% raw %}  # Updating repo config/tooling files
   - repo: local
     hooks:
       - id: merge-claude-settings
@@ -382,7 +399,7 @@ repos:
         # A skill's or agent's instructions name scripts by path, and an agent types a path as written, so a renamed or
         # removed file breaks them silently. Any change under .claude/ re-checks every path written in a document there.
         name: check paths written in Claude documents exist
-        entry: python3 .claude/helpers/check-claude-paths.py
+        entry: python3 .claude/helpers/check_claude_paths.py
         files: ^\.claude/
         pass_filenames: false
         language: system

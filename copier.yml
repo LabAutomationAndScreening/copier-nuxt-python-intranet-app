@@ -167,6 +167,11 @@ deploy_as_executable:
     default: no
     when: "{{ has_backend and not is_circuit_python_driver }}"
 
+install_helm:
+    type: bool
+    help: Should a pinned Helm be installed, and the chart in deployment/helm/ linted with it?
+    default: "{{ not deploy_as_executable }}"
+
 use_upx_for_executable:
     type: bool
     help: Should UPX be used to compress the executable? On Windows this can make the compiled program smaller, but increases the risk of being flagged by antivirus software.
@@ -457,17 +462,8 @@ _tasks:
             fi
         fi
   - command: |
-        for script in .claude/skills/address-pr-comments/check-footer.py .claude/skills/address-pr-comments/commit-link.py .claude/skills/address-pr-comments/fetch-pr-comments.py .claude/skills/address-pr-comments/post-reply.py .claude/skills/address-pr-comments/post-review-comment.py .claude/skills/address-pr-comments/verify-env.py; do
-            if [ -f "$script" ]; then
-                chmod +x "$script"
-                if git ls-files --error-unmatch "$script" > /dev/null 2>&1; then
-                    git update-index --chmod=+x "$script"
-                fi
-            fi
-        done
-  - command: |
-        for script in .claude/skills/fix-mutants/check-results.py .claude/skills/fix-mutants/group-by-line.py .claude/skills/fix-mutants/list-survived.py .claude/skills/fix-mutants/run-mutmut.py .claude/skills/fix-mutants/show-mutant.py .claude/skills/fix-mutants/verify-mutant.py; do
-            if [ -f "$script" ]; then
+        for script in .claude/helpers/*.py .claude/skills/*/*.py; do
+            if [ -f "$script" ] && head -n 1 "$script" | grep -q '^#!'; then
                 chmod +x "$script"
                 if git ls-files --error-unmatch "$script" > /dev/null 2>&1; then
                     git update-index --chmod=+x "$script"

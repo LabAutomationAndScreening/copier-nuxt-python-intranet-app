@@ -1,5 +1,5 @@
 # Changes here will be overwritten by Copier
-_commit: v0.4.3
+_commit: v0.4.5
 _src_path: gh:LabAutomationAndScreening/copier-base-template.git
 copier_answers_directory: .config
 description: A web app that is hosted within a local intranet. Nuxt frontend, python
@@ -14,6 +14,7 @@ repo_org_name: LabAutomationAndScreening
 repo_org_name_for_copyright: Lab Automation & Screening
 ssh_port_number: 15173
 template_might_want_to_install_aws_ssm_port_forwarding_plugin: true
+template_might_want_to_use_helm: true
 template_might_want_to_use_python_asyncio: true
 template_might_want_to_use_vcrpy: true
 template_publishes_releases: true
