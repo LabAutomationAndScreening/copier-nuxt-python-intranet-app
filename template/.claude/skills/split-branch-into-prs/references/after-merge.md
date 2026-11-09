@@ -34,37 +34,56 @@ squash holds.
 ```bash
 git switch <dependent-branch>
 BEFORE=$(git rev-parse HEAD)
-gh pr diff <parent-pr> --name-only > parent-files.txt
+PARENT_FILES=$(mktemp)                        # outside the worktree, so the list can't clobber or join a commit
+gh pr diff <parent-pr> --name-only > "$PARENT_FILES"
 git fetch origin main
-git merge origin/main
+git merge --no-commit origin/main
 ```
 
 Conflicts are expected in files the parent touched where this layer edited the parent's lines: completed
 interim forms, moved code. The squash commit shares no ancestry with the dependent, so git sees two different
 changes to the same lines. The dependent's side is right, because it already holds the parent's final content.
+The same goes for lines git merges without a conflict: where this layer set a line back to its value from
+before the parent, the dependent matches the merge base there, so git quietly takes the squash's value.
 
-When every conflicted file (`git diff --name-only --diff-filter=U`) is in `parent-files.txt`, and
-`git log --oneline $(git merge-base "$BEFORE" origin/main)..origin/main -- $(cat parent-files.txt)` shows only
-the parent's squash commit, take the shortcut: `git merge --abort && git merge -X ours origin/main`. Otherwise
-resolve by hand: the dependent's side for the parent-versus-dependent hunks, `main`'s side for anything else.
-Resolving picks between versions that already exist; the moment a hunk would need new code, stop and take it
-to the user as new work, which goes through the TDD flow named in the skill's principles.
+When `git log --oneline $(git merge-base "$BEFORE" origin/main)..origin/main -- $(cat "$PARENT_FILES")` shows
+only the parent's squash commit, take the shortcut: put back the dependent's version of every parent file the
+merge changed, which settles both kinds at once.
+
+```bash
+git diff -z --name-only "$BEFORE" -- $(cat "$PARENT_FILES") | xargs -0 -r git restore --source="$BEFORE" --staged --worktree --
+```
+
+Resolve any conflict left in other files by hand, then `git commit --no-edit`. Otherwise resolve by hand: the
+dependent's side for the parent-versus-dependent hunks, both changes where another PR on `main` met this layer's
+change (taking `main`'s side alone would drop this layer's), and in each parent file
+put back any line of this layer's that the merge replaced without a conflict (`git diff "$BEFORE" -- <file>`
+shows them). Resolving picks between versions that already exist; the moment a hunk would need new code, stop
+and take it to the user as new work, which goes through the TDD flow named in the skill's principles.
 
 A conflict on an **independent sibling** is different: it is this layer against a layer it was never built on,
-and neither side alone is right. The big branch holds both, so resolve each hunk to the big branch's text,
-then check that `git diff <big-branch> -- <file>` shows only changes belonging to layers not yet merged.
+and neither side alone is right. Resolve each hunk to `main`'s side plus this layer's own change. The big
+branch shows how the two combine, but do not copy its hunk: it may also hold a change of a third layer not
+yet merged. Then check that `git diff <big-branch> -- <file>` shows nothing but the changes of the other layers
+not yet merged, each one missing here.
 
 ## 4. Verify
 
 ```bash
-git diff "$BEFORE" HEAD -- $(cat parent-files.txt)    # empty after the shortcut; after a hand resolution, only main's unrelated changes
+git diff "$BEFORE" HEAD -- $(cat "$PARENT_FILES")     # empty after the shortcut; after a hand resolution, only main's unrelated changes
 git diff "$BEFORE" HEAD --stat                        # anything else is what other PRs changed on main; usually nothing
 git diff origin/main...HEAD --stat                    # the PR's diff as GitHub will show it: this layer's files only
+rm "$PARENT_FILES"
 ```
 
 The PR's diff should match `git diff "$PARENT_TIP" "$BEFORE"` hunk for hunk, apart from context changed by
 unrelated commits on `main`. Nothing of this layer's own content may have moved, and nothing of the parent's
 may remain. Then rerun the layer's checks, since `main` may have changed around it.
+
+An **independent sibling** never held `$PARENT_TIP`, so its baseline is its own old base instead:
+`OLD_BASE=$(git merge-base "$BEFORE" origin/main)`, still the base from before this merge, since `$BEFORE`
+predates it. Its PR's diff should match `git diff "$OLD_BASE" "$BEFORE"` hunk for hunk, and the first check
+above shows the merged layer's changes to the parent's files there, not nothing.
 
 ## 5. Push and update the PR
 
@@ -81,8 +100,10 @@ convenient keeps them merged up for their own turn, and step 2 catches any that 
 
 Treat it as a dependent: the ancestry check, the merge, the shortcut under the same condition, the
 verification, a plain push. When the big PR is kept as the final layer, GitHub retargeted it to `main` if its
-base was the merged branch. After the merge, retarget it to the next top of the unmerged chain with
-`gh pr edit <big-pr> --base <top-layer-branch>`, keeping it a draft while its base is a layer branch. Once every
+base was the merged branch. After the merge, when the unmerged layers form one chain, retarget it to the top of
+that chain with `gh pr edit <big-pr> --base <top-layer-branch>`, keeping it a draft while its base is a layer
+branch; with several independent layers still open, leave its base on `main`, as in
+`.claude/skills/split-branch-into-prs/references/build-layer.md`. Once every
 other layer has merged, its base is `main`, its diff is the final layer, and it leaves draft when the user says
 so.
 
@@ -100,13 +121,16 @@ Update the epic's status line too.
 
 - **The same interim spots conflict at every level.** Squash commits carry no ancestry, so each merge of `main`
   into a dependent re-raises them. Expected, not a sign of a bad carve.
-- **`-X ours` silently drops `main`'s unrelated changes inside conflicting hunks.** The condition in step 3 and
-  the checks in step 4 are what make it safe; skip neither.
-- **GitHub's "Update branch" button is this merge without `-X ours`.** It fails on the expected conflicts, and
-  when it succeeds the verification still has to run locally.
+- **The shortcut's restore silently drops anything else `main` changed in the parent's files.** The condition in
+  step 3 and the checks in step 4 are what make it safe; skip neither.
+- **A clean merge is not a correct one.** Where this layer set a parent's line back, git takes the squash's value
+  without a conflict. The shortcut puts it back; a hand resolution has to look for it.
+- **GitHub's "Update branch" button is this merge without the shortcut.** It fails on the expected conflicts,
+  and when it succeeds it may have taken the squash's value on such lines, so the verification still has to run
+  locally.
 - **Never rebase or force-push to clean up the duplicated commits.** The duplicated view disappears on its own
   once the merge lands, and the rewrite would break every commit link in the review.
-- **A dependent that lags its parent's tip** turns review fixes into conflicts that `-X ours` resolves the
+- **A dependent that lags its parent's tip** turns review fixes into conflicts that the shortcut resolves the
   wrong way. Step 2 exists for that.
 
 <!--

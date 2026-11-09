@@ -11,7 +11,11 @@ talking points. An independent layer is buildable from the start, and `bd ready`
 buildable as soon as its parent's notes record a pushed branch and an open PR, because the child is cut from
 the parent's tip and reviewed against it; `bd ready` lists it only once the parent closes, which is after the
 parent merges, so do not wait for that. A layer with several parents waits until at most one of them is
-unmerged, then stacks on that one.
+unmerged, then stacks on that one, once it holds what the others brought to `main`: `git fetch origin`, then
+`git merge-base --is-ancestor origin/main origin/<parent-branch>`. A parent built beside them fails that check
+until it is brought up to date the way
+`.claude/skills/split-branch-into-prs/references/after-merge.md` does for an independent sibling, which is a
+merge, its checks and a plain push on that layer, so it needs the same go-ahead as any of its commits.
 
 ## 2. Create the branch
 
@@ -20,6 +24,11 @@ git fetch origin
 git switch -c <layer-branch> origin/main              # independent layer
 git switch -c <layer-branch> origin/<parent-branch>   # stacked layer, from the parent's current tip
 ```
+
+A stacked layer whose parents have all merged by the time it is built is built as an independent one: from
+`origin/main`, with `main` as its PR's base and the independent wording in its PR body. Its parents' squashes
+are already in `main`, and their branches are gone, or survive only as stale `origin/<parent-branch>` refs,
+since `git fetch` without `--prune` keeps them.
 
 Use the name the plan recorded. A name nested under the big branch's (`<big-branch>/<slug>`) cannot exist
 while `<big-branch>` does, so plans use `<big-branch>--<slug>` or a plain slug.
@@ -31,6 +40,9 @@ while `<big-branch>` does, so plans use `<big-branch>--<slug>` or a plain slug.
   never moves any.
 - Write the interim forms the plan names, and leave the comments that name the layer completing them.
 - Run the layer's regeneration steps, and read the generated diff for rewrites of unrelated files.
+- Mark the files the layer adds with `git add --intent-to-add <paths>`. `git restore` writes only the working
+  tree, so a file the base lacks is otherwise untracked and missing from the diff below; `git status --short`
+  should then list no `??` file that belongs in the layer.
 - Then `git diff <base-of-this-layer>` (`origin/main` or the parent branch) and account for every hunk. A hunk
   that belongs to another layer rode in with a whole-file restore: a sibling's unmerged change has to be
   trimmed out, while a change the big branch picked up from an already merged or parent layer's review is
@@ -101,14 +113,18 @@ big branch, so it needs the same go-ahead as any other commit.
 git switch <big-branch>
 git merge origin/main           # first, so that the layer's merge below adds nothing but ancestry; resolve any conflict by hand
 BEFORE=$(git rev-parse HEAD)
-git merge <layer-branch>        # conflicts only at the interim forms, where the big branch's version wins
-git diff "$BEFORE" HEAD         # must be empty: the big branch's tree is unchanged
+git merge <layer-branch>        # resolve any conflict by hand, as below
+git diff "$BEFORE" HEAD         # empty unless the layer holds something the big branch does not
 ```
 
-`git merge -X ours <layer-branch>` is acceptable for the second merge, because the layer was carved from this
-very tree and carries no review changes yet. If the diff is not empty, the layer holds something the big branch
-does not: either the carve is wrong, so fix the layer, or the change is wanted, so keep it and record it as a
-deviation on the layer's child. Push the big branch with a plain push; this is part of pushing the layer.
+Resolve the second merge by hand, never with `-X ours`. A conflict at an interim form takes the big branch's
+version. A conflict anywhere else is a change only the layer has, such as a regeneration or lint fix on a line
+the big branch also changed: `-X ours` would drop it without a trace, and the merge would record the layer as
+an ancestor, so no later merge could bring it back. Each change only the layer has, conflicted or not, shows in
+the diff. An interim form that merged without a conflict, such as a stub where the big branch still has the
+base's text, shows there too: like a conflicted one, it takes the big branch's version, so put `$BEFORE`'s lines
+back before committing anything else. For every other change, either the carve is wrong, so fix the layer, or
+the change is wanted, so keep it and record it as a deviation on the layer's child. Push the big branch with a plain push; this is part of pushing the layer.
 
 When the big PR is kept as the final layer and the unmerged layers form one chain, retarget it to the top of
 that chain with `gh pr edit <big-pr> --base <top-layer-branch>` and mark it a draft while its base is a layer
