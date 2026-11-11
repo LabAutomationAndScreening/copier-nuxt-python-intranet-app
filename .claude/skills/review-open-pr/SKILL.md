@@ -39,12 +39,16 @@ collects every finding the reviewer had, and posts them all on the PR as one rev
 
 ```bash
 gh pr view [<pr>] --json number,title,url,state,isDraft,body,baseRefName,headRefName,headRefOid,author
-git fetch origin <baseRefName> <headRefName>
+git fetch origin <baseRefName> pull/<number>/head
 ```
 
-Stop if the PR is not `OPEN`. `/code-review` reads the local checkout, so `git rev-parse HEAD` must equal
-`headRefOid`. If it doesn't, ask the user whether to switch to `<headRefName>` at `origin/<headRefName>`
-(only when `git status --porcelain` is empty) or stop. The **reviewed commit** is `headRefOid`. Record it now:
+`pull/<number>/head` is the PR's head as GitHub keeps it on the base repo, so it is there even for a PR from a
+fork, whose branch `origin` doesn't have.
+
+Stop if the PR is not `OPEN`. `/code-review` reads the local checkout, uncommitted changes included, so the
+checkout must be clean and at the PR's head. If `git status --porcelain` shows anything, stop and ask the user
+to commit or stash it. If `git rev-parse HEAD` isn't `headRefOid`, ask whether to switch to the PR's head by
+its SHA (`git switch --detach <headRefOid>`) or stop. The **reviewed commit** is `headRefOid`. Record it now:
 `/post-review-findings` needs it, and the branch may move while the review runs.
 
 ## Step 2: Gather the context
@@ -57,15 +61,16 @@ notes, which name a parent PR, a split series or interim spots.
 ### Existing review threads
 
 Load the **pr-comments** skill (Skill tool) and follow its Read section, with `--all` so resolved and
-answered threads count too:
+answered threads count too, and `--include-bot-comments` so AI reviewers' top-level comments do as well:
 
 ```bash
-.claude/skills/pr-comments/read.py <pr> --all
+.claude/skills/pr-comments/read.py <pr> --all --include-bot-comments
 ```
 
 From it, note:
 - **Settled**: decisions made in replies, and findings that were answered, verified or resolved. The review
-  shouldn't raise these again.
+  shouldn't raise these again. An AI reviewer's top-level comment can settle one too, by accepting or refuting
+  an answer; its summaries and walkthroughs are not findings.
 - **Already raised**: open threads, from people or from AI reviewers such as CodeRabbit. A new finding that
   only repeats one adds nothing.
 - **Earlier AI review findings**: their `ai_review.finding_id` and `status`. `/post-review-findings` numbers
@@ -94,7 +99,8 @@ From the beads, when they exist:
   later layer completes) and **interim spots**; its notes, especially **deviations**, meaning review fixes made
   on this layer that must be merged back into the big branch.
 - **Upcoming layers**: every other child that isn't closed: its title, the files it takes or carves, the
-  interim forms it completes, and whether it is stacked on this layer (`bd dep tree <child> --direction up`).
+  interim forms it completes, and whether it builds on this layer, directly or through another layer (the
+  split plan records stacking as bd dependencies).
 
 From the big branch itself, after `git fetch origin <big-branch>`. Without beads, this is the only source, with
 the big PR's description:
@@ -103,10 +109,11 @@ the big PR's description:
   extend it, such as new fields, new callers, or a body that replaces an interim form.
 - `git grep -n <symbol> origin/<big-branch>` for the main functions and classes this PR adds: how the later
   code calls them, and with which inputs.
-- **Pending merge-backs**: for each deviation the notes list, and for each of this PR's own commits
-  (`git log origin/<baseRefName>..<headRefOid>`), check whether its change already reached the big branch
-  (`git diff <commit>~ <commit>` against the same lines on `origin/<big-branch>`). Keep these for the report in
-  Step 6, and leave them out of the brief: folding a layer's fixes back into the big branch is a step of the
+- **Pending merge-backs**: whether this layer has been folded back into the big branch yet (step 9 of
+  `/split-branch-into-prs`' build-layer reference; once it has, this PR's head is an ancestor of the big branch),
+  and if not, which of its changes and recorded deviations the big branch still lacks. Leave out the interim
+  forms the plan names: the fold keeps the big branch's version of those on purpose. Keep these for the report
+  in Step 6, and leave them out of the brief: folding a layer's fixes back into the big branch is a step of the
   `/split-branch-into-prs` workflow, not something this PR's code can fix.
 
 ### Write the brief
