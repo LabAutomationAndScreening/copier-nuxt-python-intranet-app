@@ -38,7 +38,8 @@ as written.
 
 Without --repo, the PR belongs to the current directory's origin remote. In place of --repo, --checkout PATH posts as
 if run from that checkout of another repo, whose origin remote the PR belongs to; --body-file still resolves against
-the directory this runs in, as every path argument of these scripts does. gh prefers the login `gh auth login` stored,
+the directory this runs in, as every path argument of these scripts does except --path, which is relative to the root
+of the PR's repo. gh prefers the login `gh auth login` stored,
 which reaches every repo the user can, over a codespace's repo-scoped GITHUB_TOKEN; with no stored login it uses the
 environment's GH_TOKEN or GITHUB_TOKEN.
 
@@ -239,12 +240,20 @@ def _new_thread_fields(*, owner: str, repo: str, pr: int, path: str, line: int |
     except subprocess.CalledProcessError as e:
         _ = sys.stderr.write(f"Cannot read PR #{pr}: {e.stderr}\n")
         sys.exit(1)
+    except subprocess.TimeoutExpired:
+        _ = sys.stderr.write(f"Reading PR #{pr} timed out after {GH_TIMEOUT_SECONDS}s; nothing was posted.\n")
+        sys.exit(1)
     try:
         head = ensure_commit(pull_request["head"]["sha"])
         base = ensure_commit(pull_request["base"]["sha"])
         commentable = commentable_lines(base=base, anchor=head)
     except RuntimeError as e:
         _ = sys.stderr.write(f"Cannot read PR #{pr}'s diff from this checkout: {e}\n")
+        sys.exit(1)
+    except subprocess.TimeoutExpired:
+        _ = sys.stderr.write(
+            f"Reading PR #{pr}'s diff from this checkout timed out after {GH_TIMEOUT_SECONDS}s; nothing was posted.\n"
+        )
         sys.exit(1)
     if path not in commentable:
         _ = sys.stderr.write(
@@ -273,7 +282,10 @@ def _parse_args() -> argparse.Namespace:
         help="the answered comment's type",
     )
     _ = parser.add_argument(
-        "--path", default=None, help="start a new review thread on this file, one the PR changes, instead of replying"
+        "--path",
+        default=None,
+        help="start a new review thread on this file, one the PR changes, given relative to the root of the PR's repo,"
+        " instead of replying",
     )
     _ = parser.add_argument(
         "--line",
