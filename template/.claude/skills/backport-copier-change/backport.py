@@ -1344,6 +1344,13 @@ class _PrReviews:
             return {"verdict": "long_hold", "head": self.head, "reviewers": self.verdicts, "holds": holds}
         if len(self.verdicts) < len(self.reviewers):
             return None
+        if self.head in self.noted_holds:
+            # the user already knows about this head's hold, so wait it out rather than stopping on the unreviewed
+            # verdict it leaves; a finding makes _held_until None and still stops the wait
+            until = _held_until(reviews=self, verdicts=self.verdicts)
+            if until is not None:
+                if until > datetime.datetime.now(datetime.UTC):
+                    return None
         return {"verdict": _overall_verdict(self.verdicts), "head": self.head, "reviewers": self.verdicts}
 
     def _long_holds(self) -> dict[str, dict[str, Any]]:
@@ -1439,7 +1446,8 @@ def _watched_pr(*, reviews: _PrReviews, result: dict[str, Any] | None, settled: 
 
 
 def _held_until(*, reviews: _PrReviews, verdicts: dict[str, dict[str, Any]]) -> datetime.datetime | None:
-    # the soonest time a held-back reviewer's next review is due, or None when any reviewer needs the agent now
+    # the soonest time a held-back reviewer's next review is due, or None when no reviewer is held back or any reviewer
+    # needs the agent now
     times: list[datetime.datetime] = []
     for reviewer in reviews.reviewers:
         verdict = verdicts[reviewer.NAME]["verdict"]
@@ -1451,6 +1459,8 @@ def _held_until(*, reviews: _PrReviews, verdicts: dict[str, dict[str, Any]]) -> 
         if available_at is None:
             return None
         times.append(available_at)
+    if not times:
+        return None
     return min(times)
 
 
