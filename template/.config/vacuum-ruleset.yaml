@@ -227,3 +227,86 @@ rules:
     severity: error
     then:
       function: bodyExample
+
+  # ENABLED (Zalando 110, "MUST always return JSON objects as top-level data structures",
+  # https://opensource.zalando.com/restful-api-guidelines/#110): no response body may be a bare JSON array,
+  # so metadata such as pagination can later be added beside the items without breaking clients.
+  # `resolved: true` follows `$ref`, so a component that is itself an array (a Pydantic RootModel[list[...]])
+  # is caught as well as an inline `list[...]` return type.
+  response-body-not-top-level-array:
+    description: Response bodies must be JSON objects, never a top-level array.
+    given: $.paths[*][*].responses[*].content[*].schema
+    resolved: true
+    severity: error
+    then:
+      field: type
+      function: pattern
+      functionOptions:
+        notMatch: "^array$"
+
+  # ENABLED (Zalando 110, as above; the key name is from gov.au API Responses, "Operations on a Resource
+  # Collection", which requires a collection be returned in a "data" array): a GET listing a collection
+  # holds its items in a top-level `data` array, so every collection has the same path to its items. Uses
+  # .config/vacuum-functions/collectionInData.js, which tells a collection from a single resource by the
+  # path's last segment (static, not `{param}`) and from a static singleton by the body having an array.
+  collection-in-data:
+    description: A GET listing a collection must return its items in a top-level `data` array.
+    given: $.paths
+    resolved: true
+    severity: error
+    then:
+      function: collectionInData
+
+  # ENABLED (Zalando 122, "MUST not use `null` for boolean properties",
+  # https://opensource.zalando.com/restful-api-guidelines/#122): a `bool | None` field is a three-valued
+  # flag whose null rarely means anything a client can act on; give it a default instead. Uses
+  # .config/vacuum-functions/nullableType.js, run over every component schema and every operation parameter.
+  no-nullable-boolean:
+    description: Boolean properties must not be nullable.
+    given:
+      - $.components.schemas[*]
+      - $.paths[*][*].parameters[*]
+    severity: error
+    then:
+      function: nullableType
+      functionOptions:
+        type: boolean
+
+  # ENABLED (Zalando 123, "MUST use same semantics for `null` and absent properties",
+  # https://opensource.zalando.com/restful-api-guidelines/#123): the rule is about meaning, which lint can't
+  # see, so this checks the shape that lets absent and null differ: a property both optional and nullable.
+  # Each property is either required and nullable (always sent, may be null) or optional and never null
+  # (in Pydantic, `X | SkipJsonSchema[None] = None`). Uses .config/vacuum-functions/optionalNullable.js.
+  no-optional-nullable:
+    description: A property must not be both optional and nullable.
+    given: $.components.schemas[*]
+    severity: error
+    then:
+      function: optionalNullable
+
+  # ENABLED (Zalando 124, "SHOULD not use `null` for empty arrays",
+  # https://opensource.zalando.com/restful-api-guidelines/#124): an empty array already says "none", so a
+  # `list[X] | None` field gives clients two ways to say the same thing. Uses nullableType.js, as Zalando 122 does.
+  no-nullable-array:
+    description: Array properties must not be nullable; use an empty array.
+    given:
+      - $.components.schemas[*]
+      - $.paths[*][*].parameters[*]
+    severity: error
+    then:
+      function: nullableType
+      functionOptions:
+        type: array
+
+  # ENABLED (Zalando 136, "MUST use normalized paths without empty path segments and trailing slashes",
+  # https://opensource.zalando.com/restful-api-guidelines/#136): the recommended set already rejects a
+  # trailing slash (path-keys-no-trailing-slash) and an empty `{}` (path-declarations-must-exist); this adds
+  # the empty segment (`//`) neither catches. FastAPI serves "/a//b" and "/a/b" as different routes.
+  no-empty-path-segments:
+    description: Paths must not contain empty segments.
+    given: $.paths[*]~
+    severity: error
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: "//"
