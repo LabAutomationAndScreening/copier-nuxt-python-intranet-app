@@ -19,7 +19,8 @@ project-excludes = [
 # without this explicit "project-includes" and "search-path", pyrefly struggles to understand the tests folder
 project-includes = [
                     "../backend/src",
-                    "../backend/tests"
+                    "../backend/tests",
+                    "../.config/taskfiles/scripts"
                   ]
 # "../backend" is needed so the tests package (rooted at backend/) resolves relative imports;
 # without it pyrefly infers the import root from this config's dir (.config/) and can't name the test modules

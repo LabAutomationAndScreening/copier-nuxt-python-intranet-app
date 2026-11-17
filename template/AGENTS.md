@@ -109,7 +109,7 @@ Write each test for a reader without your context: someone opening it because it
 
 ## Tooling
 
-- Before hand-assembling a multi-step workflow, run `task --list` — it is probably already a task. Definitions live in `.config/taskfiles/`; the root `Taskfile.yaml` only includes them.
+- Before hand-assembling a multi-step workflow or a polling loop, run `task --list` — it is probably already a task. Definitions live in `.config/taskfiles/`; the root `Taskfile.yaml` only includes them.
 - The bans on `pnpm --prefix`, `uv --directory` and direct tool invocation apply to commands you type, not to task definitions: a task's commands run with the repo root as their working directory by default. Prefer adding or extending a task over typing the long form.
 - Linting and type-checking stay with `pre-commit run <hook-id>` rather than a task, so that what you run is exactly what CI runs.
 - Regenerating any generated client is `task codegen` (or an individual `gen-*-client` task from `task --list`) — never hand-edit anything under a `generated/` folder.
