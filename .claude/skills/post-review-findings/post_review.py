@@ -6,6 +6,7 @@
 
 Usage:
   post_review.py import (--from <file> | --agent <id>) --pr <number> --commit <sha> --out <findings file> [--model <id>] [--effort <level>]
+  post_review.py review-agent
   post_review.py plan --findings-file <findings file> [--preview <markdown file>] [--resume]
   post_review.py post --findings-file <findings file> --head <approved pr_head> --base <approved pr_base> [--resume]
 
@@ -13,7 +14,7 @@ import  Reads either a file holding the JSON array of findings /code-review repo
         /code-review agent, whose final report holds that array in a ```json block, as plain text or as a
         SubagentHandback message. --from takes the file (or the .jsonl output file named in the agent's task
         notification); --agent takes the agent's ID (the notification's task-id) and finds its transcript under
-        ~/.claude/projects. Writes a findings file:
+        Claude Code's projects folder ($CLAUDE_CONFIG_DIR/projects, or ~/.claude/projects). Writes a findings file:
           {"pr", "reviewed_commit", "reviewer": {"model", "effort"}, "summary", "findings": [{"id", "file", "line",
            "category", "short_summary", "summary", "failure_scenario", "related": [{"id", "note"}]}]}
         `reviewer` is the model and effort level that ran the review, which every posted comment names in its first
@@ -22,7 +23,9 @@ import  Reads either a file holding the JSON array of findings /code-review repo
         IDs (F1, F2, ...) are numbered after any finding IDs already on the PR. `summary` (the review body) and each
         `related` list start empty for the agent to fill in. A finding may also carry `line_commit`, the commit its
         `line` refers to, when that is not reviewed_commit.
-plan    Prints, as JSON, where each finding would be posted and anything that must be resolved first. Posts nothing.
+review-agent  Prints {"review_agent": <id>}: the ID of the /code-review agent this session (CLAUDE_CODE_SESSION_ID)
+        is running in the background, so the ID --agent needs can be recorded before the review finishes.
+plan   Prints, as JSON, where each finding would be posted and anything that must be resolved first. Posts nothing.
         With --preview, also writes the review body and every comment, exactly as they would be posted, to a
         markdown file for the user to read.
 post    Re-runs the plan and refuses if anything needs attention, or if the PR head or base is no longer the --head or
@@ -45,6 +48,7 @@ mapped forward through the diff; a line inside changed code cannot be mapped and
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -893,6 +897,17 @@ def _post(*, plan: Plan, findings_file: FindingsFile, resume: bool) -> dict[str,
     }
 
 
+def _claude_projects_dir() -> Path:
+    """Return the folder Claude Code keeps session transcripts in: `projects` under its configuration directory.
+
+    The configuration directory is `CLAUDE_CONFIG_DIR` when that is set, and `~/.claude` otherwise.
+    """
+    config_dir = os.environ.get("CLAUDE_CONFIG_DIR")
+    if config_dir:
+        return Path(config_dir) / "projects"
+    return Path.home() / ".claude" / "projects"
+
+
 def agent_transcript(agent_id: str) -> Path:
     """Return the transcript Claude Code keeps for the background agent with this ID (a task notification's task-id).
 
@@ -900,12 +915,49 @@ def agent_transcript(agent_id: str) -> Path:
     task notification's output file, which sits under /tmp in a folder named after the session ID from before any
     `/clear`.
     """
-    matches = sorted((Path.home() / ".claude" / "projects").glob(f"*/*/subagents/agent-{agent_id}.jsonl"))
+    projects_dir = _claude_projects_dir()
+    matches = sorted(projects_dir.glob(f"*/*/subagents/agent-{agent_id}.jsonl"))
     if not matches:
-        raise InputError(f"no transcript named agent-{agent_id}.jsonl under ~/.claude/projects")
+        raise InputError(f"no transcript named agent-{agent_id}.jsonl under {projects_dir}")
     if len(matches) > 1:
         raise InputError(f"several transcripts for agent {agent_id}: {', '.join(str(path) for path in matches)}")
     return matches[0]
+
+
+def running_review_agent(session_id: str) -> str:
+    """Return the ID of the `/code-review` agent this Claude Code session is running in the background.
+
+    The Skill tool's result for a forked `/code-review` names the agent only as `code-review`, and its ID otherwise
+    arrives only with the task notification, when the review is done. Claude Code writes
+    `<session id>/subagents/agent-<agent id>.meta.json` under the session's project folder as soon as it starts the
+    agent, naming it, giving its spawn depth (1 for an agent this session started itself, not one of its finders)
+    and, once it is done, marking it `finished`. So the one unfinished depth-1 agent named `code-review` is the
+    review that is running.
+    """
+    running: list[str] = []
+    for meta_path in sorted(_claude_projects_dir().glob(f"*/{session_id}/subagents/agent-*.meta.json")):
+        meta = json.loads(meta_path.read_text("utf-8"))
+        if not isinstance(meta, dict):
+            continue
+        if meta.get("name") != "code-review":
+            continue
+        if meta.get("spawnDepth") != 1:
+            continue
+        if meta.get("finished") is True:
+            continue
+        running.append(meta_path.name.removeprefix("agent-").removesuffix(".meta.json"))
+    if not running:
+        raise InputError(f"session {session_id} has no running agent named code-review")
+    if len(running) > 1:
+        raise InputError(f"session {session_id} has several running agents named code-review: {', '.join(running)}")
+    return running[0]
+
+
+def cmd_review_agent(_args: argparse.Namespace) -> None:  # noqa: ARG001 # main() calls every subcommand's handler with the parsed args; this one takes no options
+    session_id = os.environ.get("CLAUDE_CODE_SESSION_ID")
+    if not session_id:
+        raise InputError("CLAUDE_CODE_SESSION_ID is not set; run this from a Bash command in the Claude Code session")
+    _ = sys.stdout.write(json.dumps({"review_agent": running_review_agent(session_id)}) + "\n")
 
 
 def cmd_import(args: argparse.Namespace) -> None:
@@ -1039,6 +1091,11 @@ def main() -> None:
         "--effort", default=None, help="the effort level the review ran at; overrides what a transcript records"
     )
     import_parser.set_defaults(handler=cmd_import)
+
+    review_agent_parser = subparsers.add_parser(
+        "review-agent", help="print the ID of the /code-review agent this session is running in the background"
+    )
+    review_agent_parser.set_defaults(handler=cmd_review_agent)
 
     plan_parser = subparsers.add_parser("plan", help="show where each finding would be posted, posting nothing")
     _ = plan_parser.add_argument("--findings-file", required=True, type=Path)
