@@ -4,6 +4,7 @@ from backend_api.openapi_problem_responses import PROBLEM_DETAILS_REF
 from backend_api.openapi_problem_responses import PROBLEM_JSON_MEDIA_TYPE
 from backend_api.openapi_problem_responses import ProblemExample
 from backend_api.openapi_problem_responses import problem_response
+from fastapi import HTTPException
 from httpx import codes
 
 
@@ -30,6 +31,14 @@ def test_Given_status_and_description__Then_example_is_synthesized_from_them() -
     assert example["status"] == codes.NOT_FOUND
     assert example["detail"] == "Widget not found"
     assert example["instance"] == "about:blank"
+
+
+def test_Given_status_and_description__Then_example_names_the_exception_class_a_route_raises_for_it() -> None:
+    example = problem_response(codes.NOT_FOUND, "Widget not found")[codes.NOT_FOUND]["content"][
+        PROBLEM_JSON_MEDIA_TYPE
+    ]["example"]
+
+    assert example["errorType"] == HTTPException.__name__
 
 
 def test_Given_explicit_instance__Then_example_points_at_it() -> None:

@@ -417,23 +417,20 @@
             "type": "string"
           },
           "errorType": {
-            "default": null,
-            "description": "The internal exception class name, when available.",
+            "description": "The internal exception class name.",
             "examples": [
               "ValueError"
             ],
             "title": "Error Type",
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           }
         },
         "required": [
           "title",
           "status",
           "detail",
-          "instance"
+          "instance",
+          "errorType"
         ],
         "title": "ProblemDetails",
         "type": "object"

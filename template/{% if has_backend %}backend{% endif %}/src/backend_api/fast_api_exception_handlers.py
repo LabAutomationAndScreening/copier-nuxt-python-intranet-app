@@ -47,11 +47,7 @@ class ProblemDetails(CamelCaseModel):
         description="A human-readable explanation specific to this occurrence of the problem.",
     )
     instance: str = Field(examples=["/api/healthcheck"], description="A URI reference identifying this occurrence.")
-    error_type: str | None = Field(
-        default=None,
-        examples=["ValueError"],
-        description="The internal exception class name, when available.",
-    )
+    error_type: str = Field(examples=["ValueError"], description="The internal exception class name.")
 
 
 def should_show_error_details() -> bool:

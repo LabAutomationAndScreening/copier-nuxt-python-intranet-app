@@ -3,6 +3,8 @@ from http import HTTPStatus
 from typing import Any
 from typing import NamedTuple
 
+from fastapi import HTTPException
+
 from .fast_api_exception_handlers import ProblemDetails
 
 PROBLEM_DETAILS_REF = "#/components/schemas/ProblemDetails"
@@ -22,7 +24,12 @@ class ProblemExample(NamedTuple):
 
 def _problem_body(*, status_code: int, detail: str, instance: str) -> dict[str, Any]:  # pyrefly: ignore[explicit-any] # model_dump returns dict[str, Any]; see the note on problem_response's return type
     return ProblemDetails(
-        title=HTTPStatus(status_code).phrase, status=status_code, detail=detail, instance=instance
+        title=HTTPStatus(status_code).phrase,
+        status=status_code,
+        detail=detail,
+        instance=instance,
+        # routes raise every problem they document as an HTTPException, so that is the class the handler reports
+        error_type=HTTPException.__name__,
     ).model_dump(mode="json", by_alias=True)
 
 
