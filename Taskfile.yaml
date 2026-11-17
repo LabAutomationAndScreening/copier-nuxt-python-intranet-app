@@ -17,3 +17,6 @@ includes:
   graphiql:
     taskfile: ./.config/taskfiles/graphiql.yaml
     flatten: true
+  github:
+    taskfile: ./.config/taskfiles/github.yaml
+    flatten: true
