@@ -279,7 +279,8 @@ rules:
 
   # ENABLED (Zalando 115, "MUST not use URL versioning", https://opensource.zalando.com/restful-api-guidelines/#115):
   # a `/v2/` path makes the new version a different resource, so clients must rewrite every URL to move and
-  # links stored by one version break in the other. Evolve the API compatibly instead.
+  # links stored by one version break in the other. Evolve the API compatibly instead. Chosen over gov.au
+  # API Versioning (https://api.gov.au/sections/api-versioning.html), which requires `/v{MAJOR}` in the URI.
   no-url-versioning:
     description: Paths must not contain a version segment such as /v1/.
     given: $.paths[*]~
