@@ -387,10 +387,12 @@ def _documents_problem_json(response: JsonValue) -> bool:
 
     FastAPI documents the 422 it generates as application/json. A 422 a route declares with problem_response() is
     already application/problem+json, with the route's own description and examples, which replacing it would lose.
+    A 422 a route declares with no content (just a description) documents no body at all, so FastAPI adds none.
     """
     assert isinstance(response, dict), f"Expected the response object to be a dict, got {type(response)}"
-    content = response["content"]
-    assert isinstance(content, dict), f"Expected the response's content to be a dict, got {type(content)}"
+    content = response.get("content")
+    if not isinstance(content, dict):
+        return False
     if PROBLEM_JSON_MEDIA_TYPE in content:
         return True
     return False

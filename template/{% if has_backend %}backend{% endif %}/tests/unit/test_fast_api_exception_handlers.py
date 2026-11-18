@@ -105,42 +105,75 @@ def test_When_openapi_schema_generated__Then_a_route_with_parameters_documents_i
     assert ValidationProblemDetails.__name__ in schemas
 
 
-def test_Given_a_route_documenting_its_own_422__When_openapi_schema_generated__Then_its_description_and_examples_are_kept():
-    description = str(uuid4())
-    example_name = str(uuid4())
-    # Arbitrary in every respect: any path, and any method, works. A second route taking a query parameter makes
-    # FastAPI generate its own 422 schemas, as every app's health check does.
-    documented_route = "/documented"
-    undocumented_route = "/undocumented"
+# Arbitrary in every respect: any path, and any method (the tests use GET), works.
+_ROUTE_DECLARING_ITS_OWN_422 = "/declared"
+_ROUTE_LEAVING_ITS_422_TO_FASTAPI = "/undeclared"
+
+
+def _app_with_a_route_leaving_its_422_to_fastapi() -> FastAPI:
+    """An app whose one route validates a query parameter without declaring a 422, as every app's health check does.
+
+    That route is what makes FastAPI generate its own validation schemas, which the schema generator removes.
+    """
     route_app = FastAPI()
     route_app.add_middleware(CORSMiddleware, allow_origins=["*"])
 
+    @route_app.get(_ROUTE_LEAVING_ITS_422_TO_FASTAPI)
+    def undeclared(count: int) -> None:
+        pass
+
+    return route_app
+
+
+def test_Given_a_route_documenting_its_own_422__When_openapi_schema_generated__Then_its_description_and_examples_are_kept():
+    description = str(uuid4())
+    example_name = str(uuid4())
+    route_app = _app_with_a_route_leaving_its_422_to_fastapi()
+
     @route_app.get(
-        documented_route,
+        _ROUTE_DECLARING_ITS_OWN_422,
         responses=problem_response(
             status.HTTP_422_UNPROCESSABLE_CONTENT,
             description,
-            instance=documented_route,
+            instance=_ROUTE_DECLARING_ITS_OWN_422,
             examples={example_name: ProblemExample(summary=str(uuid4()), detail=str(uuid4()))},
         ),
     )
-    def documented(count: int) -> None:
-        pass
-
-    @route_app.get(undocumented_route)
-    def undocumented(count: int) -> None:
+    def declared(count: int) -> None:
         pass
 
     register_exception_handlers(route_app)
 
     schema = route_app.openapi()
 
-    unprocessable_content = schema["paths"][documented_route]["get"]["responses"][
+    unprocessable_content = schema["paths"][_ROUTE_DECLARING_ITS_OWN_422]["get"]["responses"][
         str(status.HTTP_422_UNPROCESSABLE_CONTENT)
     ]
 
     assert unprocessable_content["description"] == description
     assert list(unprocessable_content["content"][PROBLEM_JSON_MEDIA_TYPE]["examples"]) == [example_name]
+
+
+def test_Given_a_route_declaring_a_422_with_no_content__When_openapi_schema_generated__Then_its_422_documents_validation_problem_details():
+    route_app = _app_with_a_route_leaving_its_422_to_fastapi()
+
+    @route_app.get(
+        _ROUTE_DECLARING_ITS_OWN_422, responses={status.HTTP_422_UNPROCESSABLE_CONTENT: {"description": str(uuid4())}}
+    )
+    def declared(count: int) -> None:
+        pass
+
+    register_exception_handlers(route_app)
+
+    schema = route_app.openapi()
+
+    unprocessable_content = schema["paths"][_ROUTE_DECLARING_ITS_OWN_422]["get"]["responses"][
+        str(status.HTTP_422_UNPROCESSABLE_CONTENT)
+    ]
+
+    assert unprocessable_content["content"] == {
+        PROBLEM_JSON_MEDIA_TYPE: {"schema": {"$ref": f"#/components/schemas/{ValidationProblemDetails.__name__}"}}
+    }
 
 
 class TestGivenARouteTakingAJsonBody:
