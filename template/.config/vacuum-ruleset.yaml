@@ -309,6 +309,8 @@ rules:
   # https://opensource.zalando.com/restful-api-guidelines/#122): a `bool | None` field is a three-valued
   # flag whose null rarely means anything a client can act on; give it a default instead. Uses
   # .config/vacuum-functions/nullableType.js, run over every component schema and every operation parameter.
+  # Boolean names may start with `is`/`has`: gov.au Naming Conventions' SHOULD NOT is deliberately not enforced,
+  # since the bare adjective or noun is often ambiguous (`raw` beside a measurement value, `more` for pagination).
   no-nullable-boolean:
     description: Boolean properties must not be nullable.
     given:
