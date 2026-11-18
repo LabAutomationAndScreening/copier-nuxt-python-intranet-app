@@ -980,7 +980,12 @@ def cmd_ci(a: argparse.Namespace) -> dict[str, Any]:
     """
     # wait-for-ci expands an abbreviated SHA by itself, but the breakdown's `gh run list --commit` matches only the full
     # one, so it is resolved here once, whatever length a full SHA has
-    sha = _run(cmd=["gh", "api", f"repos/{a.repo}/commits/{a.sha}", "--jq", ".sha"]).strip()
+    sha = _wait(
+        timeout=300,
+        interval=15,
+        what=f"GitHub to resolve {a.sha} in {a.repo}",
+        probe=lambda: _run(cmd=["gh", "api", f"repos/{a.repo}/commits/{a.sha}", "--jq", ".sha"]).strip(),
+    )
     line, exit_code = _wait_for_ci(repo=a.repo, timeout=a.timeout, sha=sha)
     if exit_code == 0:
         return {"result": line, "passed": True}
@@ -1497,8 +1502,9 @@ def _pause_confirmed(*, repo: str, pr: str, reviewer: ModuleType, posted_at: str
         for comment in page:
             if not reviewer.LOGIN.search(comment["user"]["login"]):
                 continue
-            # GitHub's timestamps share one format, so comparing them as text orders them
-            if comment["updated_at"] < posted_at:
+            # GitHub's timestamps share one format, so comparing them as text orders them. They have whole seconds, and a
+            # reply can't come within the command's own second, so an edit in that second predates the command's effect
+            if comment["updated_at"] <= posted_at:
                 continue
             if reviewer.confirms_pause(comment["body"]):
                 return "paused"
