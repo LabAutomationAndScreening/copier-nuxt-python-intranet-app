@@ -1,11 +1,16 @@
 # Curated vacuum ruleset for the backend OpenAPI schema.
 #
 # Extends vacuum's built-in OpenAPI "recommended" set, then disables two rules that are noise/false
-# positives for a FastAPI-generated spec and enables a handful of opt-in best-practice rules plus three
-# OWASP data-hardening rules. Every non-default rule carries a comment explaining WHY.
+# positives for a FastAPI-generated spec and enables a handful of opt-in best-practice rules. Three OWASP
+# data-hardening rules are loaded but not yet enabled (see the TODO below). Every non-default rule carries a
+# comment explaining WHY.
 extends:
   - - vacuum:oas
     - recommended
+  # Loads the OWASP rules with all of them off, so the few chosen below can be named and switched on; a rule
+  # from a set that isn't extended is silently dropped, even when set to `true`.
+  - - vacuum:owasp
+    - "off"
 rules:
   # DISABLED: flags identical description strings, but ours repeat legitimately — the same field
   # (e.g. SensorInfo.id) is inherited across many response models, and the same 404 text is reused
@@ -61,17 +66,20 @@ rules:
   # `properties`. Catches real bugs (typo'd/removed field left in required) that break client codegen.
   required-fields-defined: true
 
-  # ENABLED (OWASP): three data-hardening rules worth keeping even on an air-gapped/no-auth API. The
-  # rest of the OWASP pack (auth/HTTPS/rate-limit/protection-*/string-restricted) is intentionally NOT
-  # enabled for this trusted air-gapped, no-auth deployment; revisit if the API is ever exposed/authed.
-  owasp-define-error-validation: true
+  # TODO: enable (set to `true`) the three OWASP data-hardening rules below, worth keeping even on an
+  # air-gapped/no-auth API. Until the `vacuum:owasp` extend above was added they never ran, though set to `true`,
+  # so turning them on surfaces findings projects have never had to fix: every Pydantic `int` field needs a
+  # `format` and bounds (e.g. a shared `Annotated[int, Field(ge=..., le=..., json_schema_extra={"format": "int64"})]`
+  # type), and every operation needs its 400/422 validation response documented. The rest of the OWASP pack
+  # (auth/HTTPS/rate-limit/protection-*/string-restricted) is intentionally NOT wanted for this trusted
+  # air-gapped, no-auth deployment; revisit if the API is ever exposed/authed.
+  owasp-define-error-validation: "off"
 
   # Integers must declare int32/int64 `format` so codegen picks the right numeric type.
-  # (Config, not `true`: OWASP rules aren't in the extended set, so `true` would be dropped.)
-  owasp-integer-format: true
+  owasp-integer-format: "off"
 
   # Integers must declare min/max bounds (input validation / resource-exhaustion guard).
-  owasp-integer-limit: true
+  owasp-integer-limit: "off"
 
   # ENABLED: path id parameters must be explicit and resource-qualified, never a bare generic
   # identifier. Bare `{id}` is ambiguous in a multi-resource spec and produces collision-prone Kiota
@@ -394,6 +402,21 @@ rules:
       function: pattern
       functionOptions:
         notMatch: "//"
+
+  # TODO: uncomment to enable (Zalando 171, "MUST define a format for number and integer types",
+  # https://opensource.zalando.com/restful-api-guidelines/#171): every `number` declares float, double or decimal,
+  # so a client knows which floating-point type to decode into; the integer half is owasp-integer-format's.
+  # Commented out rather than "off" because vacuum can't define a custom rule and leave it disabled. Pydantic emits
+  # no format for `float`, so before enabling, have custom_openapi add `format: double` to every bare `number` (a
+  # Python float is always an IEEE 754 double). Uses .config/vacuum-functions/numberFormat.js.
+  # number-format:
+  #   description: Numbers must declare a float, double or decimal format.
+  #   given:
+  #     - $.components.schemas[*]
+  #     - $.paths[*][*].parameters[*]
+  #   severity: error
+  #   then:
+  #     function: numberFormat
 
   # ENABLED (Zalando 240, "SHOULD declare enum values using UPPER_SNAKE_CASE string",
   # https://opensource.zalando.com/restful-api-guidelines/#240): one casing for every enum value, so a client
