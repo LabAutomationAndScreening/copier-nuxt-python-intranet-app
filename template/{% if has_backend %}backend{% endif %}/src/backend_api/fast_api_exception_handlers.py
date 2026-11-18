@@ -97,8 +97,11 @@ class ValidationIssue(CamelCaseModel):
         description="A machine-readable reason for the issue, from Pydantic's error types; more may be added.",
         examples=["int_parsing"],
     )
+    # SkipJsonSchema keeps None out of the schema, which documents these fields as strings that are either present or
+    # absent; exclude_if makes the response match it by leaving an absent one out rather than sending null.
     pointer: str | SkipJsonSchema[None] = Field(
         default=None,
+        exclude_if=lambda value: value is None,
         description=(
             "Where the invalid value is in the JSON request body, as a JSON Pointer (RFC 6901) in URI fragment form; "
             "`#` is the whole body. Present only for an issue in the body."
@@ -107,11 +110,13 @@ class ValidationIssue(CamelCaseModel):
     )
     parameter: str | SkipJsonSchema[None] = Field(
         default=None,
+        exclude_if=lambda value: value is None,
         description="The name of the invalid query, path, header or cookie parameter. Present only with `in`.",
         examples=["prependV"],
     )
     location: ParameterLocation | SkipJsonSchema[None] = Field(
         default=None,
+        exclude_if=lambda value: value is None,
         alias="in",
         description="Where the invalid parameter is sent, spelled as OpenAPI's parameter `in`. Present only with `parameter`.",
         examples=[ParameterLocation.QUERY],

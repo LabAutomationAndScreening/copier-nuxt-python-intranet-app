@@ -15,6 +15,7 @@ from backend_api.fast_api_exception_handlers import WHOLE_BODY_LOCATION_LABEL
 from backend_api.fast_api_exception_handlers import WHOLE_BODY_POINTER
 from backend_api.fast_api_exception_handlers import ParameterLocation
 from backend_api.fast_api_exception_handlers import ProblemDetails
+from backend_api.fast_api_exception_handlers import ValidationIssue
 from backend_api.fast_api_exception_handlers import ValidationProblemDetails
 from backend_api.fast_api_exception_handlers import register_exception_handlers
 from backend_api.openapi_problem_responses import PROBLEM_JSON_MEDIA_TYPE
@@ -69,6 +70,12 @@ def _wire_name(field_name: str) -> str:
     return alias
 
 
+def _validation_issue_wire_name(field_name: str) -> str:
+    alias = ValidationIssue.model_fields[field_name].alias
+    assert alias is not None  # CamelCaseModel's alias generator gives every field one
+    return alias
+
+
 def _client_for_an_app_with_a_body_route() -> TestClient:
     body_app = FastAPI()
     body_app.add_middleware(CORSMiddleware, allow_origins=["*"])
@@ -119,6 +126,17 @@ class TestGivenARouteTakingAJsonBody:
         assert issue.location is None
         assert issue.code == "int_parsing"
         assert problem.detail == f"{wire_name}: {issue.detail}"
+
+    def test_When_a_body_field_fails_validation__Then_the_issue_sends_its_pointer_and_leaves_out_the_parameter_fields(
+        self,
+    ):
+        response = self.client.post(_BODY_ROUTE, json={_wire_name("item_count"): str(uuid4())})
+
+        issue_keys = set(response.json()["errors"][0])
+
+        assert _validation_issue_wire_name("pointer") in issue_keys
+        assert _validation_issue_wire_name("parameter") not in issue_keys
+        assert _validation_issue_wire_name("location") not in issue_keys
 
     def test_When_one_item_of_a_body_list_fails_validation__Then_the_issue_points_at_that_item_by_its_index(self):
         count_wire_name = _wire_name("item_count")
@@ -234,6 +252,19 @@ class TestExceptionHandlers:
         assert expected_uuid in log_message
         assert _ARBITRARY_ROUTE_METHOD in log_message
         assert _ARBITRARY_ROUTE in log_message
+
+    def test_Given_malformed_input_to_api_route__Then_the_issue_sends_its_parameter_fields_and_leaves_out_the_pointer(
+        self,
+    ):
+        response = self.client.request(
+            _ARBITRARY_ROUTE_METHOD, _ARBITRARY_ROUTE, params={_ARBITRARY_ROUTE_BOOLEAN_QUERY_PARAMETER: str(uuid4())}
+        )
+
+        issue_keys = set(response.json()["errors"][0])
+
+        assert _validation_issue_wire_name("parameter") in issue_keys
+        assert _validation_issue_wire_name("location") in issue_keys
+        assert _validation_issue_wire_name("pointer") not in issue_keys
 
     def test_Given_calling_route_that_triggers_http_error__Then_uuid_in_log_and_response_and_response_contains_details_and_cors_headers(
         self,
