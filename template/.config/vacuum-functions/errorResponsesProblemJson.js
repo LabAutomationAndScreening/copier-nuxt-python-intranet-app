@@ -4,6 +4,8 @@
 // and the `default` catch-all) is application/problem+json, the media type the exception handlers send. Run on
 // `$.paths[*][*].responses`, one operation's responses at a time. A JSONPath rule can't do this: vacuum 0.30's
 // key selector (`~`) finds nothing under a response keyed `default`, so it would miss the catch-all.
+// An error response with no content, or no application/problem+json among its media types, fails too: documenting
+// it with nothing would let a client generated from the schema miss the problem details it is sent.
 
 var PROBLEM_JSON = "application/problem+json";
 
@@ -29,7 +31,21 @@ function runRule(input) {
     }
     var content = input[statusKey] && input[statusKey].content;
     if (!content || typeof content !== "object") {
+      results.push({
+        message: "the " + statusKey + " response documents no content, but error responses must be " + PROBLEM_JSON,
+      });
       continue;
+    }
+    if (!(PROBLEM_JSON in content)) {
+      results.push({
+        message:
+          "the " +
+          statusKey +
+          " response has no " +
+          PROBLEM_JSON +
+          " content, but error responses must be " +
+          PROBLEM_JSON,
+      });
     }
     for (var mediaType in content) {
       if (mediaType === PROBLEM_JSON) {
