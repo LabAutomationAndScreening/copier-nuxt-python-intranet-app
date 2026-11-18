@@ -15,8 +15,8 @@ from warnings import warn
 
 if TYPE_CHECKING:
     from ...models.healthcheck_response import HealthcheckResponse
-    from ...models.h_t_t_p_validation_error import HTTPValidationError
     from ...models.problem_details import ProblemDetails
+    from ...models.validation_problem_details import ValidationProblemDetails
 
 class HealthcheckRequestBuilder(BaseRequestBuilder):
     """
@@ -40,11 +40,11 @@ class HealthcheckRequestBuilder(BaseRequestBuilder):
         request_info = self.to_get_request_information(
             request_configuration
         )
-        from ...models.h_t_t_p_validation_error import HTTPValidationError
         from ...models.problem_details import ProblemDetails
+        from ...models.validation_problem_details import ValidationProblemDetails
 
         error_mapping: dict[str, type[ParsableFactory]] = {
-            "422": HTTPValidationError,
+            "422": ValidationProblemDetails,
             "500": ProblemDetails,
             "XXX": ProblemDetails,
         }
