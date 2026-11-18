@@ -238,14 +238,15 @@ two commits. Then `$BP push --checkout <checkout> --chain <chain.json>` and
 `$BP ci --repo <layer> --sha <sha from push>`.
 
 `passed` is the verdict, and `result` is wait-for-ci's line. It stops at the first failed job,
-so the lists below cover only the jobs finished by then; each job in them comes with its run's
+and `ci` reads the lists below just after it, so they hold the jobs finished by then, which can
+include one that failed after the verdict; each job in them comes with its run's
 `run_id`, since a job name can repeat across workflows. `failed_jobs` need a fix (see Rules:
 stop for the user), and so do `failed_runs`, runs that ended before creating any job, such as on
 an invalid workflow file or awaiting approval (open the run's URL for GitHub's reason).
 `not_started_jobs` never got a runner (`not_started_reasons` says why, such as a spent Actions
 budget): there is nothing to fix, so tell the user, and once they say it's sorted,
 `env -u GITHUB_TOKEN -u GH_TOKEN gh run rerun <run_id> --repo R --failed` (R being the repo
-`ci` waited on) for each run they name, and run `ci` again. With `breakdown_error` in place of the lists,
+`ci` waited on) once for each distinct `run_id` they name, and run `ci` again. With `breakdown_error` in place of the lists,
 GitHub kept failing while `ci` read the jobs: the failure stands, and `result` names the failed
 jobs. Any other outcome (a timeout, GitHub unreachable) makes `ci` exit with the line as its
 error.
@@ -422,7 +423,10 @@ top, one level at a time:
    if not, stop and show the user what else changed. Then pause the child PR's AI reviewer,
    since a re-pin that moves only `_commit` gives it nothing to review:
    `$BP pause --repo R --pr N --checkout <checkout>` posts the pause command and waits for the
-   reviewer to confirm it, since a push that reaches it first is still reviewed. The plan approved in Step 2
+   reviewer to confirm it, since a push that reaches it first is still reviewed. If it times out,
+   the command is already posted: don't run `pause` again, which posts a second one; wait for the
+   reviewer's confirmation of that command on the PR (pr-comments' Read with `--all
+   --include-bot-comments`), and hold the push until it comes. The plan approved in Step 2
    covers these pause comments. Pause each PR just before its own push rather than the whole
    level up front, so a plan change mid-stream leaves no paused PR to resume. Then `push`,
    `ci`. The pre-merge check's `ai-review` then reports `head_not_reviewed`, which a

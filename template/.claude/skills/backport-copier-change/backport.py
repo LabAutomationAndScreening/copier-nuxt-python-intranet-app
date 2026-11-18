@@ -63,7 +63,8 @@ Verbs (all print JSON on stdout; errors go to stderr with exit 1):
                                     commits, not a merge of the default branch;
                                     a flagged reviewer's entry lists its open findings (id, type,
                                     path, line, url, body_text), read through the pr-comments skill
-  pause --repo R --pr N             post each configured AI reviewer's pause command on the PR (through
+  pause --repo R --pr N --checkout DIR
+                                    post each configured AI reviewer's pause command on the PR (through
                                     the pr-comments skill) and wait until the reviewer confirms it in a
                                     comment posted or edited since; a reviewer the PR's description
                                     tells to skip it is reported ignored and not paused
@@ -935,6 +936,9 @@ def _wait[T](*, timeout: int, interval: int, what: str, probe: Callable[[], T | 
 
 
 SECONDS_PER_MINUTE = 60
+# the conclusions wait_for_ci.py (.config/taskfiles/scripts/) counts as a failed job, so the breakdown lists the jobs
+# its verdict failed on and no others, such as a neutral one
+FAILED_JOB_CONCLUSIONS = frozenset({"failure", "cancelled", "timed_out", "startup_failure", "action_required", "stale"})
 # wait_for_ci.py stops polling at its deadline, but the gh calls of the poll it started just before can still be running
 WAIT_FOR_CI_OVERRUN_SECONDS = 300
 
@@ -974,17 +978,20 @@ def cmd_ci(a: argparse.Namespace) -> dict[str, Any]:
     keeps failing, the verdict still stands, with `breakdown_error` in place of the lists. Any outcome other than a pass
     or a failed job (a timeout, an unreachable GitHub, an unknown commit) is an error.
     """
-    line, exit_code = _wait_for_ci(repo=a.repo, timeout=a.timeout, sha=a.sha)
+    # wait-for-ci expands an abbreviated SHA by itself, but the breakdown's `gh run list --commit` matches only the full
+    # one, so it is resolved here once, whatever length a full SHA has
+    sha = _run(cmd=["gh", "api", f"repos/{a.repo}/commits/{a.sha}", "--jq", ".sha"]).strip()
+    line, exit_code = _wait_for_ci(repo=a.repo, timeout=a.timeout, sha=sha)
     if exit_code == 0:
         return {"result": line, "passed": True}
     if not line.startswith("CHECKS_FAILED"):
-        raise FailError(f"waiting for CI on {a.sha} in {a.repo}: {line}")
+        raise FailError(f"waiting for CI on {sha} in {a.repo}: {line}")
     try:
         breakdown = _wait(
             timeout=300,
             interval=15,
-            what=f"the jobs of {a.sha}'s runs",
-            probe=lambda: _ci_failure_breakdown(repo=a.repo, sha=a.sha),
+            what=f"the jobs of {sha}'s runs",
+            probe=lambda: _ci_failure_breakdown(repo=a.repo, sha=sha),
         )
     except FailError as e:
         return {"result": line, "passed": False, "breakdown_error": str(e)}
@@ -1008,9 +1015,7 @@ def _ci_failure_breakdown(*, repo: str, sha: str) -> dict[str, Any]:
         for job in view["jobs"]:
             if job["status"] != "completed":
                 continue
-            if job["conclusion"] == "success":
-                continue
-            if job["conclusion"] == "skipped":
+            if job["conclusion"] not in FAILED_JOB_CONCLUSIONS:
                 continue
             entry = {"name": job["name"], "run_id": run_id}
             # a job that failed without running a single step never got a runner (a spent Actions budget, say), so
@@ -1462,7 +1467,7 @@ def cmd_pause(a: argparse.Namespace) -> dict[str, Any]:
 
 
 def _post_pause(*, repo: str, pr: str, reviewer: ModuleType) -> str:
-    body_file = Path("tmp") / f"backport-pause-{repo.split('/')[1]}-{pr}-{reviewer.NAME}.md"
+    body_file = Path("tmp") / f"backport-pause-{repo.replace('/', '-')}-{pr}-{reviewer.NAME}.md"
     body_file.parent.mkdir(exist_ok=True)
     _ = body_file.write_text(reviewer.PAUSE_COMMAND + "\n")
     posted = _run(cmd=[str(PR_COMMENTS_POST), "--pr", pr, "--repo", repo, "--body-file", str(body_file)])
@@ -2182,16 +2187,19 @@ def _add_github_verbs(add: AddVerb) -> None:
                 "--checkout", required=True, help="a local checkout of the repo, to check the branch against its base"
             )
         if name == "ai-review":
-            _add_reviewer_arguments(sp)
+            _add_reviewer_arguments(sp, checkout_required=False)
             sp.add_argument("--noted-hold", action="append", default=[], metavar="SHA", help=_NOTED_HOLD_HELP)
         if name == "pause":
-            _add_reviewer_arguments(sp)
+            _add_reviewer_arguments(sp, checkout_required=True)
 
 
-def _add_reviewer_arguments(sp: argparse.ArgumentParser) -> None:
-    sp.add_argument(
-        "--checkout", default=".", help="a local checkout of the repo, to see which reviewers it configures"
-    )
+def _add_reviewer_arguments(sp: argparse.ArgumentParser, *, checkout_required: bool) -> None:
+    help_text = "a local checkout of the repo, to see which reviewers it configures"
+    if checkout_required:
+        # this helper runs from the originating repo, so a default of "." would read that repo's reviewers, not the PR's
+        sp.add_argument("--checkout", required=True, help=help_text)
+    else:
+        sp.add_argument("--checkout", default=".", help=help_text)
     sp.add_argument(
         "--reviewer", action="append", default=[], help="only these reviewers (default: every configured one)"
     )

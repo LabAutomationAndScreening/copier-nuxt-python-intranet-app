@@ -573,6 +573,13 @@ class _Superseded:
     pr: _OpenPr
 
 
+@dataclass(frozen=True)
+class _PassingSample:
+    run_ids: frozenset[int]
+    # time.monotonic() when the sample was taken
+    taken_at: float
+
+
 @dataclass
 class _PollState:
     gh_env: dict[str, str] | None = None
@@ -586,8 +593,9 @@ class _PollState:
     superseded: _Superseded | None = None
     # polls since the switch that found no workflow runs at all for the superseded commit
     empty_run_polls: int = 0
-    # the runs a commit's last poll found all completed and passing, which the next poll must find unchanged
-    passing_run_ids: frozenset[int] | None = None
+    # the runs a commit's last poll found all completed and passing, which a poll a full POLL_SECONDS later must find
+    # unchanged
+    passing_sample: _PassingSample | None = None
     # polls with auto-merge on and CI fully passed that found the PR still unmerged
     merge_wait_polls: int = 0
     # what the TIMED_OUT line adds about why nothing settled, as of the latest successful poll
@@ -800,7 +808,7 @@ def _merge_grace(
 _MERGE_QUEUE_QUERY = """
 query($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) {
-    pullRequest(number: $number) { isInMergeQueue mergeQueueEntry { position state } }
+    pullRequest(number: $number) { state isInMergeQueue mergeQueueEntry { position state } }
   }
 }
 """
@@ -824,8 +832,11 @@ def _merge_queue_detail(*, pr_state: _PrState, env: dict[str, str], deadline: fl
         "-F",
         f"number={pr_state.number}",
         "--jq",
+        # a queued PR can merge between this poll's `gh pr view` and this query, which then finds no queue entry; it is
+        # reported as still on its way, so the next poll reads MERGED instead of this one reporting it unmerged
         ".data.repository.pullRequest"
-        ' | if .isInMergeQueue then "in merge queue (position \\(.mergeQueueEntry.position), \\(.mergeQueueEntry.state))"'
+        ' | if .state == "MERGED" then "merged since this poll read it as open"'
+        ' elif .isInMergeQueue then "in merge queue (position \\(.mergeQueueEntry.position), \\(.mergeQueueEntry.state))"'
         ' else "" end',
         env=env,
         deadline=deadline,
@@ -1096,11 +1107,14 @@ def _failed_job_names(*, runs: list[_Run], repo: str | None, env: dict[str, str]
         if run.status == "completed":
             if not _is_failed_conclusion(conclusion=run.conclusion):
                 continue
-        run_failures = [
-            job.name
-            for job in _jobs(run_id=run.run_id, repo=repo, env=env, deadline=deadline)
-            if _is_failed_conclusion(conclusion=job.conclusion)
-        ]
+        try:
+            jobs = _jobs(run_id=run.run_id, repo=repo, env=env, deadline=deadline)
+        except GhCallFailedError:
+            # a failure already found decides the verdict, so a later run's lookup error must not cost it
+            if len(names) > 0:
+                return names
+            raise
+        run_failures = [job.name for job in jobs if _is_failed_conclusion(conclusion=job.conclusion)]
         # a run can fail before any job exists, such as on an invalid workflow file
         if len(run_failures) == 0:
             if run.status == "completed":
@@ -1149,23 +1163,41 @@ def _commit_result(
             state.empty_run_polls += 1
             if state.empty_run_polls >= NO_RUNS_GRACE_POLLS:
                 return f"NO_RUNS: {commit_sha} was never the tip of a push, so CI never ran on it", 1
+    # a pass is confirmed only by two polls in a row that both reach it, so any poll that doesn't (a run rerunning, say)
+    # drops the sample
     state.timeout_detail = _unfinished_runs_detail(runs=runs, commit_sha=commit_sha)
     if state.timeout_detail is not None:
+        state.passing_sample = None
         return None
     if not _any_pull_request_run(runs=runs):
         state.timeout_detail = _missing_pull_request_run_detail(
             commit_sha=commit_sha, access=access, runs=runs, superseding_pr=superseding_pr
         )
         if state.timeout_detail is not None:
+            state.passing_sample = None
             return None
+    return _confirmed_pass(state=state, runs=runs, commit_sha=commit_sha)
+
+
+def _confirmed_pass(*, state: _PollState, runs: list[_Run], commit_sha: str) -> tuple[str, int] | None:
     # a workflow can start after another has finished (one triggered by workflow_run, say), so a pass counts only once
     # the next poll finds no run beyond these
     run_ids = frozenset(run.run_id for run in runs)
-    if state.passing_run_ids != run_ids:
-        state.passing_run_ids = run_ids
+    if state.passing_sample is None:
+        return _take_passing_sample(state=state, run_ids=run_ids, commit_sha=commit_sha)
+    if state.passing_sample.run_ids != run_ids:
+        return _take_passing_sample(state=state, run_ids=run_ids, commit_sha=commit_sha)
+    # the poll loop cuts its last sleep short at the deadline, so a confirming poll can come early; one that does
+    # confirms nothing, and the wait times out instead
+    if time.monotonic() - state.passing_sample.taken_at < POLL_SECONDS:
         state.timeout_detail = f"confirming no further workflow runs start for {commit_sha}"
         return None
     return "CHECKS_PASSED", 0
+
+
+def _take_passing_sample(*, state: _PollState, run_ids: frozenset[int], commit_sha: str) -> None:
+    state.passing_sample = _PassingSample(run_ids=run_ids, taken_at=time.monotonic())
+    state.timeout_detail = f"confirming no further workflow runs start for {commit_sha}"
 
 
 def _missing_pull_request_run_detail(
