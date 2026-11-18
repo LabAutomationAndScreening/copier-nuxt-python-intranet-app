@@ -331,6 +331,40 @@ rules:
       functionOptions:
         notMatch: "(^|/)v[0-9]+(/|$)"
 
+  # ENABLED (Zalando 116, "MUST use semantic versioning", https://opensource.zalando.com/restful-api-guidelines/#116;
+  # gov.au API Versioning also MUSTs semver): `info.version` is MAJOR.MINOR.PATCH, with no pre-release or build
+  # suffix, so a client can tell a breaking release from a compatible one. It comes from pyproject.toml's version.
+  info-version-semver:
+    description: info.version must be a MAJOR.MINOR.PATCH semantic version.
+    given: $.info.version
+    severity: error
+    then:
+      function: pattern
+      functionOptions:
+        match: "^(0|[1-9][0-9]*)[.](0|[1-9][0-9]*)[.](0|[1-9][0-9]*)$"
+
+  # ENABLED (Zalando 120, "SHOULD pluralize array names", https://opensource.zalando.com/restful-api-guidelines/#120;
+  # gov.au Naming Conventions says the same): an array property's name is a plural noun. Heuristic, via
+  # .config/vacuum-functions/pluralArrayNames.js: it passes names ending in "s" or in one of `pluralWords` (add an
+  # irregular plural there rather than exempting it per project). FastAPI's validation-error models are left out.
+  plural-array-names:
+    description: Array properties must be named with a plural noun.
+    given: $.components.schemas
+    resolved: false
+    severity: error
+    then:
+      function: pluralArrayNames
+      functionOptions:
+        pluralWords:
+          - data
+          - children
+          - people
+          - criteria
+          - media
+        ignoreSchemas:
+          - HTTPValidationError
+          - ValidationError
+
   # ENABLED (Zalando 122, "MUST not use `null` for boolean properties",
   # https://opensource.zalando.com/restful-api-guidelines/#122): a `bool | None` field is a three-valued
   # flag whose null rarely means anything a client can act on; give it a default instead. Uses
@@ -402,6 +436,17 @@ rules:
       function: pattern
       functionOptions:
         notMatch: "//"
+
+  # ENABLED (Zalando 148, "MUST use HTTP methods correctly", https://opensource.zalando.com/restful-api-guidelines/#148):
+  # GET and DELETE carry no request body. HTTP gives a body on them no defined meaning, so proxies, caches and client
+  # libraries may drop it; pass what they need in the path or query instead.
+  no-body-on-get-or-delete:
+    description: GET and DELETE operations must not have a request body.
+    given: $.paths[*][get,delete]
+    severity: error
+    then:
+      field: requestBody
+      function: falsy
 
   # TODO: uncomment to enable (Zalando 171, "MUST define a format for number and integer types",
   # https://opensource.zalando.com/restful-api-guidelines/#171): every `number` declares float, double or decimal,
