@@ -22,7 +22,7 @@ rules:
   # (allOf -> no-unnecessary-combinator; bare $ref -> oas3-missing-example and loses the field
   # description), so disabling this single shallow rule is the cleanest option. The fields keep their
   # normal Field(description=, examples=). A FastAPI-generated spec can otherwise only trigger this on
-  # `Any`-typed fields, which are rare and usually unavoidable (e.g. the generated ValidationError.input).
+  # `Any`-typed fields, which are rare and usually unavoidable.
   oas-missing-type: "off"
 
   # DISABLED: same false-positive family as `oas-missing-type` above — it checks requestBody.description
