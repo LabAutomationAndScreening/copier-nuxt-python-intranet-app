@@ -8,7 +8,8 @@
 // Checked in both directions, so a date-only value can't hide behind an instant's name or the reverse (a
 // "date" parsed to UTC midnight lands on the previous day west of Greenwich), and a name that promises a date
 // or time can't be a bare string or an epoch number. `…At` and `…Timestamp` names are refused outright, since
-// they are the other common convention for instants and would otherwise pass as unsuffixed names.
+// they are the other common convention for instants and would otherwise pass as unsuffixed names. Booleans are
+// skipped: a flag can't hold a date, so a name like `alreadyUpToDate` is an idiom, not a misnamed date.
 //
 // The input is either one (resolved) model schema from `$.components.schemas[*]`, whose own properties are
 // checked (a referenced model is checked as its own component), or one operation parameter. A nullable value's
@@ -37,6 +38,16 @@ function schemaFormat(schema) {
   return null;
 }
 
+function isBooleanSchema(schema) {
+  if (!schema || typeof schema !== "object") {
+    return false;
+  }
+  if (schema.type === "boolean") {
+    return true;
+  }
+  return Array.isArray(schema.type) && schema.type.indexOf("boolean") !== -1;
+}
+
 function suffixFormat(name) {
   if (/DateTime$/.test(name) || name === "dateTime") {
     return "date-time";
@@ -59,7 +70,10 @@ function describeFormat(format) {
   return "its format is " + format;
 }
 
-function problem(kind, name, format) {
+function problem(kind, name, format, isBoolean) {
+  if (isBoolean) {
+    return null;
+  }
   var expectedFormat = suffixFormat(name);
   var expectedSuffix = SUFFIX_FOR_FORMAT[format];
   if (/[a-z0-9](At|Timestamp)$/.test(name) || name === "timestamp") {
@@ -83,7 +97,12 @@ function runRule(input) {
   }
   var results = [];
   if (typeof input.name === "string" && typeof input.in === "string") {
-    var parameterProblem = problem(input.in + " parameter", input.name, schemaFormat(input.schema));
+    var parameterProblem = problem(
+      input.in + " parameter",
+      input.name,
+      schemaFormat(input.schema),
+      isBooleanSchema(input.schema),
+    );
     if (parameterProblem !== null) {
       results.push({ message: parameterProblem });
     }
@@ -94,7 +113,7 @@ function runRule(input) {
     return results;
   }
   for (var name in properties) {
-    var propertyProblem = problem("property", name, schemaFormat(properties[name]));
+    var propertyProblem = problem("property", name, schemaFormat(properties[name]), isBooleanSchema(properties[name]));
     if (propertyProblem !== null) {
       results.push({ message: propertyProblem });
     }
