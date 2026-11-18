@@ -446,9 +446,10 @@ def custom_openapi(app: FastAPI) -> dict[str, Any]:  # pyrefly: ignore[explicit-
     # rest of this function type-checked.
     schemas: dict[str, dict[str, JsonValue]] = oas.setdefault("components", {}).setdefault("schemas", {})
     _add_problem_schemas(schemas)
-    # FastAPI documents every 422 with these, but each 422 is documented as ValidationProblemDetails instead, which
-    # is what the validation handler sends, so they are left unreferenced. Every app has a route that validates its
-    # input (the health check's query parameter), so FastAPI always generates them.
+    # FastAPI documents each 422 a route doesn't declare itself with these; each such 422 is redocumented as
+    # ValidationProblemDetails (what the validation handler sends), leaving them unreferenced. FastAPI generates them
+    # whenever any route validates input without declaring its own 422, and every app has one, the health check's
+    # query parameter, so they are always present here even when other routes declare their own 422.
     del schemas["HTTPValidationError"]
     del schemas["ValidationError"]
 
