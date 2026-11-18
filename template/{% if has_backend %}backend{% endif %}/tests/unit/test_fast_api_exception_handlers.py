@@ -19,6 +19,8 @@ from backend_api.fast_api_exception_handlers import ValidationIssue
 from backend_api.fast_api_exception_handlers import ValidationProblemDetails
 from backend_api.fast_api_exception_handlers import register_exception_handlers
 from backend_api.openapi_problem_responses import PROBLEM_JSON_MEDIA_TYPE
+from backend_api.openapi_problem_responses import ProblemExample
+from backend_api.openapi_problem_responses import problem_response
 from fastapi import FastAPI
 from fastapi import HTTPException
 from fastapi import status
@@ -101,6 +103,44 @@ def test_When_openapi_schema_generated__Then_a_route_with_parameters_documents_i
         PROBLEM_JSON_MEDIA_TYPE: {"schema": {"$ref": f"#/components/schemas/{ValidationProblemDetails.__name__}"}}
     }
     assert ValidationProblemDetails.__name__ in schemas
+
+
+def test_Given_a_route_documenting_its_own_422__When_openapi_schema_generated__Then_its_description_and_examples_are_kept():
+    description = str(uuid4())
+    example_name = str(uuid4())
+    # Arbitrary in every respect: any path, and any method, works. A second route taking a query parameter makes
+    # FastAPI generate its own 422 schemas, as every app's health check does.
+    documented_route = "/documented"
+    undocumented_route = "/undocumented"
+    route_app = FastAPI()
+    route_app.add_middleware(CORSMiddleware, allow_origins=["*"])
+
+    @route_app.get(
+        documented_route,
+        responses=problem_response(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            description,
+            instance=documented_route,
+            examples={example_name: ProblemExample(summary=str(uuid4()), detail=str(uuid4()))},
+        ),
+    )
+    def documented(count: int) -> None:
+        pass
+
+    @route_app.get(undocumented_route)
+    def undocumented(count: int) -> None:
+        pass
+
+    register_exception_handlers(route_app)
+
+    schema = route_app.openapi()
+
+    unprocessable_content = schema["paths"][documented_route]["get"]["responses"][
+        str(status.HTTP_422_UNPROCESSABLE_CONTENT)
+    ]
+
+    assert unprocessable_content["description"] == description
+    assert list(unprocessable_content["content"][PROBLEM_JSON_MEDIA_TYPE]["examples"]) == [example_name]
 
 
 class TestGivenARouteTakingAJsonBody:

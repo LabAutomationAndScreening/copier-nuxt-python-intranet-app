@@ -382,19 +382,34 @@ def _add_problem_schemas(schemas: dict[str, dict[str, JsonValue]]) -> None:
     _ = schemas.setdefault(ValidationProblemDetails.__name__, validation_problem_schema)
 
 
+def _documents_problem_json(response: JsonValue) -> bool:
+    """Whether an operation's response is already documented as problem details.
+
+    FastAPI documents the 422 it generates as application/json. A 422 a route declares with problem_response() is
+    already application/problem+json, with the route's own description and examples, which replacing it would lose.
+    """
+    assert isinstance(response, dict), f"Expected the response object to be a dict, got {type(response)}"
+    content = response["content"]
+    assert isinstance(content, dict), f"Expected the response's content to be a dict, got {type(content)}"
+    if PROBLEM_JSON_MEDIA_TYPE in content:
+        return True
+    return False
+
+
 def _document_error_responses(responses: dict[str, JsonValue]) -> None:
     """Document the problem details an operation can answer with, beyond the responses its route declares.
 
-    FastAPI adds a 422 to every operation that validates its input; it is replaced with the
-    ValidationProblemDetails the validation handler actually sends. Every operation can also fail with a 500, and
-    Kiota wants a `default` catch-all; no route declares either, so both are added.
+    FastAPI adds a 422 to every operation that validates its input, unless the route declares its own; FastAPI's is
+    replaced with the ValidationProblemDetails the validation handler actually sends. Every operation can also fail
+    with a 500, and Kiota wants a `default` catch-all; no route declares either, so both are added.
     """
     unprocessable_content = str(status.HTTP_422_UNPROCESSABLE_CONTENT)
     if unprocessable_content in responses:
-        responses[unprocessable_content] = {
-            "description": "Validation Error",
-            "content": {PROBLEM_JSON_MEDIA_TYPE: {"schema": _schema_ref(ValidationProblemDetails)}},
-        }
+        if not _documents_problem_json(responses[unprocessable_content]):
+            responses[unprocessable_content] = {
+                "description": "Validation Error",
+                "content": {PROBLEM_JSON_MEDIA_TYPE: {"schema": _schema_ref(ValidationProblemDetails)}},
+            }
     _ = responses.setdefault(
         str(status.HTTP_500_INTERNAL_SERVER_ERROR),
         {
