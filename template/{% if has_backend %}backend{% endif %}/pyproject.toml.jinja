@@ -19,6 +19,7 @@ dependencies = [
     "pip-system-certs>=5.3",{% endraw %}{% if install_as_windows_service %}{% raw %}
     "pywin32>=312; sys_platform == 'win32'",{% endraw %}{% endif %}{% raw %}
     "pydantic{% endraw %}{{ pydantic_version }}{% raw %}",
+    "pydantic-core", # fast_api_exception_handlers imports its ErrorDetails type; pydantic pins the exact version
     "uvicorn{% endraw %}{{ uvicorn_version }}{% raw %}",
     "structlog{% endraw %}{{ structlog_version }}{% raw %}",{% endraw %}{% if backend_makes_api_calls %}{% raw %}
     "httpx{% endraw %}{{ httpx_version }}{% raw %}",{% endraw %}{% endif %}{% raw %}{% endraw %}{% if backend_source_uses_kiota %}{% raw %}

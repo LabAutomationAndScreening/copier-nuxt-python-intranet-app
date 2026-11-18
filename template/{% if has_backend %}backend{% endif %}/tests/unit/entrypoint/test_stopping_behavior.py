@@ -13,7 +13,7 @@ import httpx
 import pytest
 import uvicorn
 from backend_api.entrypoint.cli import entrypoint
-from httpx import codes
+from fastapi import status
 from pytest_mock import MockerFixture
 
 from .fixtures import GENERIC_REQUIRED_CLI_ARGS
@@ -196,7 +196,7 @@ def test_When_shutdown_route_called_on_running_server__Then_lifespan_shut_down_a
 
     running_server.thread.join(timeout=10)
 
-    assert response.status_code == codes.OK
+    assert response.status_code == status.HTTP_200_OK
     assert not running_server.thread.is_alive()
     assert running_server.exit_codes == [0]
     assert "Application shutdown complete." in running_server.uvicorn_log.messages
@@ -210,7 +210,7 @@ def test_When_restart_route_called_on_running_server__Then_lifespan_shut_down_an
 
     running_server.thread.join(timeout=10)
 
-    assert response.status_code == codes.OK
+    assert response.status_code == status.HTTP_200_OK
     assert not running_server.thread.is_alive()
     assert running_server.exit_codes == [1]
     assert "Application shutdown complete." in running_server.uvicorn_log.messages

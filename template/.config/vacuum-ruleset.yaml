@@ -22,7 +22,7 @@ rules:
   # (allOf -> no-unnecessary-combinator; bare $ref -> oas3-missing-example and loses the field
   # description), so disabling this single shallow rule is the cleanest option. The fields keep their
   # normal Field(description=, examples=). A FastAPI-generated spec can otherwise only trigger this on
-  # `Any`-typed fields, which are rare and usually unavoidable (e.g. the generated ValidationError.input).
+  # `Any`-typed fields, which are rare and usually unavoidable.
   oas-missing-type: "off"
 
   # DISABLED: same false-positive family as `oas-missing-type` above — it checks requestBody.description
@@ -124,6 +124,18 @@ rules:
       function: pattern
       functionOptions:
         match: "^application/(json|problem\\+json)$"
+
+  # ENABLED (Zalando 176, "MUST support problem JSON", https://opensource.zalando.com/restful-api-guidelines/#176):
+  # every documented error response (each 4xx and 5xx, and the `default` catch-all) is application/problem+json,
+  # the media type the exception handlers send, so a client generated from the schema reads errors as the
+  # ProblemDetails they are. Narrower than response-media-type-json above, which also lets an error be plain JSON.
+  # Uses .config/vacuum-functions/errorResponsesProblemJson.js.
+  error-responses-problem-json:
+    description: Error responses must be application/problem+json.
+    given: $.paths[*][*].responses
+    severity: error
+    then:
+      function: errorResponsesProblemJson
 
   # ENABLED (gov.au API Request): request bodies must be application/json. Fires zero violations against
   # the current snapshot.

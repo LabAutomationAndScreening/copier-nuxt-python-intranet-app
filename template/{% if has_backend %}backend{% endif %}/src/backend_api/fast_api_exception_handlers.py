@@ -1,17 +1,29 @@
 import json
 import logging
+from collections.abc import Awaitable
+from collections.abc import Callable
+from dataclasses import dataclass
+from enum import StrEnum
 from functools import partial
 from typing import Any
+from urllib.parse import quote
 
+import structlog
 from fastapi import FastAPI
 from fastapi import Request
+from fastapi import status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from pydantic import Field
 from pydantic import JsonValue
+from pydantic.json_schema import SkipJsonSchema
+from pydantic_core import ErrorDetails
 from starlette.exceptions import HTTPException
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 from uuid_utils import uuid7
 
 from .camel_case_model import CamelCaseModel
@@ -21,6 +33,11 @@ logger = logging.getLogger(__name__)
 
 
 _HTTP_STATUS_SCHEMA: dict[str, JsonValue] = {"format": "int32", "minimum": 100, "maximum": 599}
+
+
+PROBLEM_JSON_MEDIA_TYPE = "application/problem+json"
+EXAMPLE_TRACE_ID = "0193b5e2-4c1f-7a8d-9e3b-2f6c8d1a5b74"
+TRACE_ID_LOG_FIELD = "trace_id"
 
 
 class ProblemDetails(CamelCaseModel):
@@ -46,11 +63,75 @@ class ProblemDetails(CamelCaseModel):
         examples=["An unexpected error occurred."],
         description="A human-readable explanation specific to this occurrence of the problem.",
     )
-    instance: str = Field(examples=["/api/healthcheck"], description="A URI reference identifying this occurrence.")
+    instance: str = Field(
+        examples=["/api/healthcheck"],
+        description="The path of the request that met this problem, without its query string.",
+    )
     error_type: str | None = Field(
         default=None,
         examples=["ValueError"],
         description="The internal exception class name, when available.",
+    )
+    trace_id: str = Field(
+        examples=[EXAMPLE_TRACE_ID],
+        description="Identifies this occurrence in the server's logs: search them for it to find what led to the problem.",
+    )
+
+
+class ParameterLocation(StrEnum):
+    """Where in the request a parameter is sent, spelled as OpenAPI's parameter `in` spells it."""
+
+    QUERY = "query"
+    PATH = "path"
+    HEADER = "header"
+    COOKIE = "cookie"
+
+
+class ValidationIssue(CamelCaseModel):
+    """One reason a request failed validation, and where in the request it is."""
+
+    detail: str = Field(
+        description="What is wrong with the value, in words a person can act on.",
+        examples=["Input should be a valid integer, unable to parse string as an integer"],
+    )
+    code: str = Field(
+        description="A machine-readable reason for the issue, from Pydantic's error types; more may be added.",
+        examples=["int_parsing"],
+    )
+    # SkipJsonSchema keeps None out of the schema, which documents these fields as strings that are either present or
+    # absent; exclude_if makes the response match it by leaving an absent one out rather than sending null.
+    pointer: str | SkipJsonSchema[None] = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+        description=(
+            "Where the invalid value is in the JSON request body, as a JSON Pointer (RFC 6901) in URI fragment form; "
+            "`#` is the whole body. Present only for an issue in the body."
+        ),
+        examples=["#/items/2"],
+    )
+    parameter: str | SkipJsonSchema[None] = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+        description="The name of the invalid query, path, header or cookie parameter. Present only with `in`.",
+        examples=["prependV"],
+    )
+    location: ParameterLocation | SkipJsonSchema[None] = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+        alias="in",
+        description="Where the invalid parameter is sent, spelled as OpenAPI's parameter `in`. Present only with `parameter`.",
+        examples=[ParameterLocation.QUERY],
+    )
+
+
+class ValidationProblemDetails(ProblemDetails):
+    """RFC 9457 problem details for a request that failed validation, listing each invalid value."""
+
+    errors: list[ValidationIssue] = Field(
+        description=(
+            "Each invalid value in the request. Empty when the route itself rejected the request rather than "
+            "its validation finding an invalid value."
+        )
     )
 
 
@@ -62,22 +143,130 @@ def _short(msg: str, max_len: int = 2000) -> str:
     return msg if len(msg) <= max_len else msg[:max_len] + "...(truncated)"
 
 
-def _problem_dict(
-    *,
-    title: str,
-    status: int,
-    detail: str,
-    trace_id: str,
-    exc_type: str,
-) -> dict[str, JsonValue]:
+@dataclass(frozen=True, kw_only=True)
+class _Occurrence:
+    trace_id: str
+    path: str
+
+
+def _occurrence_of(request: Request) -> _Occurrence:
+    trace_id = getattr(request.state, TRACE_ID_LOG_FIELD)
+    assert isinstance(trace_id, str), f"Expected the request's trace ID to be a string, got {type(trace_id)}"
+    return _Occurrence(trace_id=trace_id, path=request.url.path)
+
+
+async def _bind_trace_id(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+    """Give the request a trace ID that every log line it writes carries, and that its problem details report.
+
+    The ID is bound to structlog's context for the rest of the request, so `trace_id` lands on each log line
+    and searching the logs for it finds everything the request did. It is also stored on `request.state`,
+    where the exception handlers read it: Starlette runs the catch-all 500 handler outside user middleware,
+    after this binding has ended, but the request's state outlives it.
+    """
+    trace_id = str(uuid7())
+    setattr(request.state, TRACE_ID_LOG_FIELD, trace_id)
+    with structlog.contextvars.bound_contextvars(**{TRACE_ID_LOG_FIELD: trace_id}):
+        return await call_next(request)
+
+
+def _problem(*, title: str, status_code: int, detail: str, occurrence: _Occurrence, exc_type: str) -> ProblemDetails:
     return ProblemDetails(
-        type="about:blank",
         title=title,
-        status=status,
+        status=status_code,
         detail=detail,
-        instance=f"urn:uuid:{trace_id}",
+        instance=occurrence.path,
         error_type=exc_type,
-    ).model_dump(by_alias=True, mode="json")
+        trace_id=occurrence.trace_id,
+    )
+
+
+def _with_validation_issues(problem: ProblemDetails, issues: list[ValidationIssue]) -> ValidationProblemDetails:
+    return ValidationProblemDetails.model_validate({**problem.model_dump(), "errors": issues})
+
+
+def problem_model_for(status_code: int) -> type[ProblemDetails]:
+    """Pick the schema a problem with this status follows.
+
+    A 422 always lists its validation issues, even when it has none to list (one a route raises itself), so
+    clients can read `errors` without first checking that it is there.
+    """
+    if status_code == status.HTTP_422_UNPROCESSABLE_CONTENT:
+        return ValidationProblemDetails
+    return ProblemDetails
+
+
+def listing_its_validation_issues(problem: ProblemDetails) -> ProblemDetails:
+    if problem_model_for(problem.status) is ValidationProblemDetails:
+        return _with_validation_issues(problem, [])
+    return problem
+
+
+WHOLE_BODY_POINTER = "#"
+WHOLE_BODY_LOCATION_LABEL = "request body"
+
+
+def _body_pointer(error: ErrorDetails) -> str:
+    """Locate a body validation error as a JSON Pointer (RFC 6901) in URI fragment form, such as `#/items/2`.
+
+    After "body", FastAPI's `loc` is the path to the value: field names under the camelCase names the client
+    sent, and list indexes. A missing body has no path, so the pointer is `#`, the whole body. So is unparsable
+    JSON (Pydantic's `json_invalid`), whose `loc` carries a character offset into the text instead of a path.
+    """
+    if error["type"] == "json_invalid":
+        return WHOLE_BODY_POINTER
+    return WHOLE_BODY_POINTER + "".join(f"/{_pointer_token(part)}" for part in error["loc"][1:])
+
+
+# RFC 3986 lets a URI fragment hold these unencoded besides the unreserved characters (which quote() never encodes).
+# "/" is left out: inside a token it is part of a key, so RFC 6901 has already escaped it as ~1.
+_URI_FRAGMENT_SAFE_CHARACTERS = "!$&'()*+,;=:@?"
+
+
+def _pointer_token(part: int | str) -> str:
+    """Write one step of a body path as a JSON Pointer reference token in URI fragment form.
+
+    RFC 6901 escapes "~" as ~0 and "/" as ~1 (in that order, so an escaped "/" isn't read back as "~" then "1"),
+    so a key holding either is one step rather than several; the URI fragment then percent-encodes what it can't
+    hold, such as a space. Field names and list indexes come through unchanged.
+    """
+    escaped = str(part).replace("~", "~0").replace("/", "~1")
+    return quote(escaped, safe=_URI_FRAGMENT_SAFE_CHARACTERS)
+
+
+def _validation_issue(error: ErrorDetails) -> ValidationIssue:
+    """Describe one of FastAPI's request validation errors by where it is in the request.
+
+    FastAPI locates an error with a `loc` whose first element says which part of the request it is in: "body"
+    for the JSON body, else the parameter's OpenAPI `in` (query, path, header or cookie), followed by the
+    parameter's name as the client sent it.
+    """
+    location = error["loc"][0]
+    if location == "body":
+        return ValidationIssue(detail=error["msg"], code=error["type"], pointer=_body_pointer(error))
+    return ValidationIssue(
+        detail=error["msg"], code=error["type"], parameter=str(error["loc"][1]), location=ParameterLocation(location)
+    )
+
+
+def _validation_summary(issues: list[ValidationIssue]) -> str:
+    """Summarize a failed validation in one line: where the first problem is, what it is, and how many more follow.
+
+    Kiota surfaces a problem's `detail` as the exception message, so this is the line a UI shows the user; the
+    full list is in `errors`. A body issue is located by its pointer without the leading "#/" (`items/2`), a
+    parameter by its name.
+    """
+    first_issue = issues[0]
+    if first_issue.pointer is None:
+        first_location = first_issue.parameter
+    elif first_issue.pointer == WHOLE_BODY_POINTER:
+        first_location = WHOLE_BODY_LOCATION_LABEL
+    else:
+        first_location = first_issue.pointer.removeprefix(f"{WHOLE_BODY_POINTER}/")
+    summary = f"{first_location}: {first_issue.detail}"
+    further_issue_count = len(issues) - 1
+    if further_issue_count > 0:
+        summary += f" (and {further_issue_count} more)"
+    return summary
 
 
 class ExceptionHandler:
@@ -103,9 +292,9 @@ class ExceptionHandler:
 
     def handle_http_exception(self, request: Request, exc: Exception) -> JSONResponse:
         assert isinstance(exc, HTTPException), f"Expected HTTPException, got {type(exc)}"
-        error_trace_id = uuid7()
+        occurrence = _occurrence_of(request)
         logger.warning(
-            f"{exc.__class__.__name__} on {request.method} {request.url.path} [urn:uuid:{error_trace_id}]",
+            f"{exc.__class__.__name__} on {request.method} {occurrence.path} [urn:uuid:{occurrence.trace_id}]",
             exc_info=exc,
         )
         # starlette annotates HTTPException.detail as str, but FastAPI's subclass widens it to Any, so a route
@@ -115,58 +304,125 @@ class ExceptionHandler:
             detail = exc.detail
         else:
             detail = json.dumps(exc.detail)
-        body = _problem_dict(
+        problem = _problem(
             title="HTTP Error",
-            status=exc.status_code,
+            status_code=exc.status_code,
             detail=detail,
-            trace_id=str(error_trace_id),
+            occurrence=occurrence,
             exc_type=exc.__class__.__name__,
         )
-        return self._json_response(status_code=exc.status_code, body=body)
+        return self._json_response(listing_its_validation_issues(problem))
 
     def register(self):
         self._app.add_exception_handler(HTTPException, self.handle_http_exception)
         self._app.add_exception_handler(RequestValidationError, self.handle_validation_exception)
         self._app.add_exception_handler(Exception, self.handle_unhandled_exception)
 
-    def _json_response(self, *, status_code: int, body: dict[str, JsonValue]) -> JSONResponse:
+    def _json_response(self, problem: ProblemDetails) -> JSONResponse:
         return JSONResponse(
-            status_code=status_code,
-            content=body,
-            media_type="application/problem+json",
+            status_code=problem.status,
+            content=problem.model_dump(by_alias=True, mode="json"),
+            media_type=PROBLEM_JSON_MEDIA_TYPE,
             headers=self._cors_headers,
         )
 
     def handle_validation_exception(self, request: Request, exc: Exception) -> JSONResponse:
-        error_trace_id = uuid7()
+        assert isinstance(exc, RequestValidationError), f"Expected RequestValidationError, got {type(exc)}"
+        occurrence = _occurrence_of(request)
         logger.warning(
-            f"{exc.__class__.__name__} on {request.method} {request.url.path} [urn:uuid:{error_trace_id}]", exc_info=exc
+            f"{exc.__class__.__name__} on {request.method} {occurrence.path} [urn:uuid:{occurrence.trace_id}]",
+            exc_info=exc,
         )
-        body = _problem_dict(
+        validation_issues = [_validation_issue(error) for error in exc.errors()]
+        problem = _problem(
             title="Validation Error",
-            status=422,
-            detail=_short(str(exc)),
-            trace_id=str(error_trace_id),
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=_validation_summary(validation_issues),
+            occurrence=occurrence,
             exc_type=exc.__class__.__name__,
         )
-        return self._json_response(status_code=422, body=body)
+        return self._json_response(_with_validation_issues(problem, validation_issues))
 
     def handle_unhandled_exception(self, request: Request, exc: Exception) -> JSONResponse:
-        error_trace_id = uuid7()
+        occurrence = _occurrence_of(request)
         logger.error(
-            f"Unhandled {exc.__class__.__name__} on {request.method} {request.url.path} [urn:uuid:{error_trace_id}]",
+            f"Unhandled {exc.__class__.__name__} on {request.method} {occurrence.path} [urn:uuid:{occurrence.trace_id}]",
             exc_info=exc,
         )
 
         msg = _short(str(exc)) if should_show_error_details() else "An unexpected error occurred."
-        body = _problem_dict(
+        problem = _problem(
             title="Internal Server Error",
-            status=500,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=msg,
-            trace_id=str(error_trace_id),
+            occurrence=occurrence,
             exc_type=exc.__class__.__name__,
         )
-        return self._json_response(status_code=500, body=body)
+        return self._json_response(problem)
+
+
+_COMPONENT_REF_TEMPLATE = "#/components/schemas/{model}"
+
+
+def component_ref(model: type[BaseModel]) -> str:
+    return _COMPONENT_REF_TEMPLATE.format(model=model.__name__)
+
+
+def _schema_ref(model: type[BaseModel]) -> dict[str, JsonValue]:
+    return {"$ref": component_ref(model)}
+
+
+def _add_problem_schemas(schemas: dict[str, dict[str, JsonValue]]) -> None:
+    _ = schemas.setdefault(
+        ProblemDetails.__name__, ProblemDetails.model_json_schema(ref_template=_COMPONENT_REF_TEMPLATE)
+    )
+    validation_problem_schema = ValidationProblemDetails.model_json_schema(ref_template=_COMPONENT_REF_TEMPLATE)
+    for name, definition in validation_problem_schema.pop("$defs").items():
+        _ = schemas.setdefault(name, definition)
+    _ = schemas.setdefault(ValidationProblemDetails.__name__, validation_problem_schema)
+
+
+def _documents_problem_json(response: JsonValue) -> bool:
+    """Whether an operation's response is already documented as problem details.
+
+    FastAPI documents the 422 it generates as application/json. A 422 a route declares with problem_response() is
+    already application/problem+json, with the route's own description and examples, which replacing it would lose.
+    A 422 a route declares with no content (just a description) documents no body at all, so FastAPI adds none.
+    """
+    assert isinstance(response, dict), f"Expected the response object to be a dict, got {type(response)}"
+    content = response.get("content")
+    if not isinstance(content, dict):
+        return False
+    if PROBLEM_JSON_MEDIA_TYPE in content:
+        return True
+    return False
+
+
+def _document_error_responses(responses: dict[str, JsonValue]) -> None:
+    """Document the problem details an operation can answer with, beyond the responses its route declares.
+
+    FastAPI adds a 422 to every operation that validates its input, unless the route declares its own; FastAPI's is
+    replaced with the ValidationProblemDetails the validation handler actually sends. Every operation can also fail
+    with a 500, and Kiota wants a `default` catch-all; no route declares either, so both are added.
+    """
+    unprocessable_content = str(status.HTTP_422_UNPROCESSABLE_CONTENT)
+    if unprocessable_content in responses:
+        if not _documents_problem_json(responses[unprocessable_content]):
+            responses[unprocessable_content] = {
+                "description": "Validation Error",
+                "content": {PROBLEM_JSON_MEDIA_TYPE: {"schema": _schema_ref(ValidationProblemDetails)}},
+            }
+    _ = responses.setdefault(
+        str(status.HTTP_500_INTERNAL_SERVER_ERROR),
+        {
+            "description": "Internal Server Error",
+            "content": {PROBLEM_JSON_MEDIA_TYPE: {"schema": _schema_ref(ProblemDetails)}},
+        },
+    )
+    _ = responses.setdefault(
+        "default",
+        {"description": "Error", "content": {PROBLEM_JSON_MEDIA_TYPE: {"schema": _schema_ref(ProblemDetails)}}},
+    )
 
 
 def custom_openapi(app: FastAPI) -> dict[str, Any]:  # pyrefly: ignore[explicit-any] # this wraps FastAPI's get_openapi(), which is annotated as returning dict[str, Any]
@@ -185,49 +441,18 @@ def custom_openapi(app: FastAPI) -> dict[str, Any]:  # pyrefly: ignore[explicit-
         servers=app.servers,
     )
 
-    # Ensure ProblemDetails schema exists
     # get_openapi() is annotated as returning dict[str, Any], so every value walked out of it is an implicit
     # Any. These annotations state the shape the OpenAPI spec guarantees, which is the only way to keep the
     # rest of this function type-checked.
-    comps: dict[str, dict[str, JsonValue]] = oas.setdefault("components", {}).setdefault("schemas", {})
-    _ = comps.setdefault(
-        "ProblemDetails",
-        ProblemDetails.model_json_schema(ref_template="#/components/schemas/{model}"),
-    )
+    schemas: dict[str, dict[str, JsonValue]] = oas.setdefault("components", {}).setdefault("schemas", {})
+    _add_problem_schemas(schemas)
+    # FastAPI documents each 422 a route doesn't declare itself with these; each such 422 is redocumented as
+    # ValidationProblemDetails (what the validation handler sends), leaving them unreferenced. FastAPI generates them
+    # whenever any route validates input without declaring its own 422, and every app has one, the health check's
+    # query parameter, so they are always present here even when other routes declare their own 422.
+    del schemas["HTTPValidationError"]
+    del schemas["ValidationError"]
 
-    # FastAPI generates the validation-error schemas without descriptions or examples; we cannot annotate
-    # them at the model level, so document and exemplify them here. This also lets every media type that
-    # references them (the 422 responses) satisfy the "missing example" lint rule.
-    validation_error_example: JsonValue = {
-        "loc": ["body", "field_name"],
-        "msg": "field required",
-        "type": "missing",
-    }
-    generated_schema_metadata: dict[str, dict[str, JsonValue]] = {
-        "HTTPValidationError": {
-            "description": "Error response returned when request validation fails.",
-            "examples": [{"detail": [validation_error_example]}],
-        },
-        "ValidationError": {
-            "description": "Details of a single request validation failure.",
-            "examples": [validation_error_example],
-        },
-    }
-    for schema_name, schema_metadata in generated_schema_metadata.items():
-        if (
-            schema_name in comps
-        ):  # pragma: no branch # every app has at least one validating route (even just the health check), so HTTPValidationError/ValidationError are always already in comps by the time this runs
-            for key, value in schema_metadata.items():
-                _ = comps[schema_name].setdefault(key, value)
-
-    def problem_ref() -> dict[str, JsonValue]:
-        return {"$ref": "#/components/schemas/ProblemDetails"}
-
-    def problem_content() -> dict[str, JsonValue]:
-        return {"application/problem+json": {"schema": problem_ref()}}
-
-    # annotated for the same reason as `comps` above; from here on the walk is checked against the shape the
-    # OpenAPI spec guarantees: paths map to operations, and an operation maps keys to JSON values
     paths: dict[str, dict[str, dict[str, JsonValue]]] = oas.get("paths", {})
     for methods in paths.values():
         for method, op in list(methods.items()):
@@ -238,25 +463,7 @@ def custom_openapi(app: FastAPI) -> dict[str, Any]:  # pyrefly: ignore[explicit-
             )
             responses = op["responses"]
             assert isinstance(responses, dict), f"Expected the responses object to be a dict, got {type(responses)}"
-
-            # Do NOT touch 422 if FastAPI added it, only add additional responses:
-            # 500 should never be present in any defined route, so always add it
-            _ = responses.setdefault(
-                "500",
-                {
-                    "description": "Internal Server Error",
-                    "content": problem_content(),
-                },
-            )
-
-            # Optional but recommended for Kiota: add default catch-all.  'default' should never be present in a route, so no need to check for it before adding it
-            _ = responses.setdefault(
-                "default",
-                {
-                    "description": "Error",
-                    "content": problem_content(),
-                },
-            )
+            _document_error_responses(responses)
 
     collapse_nullable_anyof(oas)
 
@@ -267,4 +474,5 @@ def custom_openapi(app: FastAPI) -> dict[str, Any]:  # pyrefly: ignore[explicit-
 def register_exception_handlers(app: FastAPI) -> None:
     handler = ExceptionHandler(app)
     handler.register()
+    app.add_middleware(BaseHTTPMiddleware, dispatch=_bind_trace_id)
     app.openapi = partial(custom_openapi, app)  # pyrefly: ignore[method-assign] # replacing app.openapi is how FastAPI documents installing a custom schema generator

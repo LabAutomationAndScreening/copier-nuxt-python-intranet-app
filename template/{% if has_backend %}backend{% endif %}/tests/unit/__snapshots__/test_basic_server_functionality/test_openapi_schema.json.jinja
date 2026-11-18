@@ -41,9 +41,9 @@
           "422": {
             "description": "Validation Error",
             "content": {
-              "application/json": {
+              "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -241,34 +241,6 @@
   },
   "components": {
     "schemas": {
-      "HTTPValidationError": {
-        "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "type": "array",
-            "title": "Detail"
-          }
-        },
-        "type": "object",
-        "title": "HTTPValidationError",
-        "description": "Error response returned when request validation fails.",
-        "examples": [
-          {
-            "detail": [
-              {
-                "loc": [
-                  "body",
-                  "field_name"
-                ],
-                "msg": "field required",
-                "type": "missing"
-              }
-            ]
-          }
-        ]
-      },
       "HealthcheckResponse": {
         "properties": {
           "version": {
@@ -317,57 +289,6 @@
         "title": "ShutdownResponse",
         "description": "Acknowledgement of a server shutdown request.\n\nReturned immediately when a shutdown is requested; the server process exits shortly after this response\nis sent."
       },
-      "ValidationError": {
-        "properties": {
-          "loc": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ]
-            },
-            "type": "array",
-            "title": "Location"
-          },
-          "msg": {
-            "type": "string",
-            "title": "Message"
-          },
-          "type": {
-            "type": "string",
-            "title": "Error Type"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "ctx": {
-            "type": "object",
-            "title": "Context"
-          }
-        },
-        "type": "object",
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
-        "title": "ValidationError",
-        "description": "Details of a single request validation failure.",
-        "examples": [
-          {
-            "loc": [
-              "body",
-              "field_name"
-            ],
-            "msg": "field required",
-            "type": "missing"
-          }
-        ]
-      },
       "ProblemDetails": {
         "description": "RFC 9457 problem details describing an error response.\n\nReturned (as application/problem+json) for error responses so clients and codegen tools such as Kiota\nhave a consistent, machine-readable error shape.",
         "properties": {
@@ -409,7 +330,7 @@
             "x-ms-primary-error-message": true
           },
           "instance": {
-            "description": "A URI reference identifying this occurrence.",
+            "description": "The path of the request that met this problem, without its query string.",
             "examples": [
               "/api/healthcheck"
             ],
@@ -427,15 +348,177 @@
               "string",
               "null"
             ]
+          },
+          "traceId": {
+            "description": "Identifies this occurrence in the server's logs: search them for it to find what led to the problem.",
+            "examples": [
+              "0193b5e2-4c1f-7a8d-9e3b-2f6c8d1a5b74"
+            ],
+            "title": "Trace Id",
+            "type": "string"
           }
         },
         "required": [
           "title",
           "status",
           "detail",
-          "instance"
+          "instance",
+          "traceId"
         ],
         "title": "ProblemDetails",
+        "type": "object"
+      },
+      "ParameterLocation": {
+        "description": "Where in the request a parameter is sent, spelled as OpenAPI's parameter `in` spells it.",
+        "enum": [
+          "query",
+          "path",
+          "header",
+          "cookie"
+        ],
+        "title": "ParameterLocation",
+        "type": "string"
+      },
+      "ValidationIssue": {
+        "description": "One reason a request failed validation, and where in the request it is.",
+        "properties": {
+          "detail": {
+            "description": "What is wrong with the value, in words a person can act on.",
+            "examples": [
+              "Input should be a valid integer, unable to parse string as an integer"
+            ],
+            "title": "Detail",
+            "type": "string"
+          },
+          "code": {
+            "description": "A machine-readable reason for the issue, from Pydantic's error types; more may be added.",
+            "examples": [
+              "int_parsing"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "pointer": {
+            "default": null,
+            "description": "Where the invalid value is in the JSON request body, as a JSON Pointer (RFC 6901) in URI fragment form; `#` is the whole body. Present only for an issue in the body.",
+            "examples": [
+              "#/items/2"
+            ],
+            "title": "Pointer",
+            "type": "string"
+          },
+          "parameter": {
+            "default": null,
+            "description": "The name of the invalid query, path, header or cookie parameter. Present only with `in`.",
+            "examples": [
+              "prependV"
+            ],
+            "title": "Parameter",
+            "type": "string"
+          },
+          "in": {
+            "$ref": "#/components/schemas/ParameterLocation",
+            "default": null,
+            "description": "Where the invalid parameter is sent, spelled as OpenAPI's parameter `in`. Present only with `parameter`.",
+            "examples": [
+              "query"
+            ],
+            "title": "Location"
+          }
+        },
+        "required": [
+          "detail",
+          "code"
+        ],
+        "title": "ValidationIssue",
+        "type": "object"
+      },
+      "ValidationProblemDetails": {
+        "description": "RFC 9457 problem details for a request that failed validation, listing each invalid value.",
+        "properties": {
+          "type": {
+            "default": "about:blank",
+            "description": "A URI reference identifying the problem type.",
+            "examples": [
+              "about:blank"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "title": {
+            "description": "A short, human-readable summary of the problem.",
+            "examples": [
+              "Internal Server Error"
+            ],
+            "title": "Title",
+            "type": "string"
+          },
+          "status": {
+            "description": "The HTTP status code for this problem.",
+            "examples": [
+              500
+            ],
+            "format": "int32",
+            "maximum": 599,
+            "minimum": 100,
+            "title": "Status",
+            "type": "integer"
+          },
+          "detail": {
+            "description": "A human-readable explanation specific to this occurrence of the problem.",
+            "examples": [
+              "An unexpected error occurred."
+            ],
+            "title": "Detail",
+            "type": "string",
+            "x-ms-primary-error-message": true
+          },
+          "instance": {
+            "description": "The path of the request that met this problem, without its query string.",
+            "examples": [
+              "/api/healthcheck"
+            ],
+            "title": "Instance",
+            "type": "string"
+          },
+          "errorType": {
+            "default": null,
+            "description": "The internal exception class name, when available.",
+            "examples": [
+              "ValueError"
+            ],
+            "title": "Error Type",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "traceId": {
+            "description": "Identifies this occurrence in the server's logs: search them for it to find what led to the problem.",
+            "examples": [
+              "0193b5e2-4c1f-7a8d-9e3b-2f6c8d1a5b74"
+            ],
+            "title": "Trace Id",
+            "type": "string"
+          },
+          "errors": {
+            "description": "Each invalid value in the request. Empty when the route itself rejected the request rather than its validation finding an invalid value.",
+            "items": {
+              "$ref": "#/components/schemas/ValidationIssue"
+            },
+            "title": "Errors",
+            "type": "array"
+          }
+        },
+        "required": [
+          "title",
+          "status",
+          "detail",
+          "instance",
+          "traceId",
+          "errors"
+        ],
+        "title": "ValidationProblemDetails",
         "type": "object"
       }
     }

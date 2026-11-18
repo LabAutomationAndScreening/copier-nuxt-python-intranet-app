@@ -7,8 +7,8 @@ from backend_api import fast_api_exception_handlers
 from backend_api.app_def import HealthcheckResponse
 from backend_api.app_def import app
 from backend_api.app_runner import ServerControl
+from fastapi import status
 from fastapi.testclient import TestClient
-from httpx import codes
 from pytest_mock import MockerFixture
 from syrupy.assertion import SnapshotAssertion
 
@@ -18,7 +18,7 @@ def test_Given_healthy__When_healthcheck__Then_version_in_response():
 
     response = client.get("/api/healthcheck")
 
-    assert response.status_code == codes.OK
+    assert response.status_code == status.HTTP_200_OK
     actual_version = HealthcheckResponse.model_validate(response.json()).version
 
     assert actual_version.startswith("v") is False
@@ -31,7 +31,7 @@ def test_Given_healthy__When_healthcheck_with_prepend_v__Then_version_in_respons
 
     response = client.get("/api/healthcheck?prependV=true")
 
-    assert response.status_code == codes.OK
+    assert response.status_code == status.HTTP_200_OK
     actual_version = HealthcheckResponse.model_validate(response.json()).version
 
     assert actual_version.startswith("v") is True
@@ -44,7 +44,7 @@ def test_When_swagger_route_called__Then_rendered():
 
     response = client.get("/api-docs")
 
-    assert response.status_code == codes.OK
+    assert response.status_code == status.HTTP_200_OK
     assert "Swagger UI" in response.text
 
 
@@ -64,7 +64,7 @@ def test_Given_stop_event_on_app_state__When_shutdown_route_called__Then_stop_ev
 
     response = client.post("/api/shutdown")
 
-    assert response.status_code == codes.OK
+    assert response.status_code == status.HTTP_200_OK
     assert stop_event_on_app_state.is_set()
 
 
@@ -73,7 +73,7 @@ def test_When_api_route_requested_with_a_method_only_the_frontend_serves__Then_m
 
     response = client.head("/api/healthcheck")  # GET-only API route; the frontend mount would serve HEAD
 
-    assert response.status_code == codes.METHOD_NOT_ALLOWED
+    assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
 
 
 def test_When_path_without_api_prefix_requested__Then_frontend_static_file_served():
@@ -81,7 +81,7 @@ def test_When_path_without_api_prefix_requested__Then_frontend_static_file_serve
 
     response = client.get("/favicon.ico")  # any static file works; this is the only one in every deployment mode
 
-    assert response.status_code == codes.OK
+    assert response.status_code == status.HTTP_200_OK
     assert response.content == (app_def.STATIC_DIR / "favicon.ico").read_bytes()
 
 
@@ -92,11 +92,11 @@ def test_openapi_schema(snapshot_json: SnapshotAssertion, mocker: MockerFixture)
 
     response = client.get("/api/openapi.json")
 
-    assert response.status_code == codes.OK
+    assert response.status_code == status.HTTP_200_OK
     assert response.json() == snapshot_json
     assert spied_get_openapi.call_count == 1
 
     re_response = client.get("/api/openapi.json")
-    assert re_response.status_code == codes.OK
+    assert re_response.status_code == status.HTTP_200_OK
     assert re_response.text == response.text
     assert spied_get_openapi.call_count == 1  # still 1, not reinvoked
