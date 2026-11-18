@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from functools import partial
 from typing import Any
+from urllib.parse import quote
 
 import structlog
 from fastapi import FastAPI
@@ -213,7 +214,23 @@ def _body_pointer(error: ErrorDetails) -> str:
     """
     if error["type"] == "json_invalid":
         return WHOLE_BODY_POINTER
-    return WHOLE_BODY_POINTER + "".join(f"/{part}" for part in error["loc"][1:])
+    return WHOLE_BODY_POINTER + "".join(f"/{_pointer_token(part)}" for part in error["loc"][1:])
+
+
+# RFC 3986 lets a URI fragment hold these unencoded besides the unreserved characters (which quote() never encodes).
+# "/" is left out: inside a token it is part of a key, so RFC 6901 has already escaped it as ~1.
+_URI_FRAGMENT_SAFE_CHARACTERS = "!$&'()*+,;=:@?"
+
+
+def _pointer_token(part: int | str) -> str:
+    """Write one step of a body path as a JSON Pointer reference token in URI fragment form.
+
+    RFC 6901 escapes "~" as ~0 and "/" as ~1 (in that order, so an escaped "/" isn't read back as "~" then "1"),
+    so a key holding either is one step rather than several; the URI fragment then percent-encodes what it can't
+    hold, such as a space. Field names and list indexes come through unchanged.
+    """
+    escaped = str(part).replace("~", "~0").replace("/", "~1")
+    return quote(escaped, safe=_URI_FRAGMENT_SAFE_CHARACTERS)
 
 
 def _validation_issue(error: ErrorDetails) -> ValidationIssue:

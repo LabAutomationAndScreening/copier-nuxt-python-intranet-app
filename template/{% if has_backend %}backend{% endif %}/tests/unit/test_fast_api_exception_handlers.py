@@ -58,6 +58,7 @@ def _make_the_arbitrary_route_raise(mocker: MockerFixture, side_effect: Exceptio
 class _BodyPayload(CamelCaseModel):
     item_count: int
     item_sizes: list[int] = Field(default_factory=list)
+    item_counts_by_label: dict[str, int] = Field(default_factory=dict)
 
 
 # The path and method are arbitrary: any route that takes a JSON body works, and the app's own routes have none.
@@ -137,6 +138,23 @@ class TestGivenARouteTakingAJsonBody:
         assert _validation_issue_wire_name("pointer") in issue_keys
         assert _validation_issue_wire_name("parameter") not in issue_keys
         assert _validation_issue_wire_name("location") not in issue_keys
+
+    def test_When_a_body_value_under_a_key_holding_json_pointer_and_uri_special_characters_fails_validation__Then_the_issue_points_at_it_escaped_per_rfc_6901_and_percent_encoded(
+        self,
+    ):
+        count_wire_name = _wire_name("item_count")
+        counts_wire_name = _wire_name("item_counts_by_label")
+        # "/" and "~" are the characters RFC 6901 escapes (as ~1 and ~0); a space is one a URI fragment percent-encodes
+        label = "a/b~c d"
+
+        response = self.client.post(
+            _BODY_ROUTE, json={count_wire_name: random.randint(1, 100), counts_wire_name: {label: str(uuid4())}}
+        )
+
+        problem = ValidationProblemDetails.model_validate(response.json())
+
+        assert len(problem.errors) == 1
+        assert problem.errors[0].pointer == f"#/{counts_wire_name}/a~1b~0c%20d"
 
     def test_When_one_item_of_a_body_list_fails_validation__Then_the_issue_points_at_that_item_by_its_index(self):
         count_wire_name = _wire_name("item_count")
