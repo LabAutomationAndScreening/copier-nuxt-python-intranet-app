@@ -111,7 +111,7 @@ _ROUTE_LEAVING_ITS_422_TO_FASTAPI = "/undeclared"
 
 
 def _app_with_a_route_leaving_its_422_to_fastapi() -> FastAPI:
-    """An app whose one route validates a query parameter without declaring a 422, as every app's health check does.
+    """Build an app whose one route validates a query parameter without declaring a 422, as every app's health check does.
 
     That route is what makes FastAPI generate its own validation schemas, which the schema generator removes.
     """
