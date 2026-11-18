@@ -463,6 +463,19 @@ rules:
   #   then:
   #     function: numberFormat
 
+  # ENABLED (Zalando 174, "MUST use common field names and semantics",
+  # https://opensource.zalando.com/restful-api-guidelines/#174): an identifier (`id`, `…Id`, a path parameter's
+  # `…_id`) is an opaque string, and `…Ids` an array of them. Not a UUID requirement (Zalando 144 discourages UUIDs
+  # unless needed): an autoincrement key is sent as "42". Uses .config/vacuum-functions/stringIds.js.
+  string-ids:
+    description: Identifiers must be strings, and arrays of identifiers arrays of strings.
+    given:
+      - $.components.schemas[*]
+      - $.paths[*][*].parameters[*]
+    severity: error
+    then:
+      function: stringIds
+
   # ENABLED (Zalando 240, "SHOULD declare enum values using UPPER_SNAKE_CASE string",
   # https://opensource.zalando.com/restful-api-guidelines/#240): one casing for every enum value, so a client
   # never has to guess whether a status is `ok`, `Ok` or `OK`. vacuum's `macro` casing is UPPER_SNAKE_CASE.
