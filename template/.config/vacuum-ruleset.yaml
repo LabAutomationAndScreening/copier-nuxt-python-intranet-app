@@ -277,6 +277,18 @@ rules:
       - field: enum
         function: falsy
 
+  # ENABLED (Zalando 115, "MUST not use URL versioning", https://opensource.zalando.com/restful-api-guidelines/#115):
+  # a `/v2/` path makes the new version a different resource, so clients must rewrite every URL to move and
+  # links stored by one version break in the other. Evolve the API compatibly instead.
+  no-url-versioning:
+    description: Paths must not contain a version segment such as /v1/.
+    given: $.paths[*]~
+    severity: error
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: "(^|/)v[0-9]+(/|$)"
+
   # ENABLED (Zalando 122, "MUST not use `null` for boolean properties",
   # https://opensource.zalando.com/restful-api-guidelines/#122): a `bool | None` field is a three-valued
   # flag whose null rarely means anything a client can act on; give it a default instead. Uses
@@ -318,6 +330,22 @@ rules:
       functionOptions:
         type: array
 
+  # ENABLED (Zalando 132, "SHOULD use kebab-case with uppercase separate words for HTTP headers",
+  # https://opensource.zalando.com/restful-api-guidelines/#132): header names are case-insensitive on the wire,
+  # but the spec and generated clients show them as written, so one style (`Content-Type`, `Location`) keeps
+  # them consistent. Abbreviations stay uppercase (`X-Flow-ID`, `ETag`). FastAPI derives a header parameter's
+  # name in lowercase (`x_token` becomes `x-token`), so declare it with `Header(alias="X-Token")`.
+  header-names-capitalized-kebab-case:
+    description: HTTP header names must be capitalized words joined by hyphens, like Content-Type.
+    given:
+      - $.paths[*][*].parameters[?(@.in=='header')].name
+      - $.paths[*][*].responses[*].headers[*]~
+    severity: error
+    then:
+      function: pattern
+      functionOptions:
+        match: "^[A-Z][A-Za-z0-9]*(-[A-Z0-9][A-Za-z0-9]*)*$"
+
   # ENABLED (Zalando 136, "MUST use normalized paths without empty path segments and trailing slashes",
   # https://opensource.zalando.com/restful-api-guidelines/#136): the recommended set already rejects a
   # trailing slash (path-keys-no-trailing-slash) and an empty `{}` (path-declarations-must-exist); this adds
@@ -330,6 +358,31 @@ rules:
       function: pattern
       functionOptions:
         notMatch: "//"
+
+  # ENABLED (Zalando 169, "MUST use standard formats for date and time properties",
+  # https://opensource.zalando.com/restful-api-guidelines/#169): a property named as a point in time (`…At`,
+  # `…Timestamp`, `…Date`) must carry the RFC 3339 format that says so, not be a bare string or an epoch number.
+  # Uses .config/vacuum-functions/dateTimeProperty.js, which also serves Zalando 235 below.
+  date-time-property-format:
+    description: A property named as a point in time must have format date-time (or date, for a `…Date`).
+    given: $.components.schemas[*]
+    severity: error
+    then:
+      function: dateTimeProperty
+      functionOptions:
+        check: format
+
+  # ENABLED (Zalando 235, "SHOULD use naming convention for date/time properties",
+  # https://opensource.zalando.com/restful-api-guidelines/#235), adapted to camelCase: a date-time, date or time
+  # property's name ends in `At` or mentions date, time or day, so it reads as a point in time without the schema.
+  date-time-property-naming:
+    description: A date/time property's name must end in `At` or mention date, time or day.
+    given: $.components.schemas[*]
+    severity: error
+    then:
+      function: dateTimeProperty
+      functionOptions:
+        check: naming
 
   # ENABLED (Zalando 240, "SHOULD declare enum values using UPPER_SNAKE_CASE string",
   # https://opensource.zalando.com/restful-api-guidelines/#240): one casing for every enum value, so a client
@@ -345,3 +398,16 @@ rules:
       function: casing
       functionOptions:
         type: macro
+
+  # ENABLED (Zalando 251, "SHOULD not use redirection codes", https://opensource.zalando.com/restful-api-guidelines/#251):
+  # clients follow redirects inconsistently (some not at all for non-GET requests, older ones turn a redirected POST
+  # into a GET), and every case has a direct answer: keep a moved URL working or return 404/410, answer a repeated
+  # idempotent POST with 200 and Location, a duplicate create with 409. 304 Not Modified is caching, not a redirect.
+  no-redirect-responses:
+    description: Operations must not respond with a 3xx redirect (304 Not Modified is allowed).
+    given: $.paths[*][*].responses[*]~
+    severity: error
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: "^3(0[0-35-9]|[1-9][0-9]|XX)$"
