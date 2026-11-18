@@ -70,9 +70,11 @@ rules:
   # air-gapped/no-auth API. Until the `vacuum:owasp` extend above was added they never ran, though set to `true`,
   # so turning them on surfaces findings projects have never had to fix: every Pydantic `int` field needs a
   # `format` and bounds (e.g. a shared `Annotated[int, Field(ge=..., le=..., json_schema_extra={"format": "int64"})]`
-  # type), and every operation needs its 400/422 validation response documented. The rest of the OWASP pack
-  # (auth/HTTPS/rate-limit/protection-*/string-restricted) is intentionally NOT wanted for this trusted
-  # air-gapped, no-auth deployment; revisit if the API is ever exposed/authed.
+  # type), and every operation needs its 400/422 validation response documented. Bounding strings (`maxLength`) and
+  # arrays (`maxItems`) too would take custom rules: vacuum 0.30's owasp-string-limit and owasp-array-limit load but
+  # flag nothing, not even a bare string or array, so setting them to `true` would add two more rules that never run.
+  # The rest of the OWASP pack (auth/HTTPS/rate-limit/protection-*/string-restricted) is intentionally NOT wanted
+  # for this trusted air-gapped, no-auth deployment; revisit if the API is ever exposed/authed.
   owasp-define-error-validation: "off"
 
   # Integers must declare int32/int64 `format` so codegen picks the right numeric type.
