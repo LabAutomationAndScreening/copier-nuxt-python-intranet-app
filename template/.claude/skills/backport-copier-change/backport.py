@@ -970,25 +970,39 @@ def _wait_for_ci(*, repo: str, timeout: int, pr: str | None = None, sha: str | N
 def cmd_ci(a: argparse.Namespace) -> dict[str, Any]:
     """Wait for every CI run on a commit through `wait-for-ci`, then tell real failures from jobs that never started.
 
-    `wait-for-ci` stops at the first failed job, so the breakdown covers the jobs finished by then. Any outcome other
-    than a pass or a failed job (a timeout, an unreachable GitHub, an unknown commit) is an error.
+    `wait-for-ci` stops at the first failed job, so the breakdown covers the jobs finished by then. When reading it
+    keeps failing, the verdict still stands, with `breakdown_error` in place of the lists. Any outcome other than a pass
+    or a failed job (a timeout, an unreachable GitHub, an unknown commit) is an error.
     """
     line, exit_code = _wait_for_ci(repo=a.repo, timeout=a.timeout, sha=a.sha)
     if exit_code == 0:
         return {"result": line, "passed": True}
     if not line.startswith("CHECKS_FAILED"):
         raise FailError(f"waiting for CI on {a.sha} in {a.repo}: {line}")
-    return {"result": line, "passed": False, **_ci_failure_breakdown(repo=a.repo, sha=a.sha)}
+    try:
+        breakdown = _wait(
+            timeout=300,
+            interval=15,
+            what=f"the jobs of {a.sha}'s runs",
+            probe=lambda: _ci_failure_breakdown(repo=a.repo, sha=a.sha),
+        )
+    except FailError as e:
+        return {"result": line, "passed": False, "breakdown_error": str(e)}
+    return {"result": line, "passed": False, **breakdown}
 
 
-def _ci_failure_breakdown(*, repo: str, sha: str) -> dict[str, list[str]]:
+def _ci_failure_breakdown(*, repo: str, sha: str) -> dict[str, Any]:
+    """List the failed jobs, the jobs that never started and the runs that failed without a job.
+
+    Each job comes with its run's ID, which `gh run rerun` takes: a job name alone can repeat across workflows.
+    """
     runs = _gh_json("run", "list", "--repo", repo, "--commit", sha, "--limit", "100", "--json", "databaseId")
-    failed: list[str] = []
-    not_started: list[str] = []
+    failed: list[dict[str, Any]] = []
+    not_started: list[dict[str, Any]] = []
     failed_runs: list[str] = []
-    not_started_run_ids: list[int] = []
     for run in runs:
-        view = _gh_json("run", "view", str(run["databaseId"]), "--repo", repo, "--json", "status,conclusion,jobs,url")
+        run_id = run["databaseId"]
+        view = _gh_json("run", "view", str(run_id), "--repo", repo, "--json", "status,conclusion,jobs,url")
         if _failed_before_any_job(view):
             failed_runs.append(view["url"])
         for job in view["jobs"]:
@@ -998,16 +1012,16 @@ def _ci_failure_breakdown(*, repo: str, sha: str) -> dict[str, list[str]]:
                 continue
             if job["conclusion"] == "skipped":
                 continue
+            entry = {"name": job["name"], "run_id": run_id}
             # a job that failed without running a single step never got a runner (a spent Actions budget, say), so
             # there is nothing in the code to fix
             if job["conclusion"] == "failure":
                 if not job["steps"]:
-                    not_started.append(job["name"])
-                    not_started_run_ids.append(run["databaseId"])
+                    not_started.append(entry)
                     continue
-            failed.append(job["name"])
+            failed.append(entry)
     reasons: set[str] = set()
-    for run_id in sorted(set(not_started_run_ids)):
+    for run_id in sorted({entry["run_id"] for entry in not_started}):
         reasons.update(_failure_annotations(repo=repo, run_id=run_id))
     return {
         "failed_jobs": failed,
@@ -1452,10 +1466,24 @@ def _post_pause(*, repo: str, pr: str, reviewer: ModuleType) -> str:
     body_file.parent.mkdir(exist_ok=True)
     _ = body_file.write_text(reviewer.PAUSE_COMMAND + "\n")
     posted = _run(cmd=[str(PR_COMMENTS_POST), "--pr", pr, "--repo", repo, "--body-file", str(body_file)])
-    match = _ISSUE_COMMENT_ID.search(posted.splitlines()[0])
+    posted_line = posted.splitlines()[0]
+    match = _ISSUE_COMMENT_ID.search(posted_line)
     if match is None:
         raise FailError(f"post.py printed no comment URL for the pause command:\n{posted}")
-    return _run(cmd=["gh", "api", f"repos/{repo}/issues/comments/{match.group(1)}", "--jq", ".created_at"]).strip()
+    try:
+        return _wait(
+            timeout=300,
+            interval=15,
+            what=f"when pause comment {match.group(1)} was posted",
+            probe=lambda: _run(
+                cmd=["gh", "api", f"repos/{repo}/issues/comments/{match.group(1)}", "--jq", ".created_at"]
+            ).strip(),
+        )
+    except FailError as e:
+        raise FailError(
+            f"the pause command is posted ({posted_line}), but reading when failed: {e}. Running pause again would post"
+            f" it twice: wait for {reviewer.NAME}'s confirmation on the PR instead"
+        ) from e
 
 
 def _pause_confirmed(*, repo: str, pr: str, reviewer: ModuleType, posted_at: str) -> str | None:

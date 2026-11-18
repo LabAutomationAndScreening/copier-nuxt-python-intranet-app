@@ -238,13 +238,17 @@ two commits. Then `$BP push --checkout <checkout> --chain <chain.json>` and
 `$BP ci --repo <layer> --sha <sha from push>`.
 
 `passed` is the verdict, and `result` is wait-for-ci's line. It stops at the first failed job,
-so the lists below cover only the jobs finished by then. `failed_jobs` need a fix (see Rules:
+so the lists below cover only the jobs finished by then; each job in them comes with its run's
+`run_id`, since a job name can repeat across workflows. `failed_jobs` need a fix (see Rules:
 stop for the user), and so do `failed_runs`, runs that ended before creating any job, such as on
 an invalid workflow file or awaiting approval (open the run's URL for GitHub's reason).
 `not_started_jobs` never got a runner (`not_started_reasons` says why, such as a spent Actions
 budget): there is nothing to fix, so tell the user, and once they say it's sorted,
-`gh run rerun <id> --failed` and run `ci` again. Any other outcome (a timeout, GitHub
-unreachable) makes `ci` exit with the line as its error.
+`env -u GITHUB_TOKEN -u GH_TOKEN gh run rerun <run_id> --repo R --failed` (R being the repo
+`ci` waited on) for each run they name, and run `ci` again. With `breakdown_error` in place of the lists,
+GitHub kept failing while `ci` read the jobs: the failure stands, and `result` names the failed
+jobs. Any other outcome (a timeout, GitHub unreachable) makes `ci` exit with the line as its
+error.
 
 ### Step 5: Carry it down by SHA (pre-merge pass)
 
@@ -404,6 +408,9 @@ top, one level at a time:
    `--chain`), `ci` on the new head, and the pre-merge check again. Run its `commands` in
    order, each as its own command. Where the repo allows auto-merge (`auto_merge` in the
    output), the merge command turns it on, and GitHub merges once the required checks pass.
+   If it fails, read `gh pr view N --repo R --json state,mergeStateStatus`: GitHub refuses to
+   turn auto-merge on for a PR that has just become mergeable, so a PR still `OPEN` and `CLEAN`
+   gets the same command without `--auto`; any other state, stop for the user.
    Then start `$BP tag --repo R --pr N` in the background: it waits for the merge, then for the
    tag. Pass `--merge-only` for a repo with no tag-on-merge workflow (often a project). When
    the PR doesn't merge, `tag` exits with wait-for-ci's line as its error, naming what holds it:
