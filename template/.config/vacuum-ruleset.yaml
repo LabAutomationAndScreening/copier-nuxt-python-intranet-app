@@ -257,6 +257,26 @@ rules:
     then:
       function: collectionInData
 
+  # ENABLED (Zalando 112, "SHOULD use open-ended list of values (via examples) for enumeration types",
+  # https://opensource.zalando.com/restful-api-guidelines/#112): a closed `enum` makes every added value a
+  # breaking change for clients, while an extensible enum tells them up front to handle values they don't know.
+  # Whether an enum is open or closed is a per-enum judgment lint can't make, so this only checks that a schema
+  # declared open, by a description starting "Extensible enum.", has the shape Zalando gives it: a string
+  # listing its known values in `examples`, with no `enum` that would close it again.
+  extensible-enum-shape:
+    description: An extensible enum must be a string listing its known values in `examples`, with no `enum`.
+    given: $..[?search(@.description, '^Extensible enum[.]')]
+    severity: error
+    then:
+      - field: type
+        function: pattern
+        functionOptions:
+          match: "^string$"
+      - field: examples
+        function: truthy
+      - field: enum
+        function: falsy
+
   # ENABLED (Zalando 122, "MUST not use `null` for boolean properties",
   # https://opensource.zalando.com/restful-api-guidelines/#122): a `bool | None` field is a three-valued
   # flag whose null rarely means anything a client can act on; give it a default instead. Uses
@@ -314,9 +334,12 @@ rules:
   # ENABLED (Zalando 240, "SHOULD declare enum values using UPPER_SNAKE_CASE string",
   # https://opensource.zalando.com/restful-api-guidelines/#240): one casing for every enum value, so a client
   # never has to guess whether a status is `ok`, `Ok` or `OK`. vacuum's `macro` casing is UPPER_SNAKE_CASE.
+  # Covers the known values of an extensible enum (see extensible-enum-shape) as well as a closed `enum`.
   enum-values-upper-snake-case:
     description: Enum values must be UPPER_SNAKE_CASE.
-    given: $..enum[*]
+    given:
+      - $..enum[*]
+      - $..[?search(@.description, '^Extensible enum[.]')].examples[*]
     severity: error
     then:
       function: casing
