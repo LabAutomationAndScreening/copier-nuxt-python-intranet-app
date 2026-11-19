@@ -52,6 +52,12 @@ class _UnionPayload(BaseModel):
     values: Annotated[_UnionOfNonNullValues | None, NullHiddenFromJsonSchema()] = None
 
 
+# arbitrary: any primitive type, which union_format="primitive_type_array" renders as a type name
+_PrimitiveValue = str
+# arbitrary: any union of two or more primitive types
+_UnionOfPrimitiveValues = int | str
+
+
 class _NestedModel(BaseModel):
     value: str
 
@@ -97,6 +103,24 @@ class TestNullHiddenFromJsonSchema:
         field_schema = _UnionPayload.model_json_schema()["properties"]["values"]
 
         assert field_schema["anyOf"] == TypeAdapter(_UnionOfNonNullValues).json_schema()["anyOf"]
+
+    def test_When_json_schema_generated_as_a_primitive_type_array_for_one_primitive_type__Then_it_names_that_type_and_not_null(
+        self,
+    ):
+        json_schema = TypeAdapter(Annotated[_PrimitiveValue | None, NullHiddenFromJsonSchema()]).json_schema(
+            union_format="primitive_type_array"
+        )
+
+        assert json_schema == TypeAdapter(_PrimitiveValue).json_schema(union_format="primitive_type_array")
+
+    def test_When_json_schema_generated_as_a_primitive_type_array_for_a_union_of_primitive_types__Then_it_names_each_of_them_and_not_null(
+        self,
+    ):
+        json_schema = TypeAdapter(Annotated[_UnionOfPrimitiveValues | None, NullHiddenFromJsonSchema()]).json_schema(
+            union_format="primitive_type_array"
+        )
+
+        assert json_schema == TypeAdapter(_UnionOfPrimitiveValues).json_schema(union_format="primitive_type_array")
 
     def test_When_json_schema_generated_for_a_model__Then_the_field_references_the_model_and_not_null(self):
         payload_schema = _NestedModelPayload.model_json_schema()

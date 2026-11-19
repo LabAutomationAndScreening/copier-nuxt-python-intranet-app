@@ -24,14 +24,29 @@ class NullHiddenFromJsonSchema:
 
     It renders the whole ``X | None`` and drops the null branch, rather than passing ``X``'s inner schema to the
     handler alone: only the full render runs ``X``'s own JSON-schema hooks (``IPvAnyAddress`` gets its schema from one,
-    and fails to render without it) and keeps a pydantic model ``X`` as a ``$ref`` rather than inlining it.
+    and fails to render without it) and keeps a pydantic model ``X`` as a ``$ref`` rather than inlining it. Pydantic
+    renders that union as ``anyOf`` by default, or, under ``union_format="primitive_type_array"`` when every branch is a
+    primitive type, as one ``type`` array; null is dropped from either.
     """
 
     def __get_pydantic_json_schema__(self, core_schema: CoreSchema, handler: GetJsonSchemaHandler) -> JsonSchemaValue:
         if core_schema["type"] != "nullable":
             raise NotNullableSchemaError(schema_type=core_schema["type"])
         nullable_json_schema = handler(core_schema)
-        non_null_branches = [branch for branch in nullable_json_schema["anyOf"] if branch != {"type": "null"}]
-        if len(non_null_branches) == 1:
-            return dict(non_null_branches[0])
-        return {"anyOf": non_null_branches}
+        if "anyOf" in nullable_json_schema:
+            return _without_null_branch(nullable_json_schema=nullable_json_schema)
+        return _without_null_type(nullable_json_schema=nullable_json_schema)
+
+
+def _without_null_branch(*, nullable_json_schema: JsonSchemaValue) -> JsonSchemaValue:
+    non_null_branches = [branch for branch in nullable_json_schema["anyOf"] if branch != {"type": "null"}]
+    if len(non_null_branches) == 1:
+        return dict(non_null_branches[0])
+    return {"anyOf": non_null_branches}
+
+
+def _without_null_type(*, nullable_json_schema: JsonSchemaValue) -> JsonSchemaValue:
+    non_null_types = [json_type for json_type in nullable_json_schema["type"] if json_type != "null"]
+    if len(non_null_types) == 1:
+        return {**nullable_json_schema, "type": non_null_types[0]}
+    return {**nullable_json_schema, "type": non_null_types}
