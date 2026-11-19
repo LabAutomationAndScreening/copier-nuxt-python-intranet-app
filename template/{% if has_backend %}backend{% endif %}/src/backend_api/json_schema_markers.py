@@ -20,12 +20,18 @@ class NullHiddenFromJsonSchema:
     hiding null only here keeps a single error, located at the value that failed.
 
     Constraints and validators belong inside ``X``, with the marker outside the ``| None``; it raises
-    NotNullableSchemaError when generating the schema of a field whose type isn't nullable at that point. It is meant
-    for non-model types: a pydantic model ``X`` is inlined into the field's schema rather than referenced by ``$ref``
-    as it is for a plain ``X | None``, so clients generated from the schema would see an anonymous object.
+    NotNullableSchemaError when generating the schema of a field whose type isn't nullable at that point.
+
+    It renders the whole ``X | None`` and drops the null branch, rather than passing ``X``'s inner schema to the
+    handler alone: only the full render runs ``X``'s own JSON-schema hooks (``IPvAnyAddress`` gets its schema from one,
+    and fails to render without it) and keeps a pydantic model ``X`` as a ``$ref`` rather than inlining it.
     """
 
     def __get_pydantic_json_schema__(self, core_schema: CoreSchema, handler: GetJsonSchemaHandler) -> JsonSchemaValue:
         if core_schema["type"] != "nullable":
             raise NotNullableSchemaError(schema_type=core_schema["type"])
-        return handler(core_schema["schema"])
+        nullable_json_schema = handler(core_schema)
+        non_null_branches = [branch for branch in nullable_json_schema["anyOf"] if branch != {"type": "null"}]
+        if len(non_null_branches) == 1:
+            return dict(non_null_branches[0])
+        return {"anyOf": non_null_branches}
