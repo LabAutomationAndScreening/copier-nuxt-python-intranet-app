@@ -16,6 +16,7 @@ import { expect, test } from "~~/tests/e2e/fixtures";
 import { backendBaseUrl, getRandomOpenPort, isBuiltBackendE2E, isDockerComposeE2E } from "~~/tests/e2e/ports";
 
 const dockerComposeFile = path.resolve(fileURLToPath(new URL("../../../../", import.meta.url)), "docker-compose.yaml");
+const HTTP_NOT_FOUND = 404;
 
 test.describe("API documentation", () => {
   test("When accessing Swagger from the frontend, Then loads correctly", async ({ page }) => {
@@ -41,7 +42,7 @@ test.describe("API routing", () => {
     const response = await request.get(`${backendBaseUrl()}${unknownPath}`);
 
     // the backend's static folder includes the frontend's 404.html, so an unknown API path must not fall through to that HTML page
-    expect(response.status()).toBe(404);
+    expect(response.status()).toBe(HTTP_NOT_FOUND);
     expect(response.headers()["content-type"]).toBe("application/problem+json");
   });
 });
