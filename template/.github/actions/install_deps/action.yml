@@ -31,7 +31,7 @@ inputs:
   install-pre-commit-tooling:
     required: false
     default: false
-    description: Whether to install the tooling the pre-commit hooks need (pre-commit, identify, prek and Biome), for jobs that run pre-commit
+    description: Whether to install the tooling the pre-commit hooks need (pre-commit, identify, prek, Biome, Helm and the helm-unittest plugin), for jobs that run pre-commit
   install-helm:
     required: false
     default: false

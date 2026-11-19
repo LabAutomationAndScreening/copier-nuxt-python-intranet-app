@@ -186,6 +186,9 @@ jobs:
           git add .
           git status
 
+      - name: Install the instantiated project's pinned Helm and helm-unittest plugin # this repo's own tooling installs neither, and the project's Helm hooks need both
+        run: python .devcontainer/install-ci-tooling.py --install-pre-commit-tooling --no-python --no-node
+
       - name: Compute Pre-commit cache key # must run after the instantiated template is in place, since hashFiles reads its .pre-commit-config.yaml
         run: |
           echo "CACHE_RESTORE_KEY=${{ matrix.os }}-${{ matrix.python-version }}-build-cache-pre-commit-hooks-" >> "$GITHUB_ENV"
