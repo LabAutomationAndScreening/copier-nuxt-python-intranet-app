@@ -386,8 +386,21 @@ repos:
     hooks:
       - id: helmlint
         # Runs the helm on PATH, which is the pinned one install-ci-tooling.py installs; the rev pins gruntwork's hook scripts, not Helm.
-        # lint mode does not fail on `required`, so no linter_values.yaml is needed
+        # lint mode does not fail on `required`, so no linter_values.yaml is needed; chart tests run by the helm-unittest hook can check those values
         files: ^deployment/helm/
+
+  - repo: local
+    hooks:
+      - id: helm-unittest
+        name: helm-unittest
+        # the plugin install-ci-tooling.py pins, run by the Helm it pins; --strict fails a test file with an unknown or
+        # misspelled key, which would otherwise leave a test without its assertions that still passes. -f widens the
+        # plugin's default tests/*_test.yaml, which silently skips a suite file named without the _test suffix
+        # TODO: make this hook fail when it finds no test suites; a chart with no tests/ folder currently passes with 0 suites
+        entry: helm unittest --strict -f 'tests/*.yaml' deployment/helm
+        files: ^deployment/helm/
+        pass_filenames: false
+        language: system
 
 {% endraw %}{% endif %}{% raw %}  # Updating repo config/tooling files
   - repo: local
