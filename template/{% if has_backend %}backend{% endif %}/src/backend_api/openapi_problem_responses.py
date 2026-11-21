@@ -5,10 +5,14 @@ from typing import NamedTuple
 
 from fastapi import HTTPException
 
+from .fast_api_exception_handlers import EXAMPLE_TRACE_ID
+from .fast_api_exception_handlers import PROBLEM_JSON_MEDIA_TYPE
 from .fast_api_exception_handlers import ProblemDetails
+from .fast_api_exception_handlers import component_ref
+from .fast_api_exception_handlers import listing_its_validation_issues
+from .fast_api_exception_handlers import problem_model_for
 
-PROBLEM_DETAILS_REF = "#/components/schemas/ProblemDetails"
-PROBLEM_JSON_MEDIA_TYPE = "application/problem+json"
+PROBLEM_DETAILS_REF = component_ref(ProblemDetails)
 
 
 class ProblemExample(NamedTuple):
@@ -23,21 +27,23 @@ class ProblemExample(NamedTuple):
 
 
 def _problem_body(*, status_code: int, detail: str, instance: str) -> dict[str, Any]:  # pyrefly: ignore[explicit-any] # model_dump returns dict[str, Any]; see the note on problem_response's return type
-    return ProblemDetails(
+    problem = ProblemDetails(
         title=HTTPStatus(status_code).phrase,
         status=status_code,
         detail=detail,
         instance=instance,
         # routes raise every problem they document as an HTTPException, so that is the class the handler reports
         error_type=HTTPException.__name__,
-    ).model_dump(mode="json", by_alias=True)
+        trace_id=EXAMPLE_TRACE_ID,
+    )
+    return listing_its_validation_issues(problem).model_dump(mode="json", by_alias=True)
 
 
 def problem_response(
     status_code: int,
     description: str,
     *,
-    instance: str = "about:blank",
+    instance: str,
     examples: Mapping[str, ProblemExample] | None = None,
 ) -> dict[int | str, dict[str, Any]]:  # pyrefly: ignore[explicit-any] # OpenAPI response fragments are heterogeneous nested JSON; JsonValue would force every consumer to narrow through the union to reach a leaf
     """Build an OpenAPI ``responses`` entry documenting a ``ProblemDetails`` error.
@@ -48,15 +54,15 @@ def problem_response(
 
     ``example`` is synthesized from ``status_code`` and ``description`` so the docs
     show a body that matches this response (e.g. a 400 titled "Bad Request") instead of the generic
-    field-level example rendered from a bare ``ProblemDetails`` schema ref. Pass ``instance`` to point the
-    example at the route's real path.
+    field-level example rendered from a bare ``ProblemDetails`` schema ref. ``instance`` is the path of the
+    request the error answers, as a real problem reports it (without a query string).
 
     When one status code covers several distinct failures, pass ``examples`` instead: each
     :class:`ProblemExample` becomes a named entry, expanded here into a full ``ProblemDetails`` body.
     Expanding them here rather than at the call site is what keeps them valid against the schema they sit
     under — a hand-written ``{"detail": ...}`` omits the required ``title``, ``status`` and ``instance``.
     """
-    content: dict[str, Any] = {"schema": {"$ref": PROBLEM_DETAILS_REF}}  # pyrefly: ignore[explicit-any] # matches the return type above
+    content: dict[str, Any] = {"schema": {"$ref": component_ref(problem_model_for(status_code))}}  # pyrefly: ignore[explicit-any] # matches the return type above
     if examples is None:
         content["example"] = _problem_body(status_code=status_code, detail=description, instance=instance)
     else:
