@@ -66,13 +66,12 @@ rules:
   # `properties`. Catches real bugs (typo'd/removed field left in required) that break client codegen.
   required-fields-defined: true
 
-  # TODO: enable (set to `true`) the three OWASP data-hardening rules below, worth keeping even on an
+  # TODO: enable (set to `true`) the five OWASP data-hardening rules below, worth keeping even on an
   # air-gapped/no-auth API. Until the `vacuum:owasp` extend above was added they never ran, though set to `true`,
   # so turning them on surfaces findings projects have never had to fix: every Pydantic `int` field needs a
   # `format` and bounds (e.g. a shared `Annotated[int, Field(ge=..., le=..., json_schema_extra={"format": "int64"})]`
-  # type), and every operation needs its 400/422 validation response documented. Bounding strings (`maxLength`) and
-  # arrays (`maxItems`) too would take custom rules: vacuum 0.30's owasp-string-limit and owasp-array-limit load but
-  # flag nothing, not even a bare string or array, so setting them to `true` would add two more rules that never run.
+  # type), every `str` in a request body a `max_length` (or a `Literal`/enum), every `list` there a `max_length`, and
+  # every operation its 400/422 validation response documented.
   # The rest of the OWASP pack (auth/HTTPS/rate-limit/protection-*/string-restricted) is intentionally NOT wanted
   # for this trusted air-gapped, no-auth deployment; revisit if the API is ever exposed/authed.
   owasp-define-error-validation: "off"
@@ -82,6 +81,12 @@ rules:
 
   # Integers must declare min/max bounds (input validation / resource-exhaustion guard).
   owasp-integer-limit: "off"
+
+  # Request-body strings must declare `maxLength` (or be a `const`/`enum`), the same guard for text.
+  owasp-string-limit: "off"
+
+  # Request-body arrays must declare `maxItems`, the same guard for lists.
+  owasp-array-limit: "off"
 
   # ENABLED: path id parameters must be explicit and resource-qualified, never a bare generic
   # identifier. Bare `{id}` is ambiguous in a multi-resource spec and produces collision-prone Kiota
