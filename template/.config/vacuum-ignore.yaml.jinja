@@ -1,5 +1,11 @@
 {% raw %}# Ignored vacuum findings, with justification.
-#{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+#
+# ParameterLocation's values are OpenAPI's own names for where a parameter is sent (`in: query`), so a client can
+# match a validation issue to the parameter it describes in the schema. Zalando 240 exempts enum values that another
+# standard defines from UPPER_SNAKE_CASE.
+enum-values-upper-snake-case:
+  - "$.components.schemas['ParameterLocation']"
+{% endraw %}{% if is_circuit_python_driver %}{% raw %}
 # A generated driver only ever manages a single physical device connection at a time, so its
 # resource paths are intentionally singular ("driver", not "drivers") rather than REST-collection plural.
 resources-plural:
