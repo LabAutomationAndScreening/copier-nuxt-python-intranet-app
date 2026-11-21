@@ -187,6 +187,18 @@ rules:
       field: headers.Location
       function: truthy
 
+  # ENABLED (AGENTS.md: every status code a route raises is documented in its `responses`): an operation whose path
+  # names a resource by parameter can be asked for one that doesn't exist, so it documents the 404 it answers with.
+  # Stricter than Zalando 151, which lets a standard 404 go undocumented: a client generated from the schema only
+  # gets a typed error for the responses the schema lists.
+  path-parameter-operations-document-404:
+    description: An operation on a path with a parameter must document a 404 response.
+    given: $.paths[?(@property.match(/\{/))][get,put,post,delete,options,head,patch,trace].responses
+    severity: error
+    then:
+      field: "404"
+      function: truthy
+
   # ENABLED (gov.au Naming: plural resources). Static path segments should be plural resource nouns.
   # Declarative casing/pattern rules cannot pluralize, so this uses a custom JavaScript function
   # (.config/vacuum-functions/resourcesPlural.js) run via `vacuum lint -f .config/vacuum-functions`. The
@@ -450,6 +462,21 @@ rules:
       field: requestBody
       function: falsy
 
+  # ENABLED (Zalando 150, "SHOULD only use most common HTTP status codes",
+  # https://opensource.zalando.com/restful-api-guidelines/#150): no response uses a code Zalando's list marks "do not
+  # use", each having no good use in a REST API (206 Partial Content is not for pagination, 408 is for connections,
+  # not APIs). Codes missing from the list stay allowed, as Zalando allows them when the response describes them.
+  # Redirects are no-redirect-responses' job and unofficial codes official-status-codes'. 422 is marked "do not use"
+  # too, in favor of 400, but is allowed: FastAPI answers request validation failures with it.
+  no-discouraged-status-codes:
+    description: Responses must not use a status code Zalando marks "do not use".
+    given: $.paths[*][*].responses[*]~
+    severity: error
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: "^(205|206|408|417|424|505|511)$"
+
   # TODO: uncomment to enable (Zalando 171, "MUST define a format for number and integer types",
   # https://opensource.zalando.com/restful-api-guidelines/#171): every `number` declares float, double or decimal,
   # so a client knows which floating-point type to decode into; the integer half is owasp-integer-format's.
@@ -492,6 +519,20 @@ rules:
       function: casing
       functionOptions:
         type: macro
+
+  # ENABLED (Zalando 243, "MUST use official HTTP status codes", https://opensource.zalando.com/restful-api-guidelines/#243):
+  # every response code is registered in the IANA HTTP Status Code Registry
+  # (https://www.iana.org/assignments/http-status-codes/), so clients and proxies know what it means; a vendor code
+  # such as nginx's 499 does not. Left out: 306 and 418 (registered as unused), 510 (obsoleted) and 104 (temporary,
+  # expired). `default` and the OpenAPI ranges (`4XX`) are allowed.
+  official-status-codes:
+    description: Responses must use a status code registered with IANA.
+    given: $.paths[*][*].responses[*]~
+    severity: error
+    then:
+      function: pattern
+      functionOptions:
+        match: "^(10[0-3]|20[0-8]|226|30[0-57-8]|40[0-9]|41[0-7]|42[1-689]|431|451|50[0-8]|511|[1-5]XX|default)$"
 
   # ENABLED (Zalando 251, "SHOULD not use redirection codes", https://opensource.zalando.com/restful-api-guidelines/#251):
   # clients follow redirects inconsistently (some not at all for non-GET requests, older ones turn a redirected POST
