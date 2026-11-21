@@ -2,8 +2,10 @@
 //
 // Zalando 176 "MUST support problem JSON": every documented error response of an operation (each 4xx and 5xx,
 // and the `default` catch-all) is application/problem+json, the media type the exception handlers send. Run on
-// `$.paths[*][*].responses`, one operation's responses at a time. A JSONPath rule can't do this: vacuum 0.30's
-// key selector (`~`) finds nothing under a response keyed `default`, so it would miss the catch-all.
+// `$.paths[*][*].responses`, one operation's responses at a time. One function checks both halves, every media type
+// being problem+json and problem+json being there, where plain rules would take two: `field: "@key"`, which would let
+// a single `pattern` rule check the media-type keys, is ignored by vacuum's `pattern`
+// (https://github.com/daveshanley/vacuum/issues/1072).
 // An error response with no content, or no application/problem+json among its media types, fails too: documenting
 // it with nothing would let a client generated from the schema miss the problem details it is sent.
 
