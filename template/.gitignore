@@ -114,6 +114,12 @@ dist
 # vacuum OpenAPI lint reports (generated ad-hoc; the linter runs against the committed snapshot)
 vacuum-report-*.json
 
+# Kiota clients of this repo's own backend, generated on demand from the committed OpenAPI snapshot by
+# `task gen-openapi-clients`. Only the backend subfolders: clients of other services in sibling folders stay committed.
+# .ignore lets ripgrep-based search still reach them.
+frontend/app/generated/open-api/backend/
+backend/tests/e2e/generated/open_api/backend/
+
 
 # Infrastructure as Code
 .terraform/

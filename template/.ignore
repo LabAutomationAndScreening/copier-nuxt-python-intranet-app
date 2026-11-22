@@ -1,0 +1,4 @@
+# Read by ripgrep and the tools built on it (not by git): un-ignore the generated API clients that .gitignore excludes,
+# so code search still finds the types and methods the app and tests call.
+!frontend/app/generated/open-api/backend/
+!backend/tests/e2e/generated/open_api/backend/
