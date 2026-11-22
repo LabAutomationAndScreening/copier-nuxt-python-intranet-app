@@ -1,0 +1,3 @@
+# Read by ripgrep and the tools built on it (not by git): .gitignore excludes the generated client in backend/,
+# and this un-ignores it for search only, so code search still finds the types and methods the app and tests call.
+!backend/
