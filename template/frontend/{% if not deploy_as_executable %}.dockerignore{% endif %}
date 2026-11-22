@@ -24,6 +24,9 @@ dist
 # Development tooling
 codegen.ts
 
+# The image generates the backend's API client itself; a local copy may be stale. Clients of other services stay.
+app/generated/open-api/backend
+
 # Exclude linter configs
 eslint.config.mjs
 eslint.shared.mjs
