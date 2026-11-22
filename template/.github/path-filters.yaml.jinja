@@ -24,6 +24,9 @@ code:
   - '!.devcontainer/post-start-command.sh'
   - '!.devcontainer/windows-host-helper.sh'
   # these test trees reach no build artifact; the jobs running them gate on their own class and wait on no build{% if has_backend %}
+  # One exception: the frontend image and the generated API clients are built from the OpenAPI snapshot in
+  # backend/tests/unit. Excluding it is still safe, because the snapshot can't change on its own: the unit test fails
+  # unless it matches the backend code, so a snapshot change always comes with a code change that turns `code` on.
   - '!backend/tests/unit/**'{% endif %}
   - '!frontend/tests/unit/**'
   - '!frontend/tests/compiled/**'

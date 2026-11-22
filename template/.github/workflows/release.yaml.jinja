@@ -105,7 +105,8 @@ jobs:
     with:
       context: ./frontend
       build-contexts: repo-root=.
-      additional-hash-paths: pnpm-workspace.yaml pnpm-lock.yaml
+      # the image generates its API client from the snapshot, which is outside the context, so the image tag must hash it
+      additional-hash-paths: pnpm-workspace.yaml pnpm-lock.yaml{% endraw %}{% if has_backend %}{% raw %} backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json{% endraw %}{% endif %}{% raw %}
       repository: {% endraw %}{{ frontend_ecr_base_url }}{% raw %}
       image_name: {% endraw %}{{ frontend_image_name }}{% raw %}
       push-role-name: {% endraw %}{{ frontend_ecr_push_role_name }}{% raw %}
