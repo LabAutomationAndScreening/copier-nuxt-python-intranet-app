@@ -1,36 +1,64 @@
 {% raw %}version: '3'
-
+{% endraw %}{% if has_backend %}{% raw %}
+vars:
+  OPENAPI_SNAPSHOT: backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json
+  # Each OpenAPI client task skips itself when this file, written as its last command, holds the hash of its current
+  # inputs. Task's own sources/generates checksum is not used because Task stores the new checksum before the commands
+  # run, so a killed run would look fresh, and `task --list-all --json` stores it without running the task at all.
+  # The task's first command deletes the client folder, so a missing folder or a failed run always regenerates.
+  INPUTS_STAMP_FILE: .inputs-sha256
+{% endraw %}{% endif %}{% raw %}
 tasks:
   codegen:
     desc: Regenerate every generated client in the repo
-    cmds:{% endraw %}{% if has_backend %}{% raw %}
-      - task: gen-backend-openapi-client
-      - task: gen-frontend-openapi-client{% endraw %}{% endif %}{% if has_backend and backend_uses_graphql %}{% raw %}
+    cmds:{% endraw %}{% if has_backend and backend_uses_graphql %}{% raw %}
       - task: gen-backend-graphql-client{% endraw %}{% endif %}{% if frontend_uses_graphql %}{% raw %}
-      - task: gen-frontend-graphql-client{% endraw %}{% endif %}{% raw %}
+      - task: gen-frontend-graphql-client{% endraw %}{% endif %}{% if has_backend %}{% raw %}
+      - task: gen-openapi-snapshot{% endraw %}{% endif %}{% raw %}
 {% endraw %}{% if has_backend %}{% raw %}
   gen-openapi-snapshot:
-    desc: Regenerate the openapi.json snapshot that both OpenAPI clients are generated from
-    # `run: once` so the umbrella task refreshes the snapshot a single time rather than once per dependent client
+    desc: Regenerate the openapi.json snapshot from the backend code, then the OpenAPI clients generated from it
     run: once
     cmds:
       # --no-cov because pytest.ini always adds --cov and .coveragerc sets fail_under=100, so a single-file run
       # would exit 1 on coverage even though the snapshot was written
       - uv --directory=backend run pytest tests/unit/test_basic_server_functionality.py --snapshot-update --no-cov
+      - task: gen-openapi-clients
+
+  gen-openapi-clients:
+    desc: Bring both OpenAPI clients up to date with the committed openapi.json snapshot (a quick no-op when they already are)
+    run: once
+    deps: [gen-backend-openapi-client, gen-frontend-openapi-client]
 
   gen-backend-openapi-client:
-    desc: Regenerate the Python Kiota client that the backend E2E tests import
-    deps: [gen-openapi-snapshot]
+    desc: Generate the Python Kiota client that the backend E2E tests import, unless it is already up to date
+    run: once
+    vars:
+      CLIENT_DIR: backend/tests/e2e/generated/open_api/backend
+      INPUTS_HASH:
+        sh: cat '{{.OPENAPI_SNAPSHOT}}' backend/scripts/kiota_nullable_fixer.py '{{.TASKFILE}}' | sha256sum | cut -d' ' -f1
+    status:
+      - test "$(cat '{{.CLIENT_DIR}}/{{.INPUTS_STAMP_FILE}}' 2>/dev/null)" = '{{.INPUTS_HASH}}'
     cmds:
-      - mkdir -p "./backend/tests/e2e/generated/open_api/backend"
-      - docker run --rm --user $(id -u):$(id -g) -v "./backend/tests/e2e/generated/open_api/backend:/app/output" -v "./backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json:/app/openapi.json" mcr.microsoft.com/openapi/kiota:{% endraw %}{{ kiota_cli_version }}{% raw %} generate -l python -c BackendClient -n client -d openapi.json --exclude-backward-compatible --clean-output --additional-data false
-      - uv --directory=backend run python scripts/kiota_nullable_fixer.py "./tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json" "./tests/e2e/generated/open_api/backend"
+      - rm -rf '{{.CLIENT_DIR}}' && mkdir -p '{{.CLIENT_DIR}}'
+      - docker run --rm --user $(id -u):$(id -g) -e KIOTA_OFFLINE_ENABLED=true -e KIOTA_CLI_TELEMETRY_OPTOUT=true -v "./{{.CLIENT_DIR}}:/app/output" -v "./{{.OPENAPI_SNAPSHOT}}:/app/openapi.json" mcr.microsoft.com/openapi/kiota:{% endraw %}{{ kiota_cli_version }}{% raw %} generate -l python -c BackendClient -n client -d openapi.json --exclude-backward-compatible --clean-output --additional-data false
+      - uv --directory=backend run python scripts/kiota_nullable_fixer.py "../{{.OPENAPI_SNAPSHOT}}" "../{{.CLIENT_DIR}}"
+      - echo '{{.INPUTS_HASH}}' > '{{.CLIENT_DIR}}/{{.INPUTS_STAMP_FILE}}'
 
   gen-frontend-openapi-client:
-    desc: Regenerate the TypeScript Kiota client that the frontend imports
-    deps: [gen-openapi-snapshot]
+    desc: Generate the TypeScript Kiota client that the frontend imports, unless it is already up to date
+    run: once
+    vars:
+      CLIENT_DIR: frontend/app/generated/open-api/backend
+      INPUTS_HASH:
+        sh: cat '{{.OPENAPI_SNAPSHOT}}' frontend/kiota_nullable_fixer.py '{{.TASKFILE}}' | sha256sum | cut -d' ' -f1
+    status:
+      - test "$(cat '{{.CLIENT_DIR}}/{{.INPUTS_STAMP_FILE}}' 2>/dev/null)" = '{{.INPUTS_HASH}}'
     cmds:
-      - pnpm --dir=frontend openapi-codegen{% endraw %}{% endif %}{% if has_backend and backend_uses_graphql %}{% raw %}
+      - rm -rf '{{.CLIENT_DIR}}' && mkdir -p '{{.CLIENT_DIR}}'
+      - docker run --rm --user $(id -u):$(id -g) -e KIOTA_OFFLINE_ENABLED=true -e KIOTA_CLI_TELEMETRY_OPTOUT=true -v "./{{.CLIENT_DIR}}:/app/output" -v "./{{.OPENAPI_SNAPSHOT}}:/app/openapi.json" mcr.microsoft.com/openapi/kiota:{% endraw %}{{ kiota_cli_version }}{% raw %} generate -l typescript -c BackendClient -n client -d openapi.json --exclude-backward-compatible --clean-output --additional-data false
+      - python3 frontend/kiota_nullable_fixer.py
+      - echo '{{.INPUTS_HASH}}' > '{{.CLIENT_DIR}}/{{.INPUTS_STAMP_FILE}}'{% endraw %}{% endif %}{% if has_backend and backend_uses_graphql %}{% raw %}
   gen-backend-graphql-client:
     desc: Regenerate the GraphQL client that the backend E2E tests import
     cmds:
