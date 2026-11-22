@@ -1,6 +1,6 @@
 {% raw %}minimum_pre_commit_version: 4.5.1
 # run `pre-commit autoupdate --freeze` to update all hooks
-default_install_hook_types: [pre-commit, post-checkout]
+default_install_hook_types: [pre-commit, post-checkout, post-merge, post-rewrite]
 repos:
   # package management{% endraw %}{% if has_backend %}{% raw %}
   - repo: local
@@ -25,13 +25,24 @@ repos:
       verbose: true
 
     - id: sync-dependencies-post-checkout-backend
-      name: ensure backend python dependencies are up to date during checkouts
-      stages: [post-checkout]
+      name: ensure backend python dependencies are up to date after checkouts, merges and rebases
+      stages: [post-checkout, post-merge, post-rewrite]
       entry: bash -c 'uv sync --frozen --directory=./backend'
       pass_filenames: false
       language: system
       always_run: true
-      verbose: true{% endraw %}{% endif %}{% raw %}
+      verbose: true
+
+  # code generation (before the linters and type checkers, which read the generated clients)
+  - repo: local
+    hooks:
+    - id: generate-openapi-clients
+      name: bring the generated OpenAPI clients up to date with the committed snapshot
+      entry: task gen-openapi-clients
+      stages: [pre-commit, post-checkout, post-merge, post-rewrite]
+      pass_filenames: false
+      language: system
+      always_run: true{% endraw %}{% endif %}{% raw %}
 
   # Reformatting (should generally come before any file format or other checks, because reformatting can change things)
   - repo: https://github.com/crate-ci/typos
