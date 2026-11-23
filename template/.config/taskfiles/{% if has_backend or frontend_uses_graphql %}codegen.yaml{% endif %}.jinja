@@ -55,8 +55,7 @@ tasks:
     status:
       - test "$(cat '{{.CLIENT_DIR}}/{{.INPUTS_STAMP_FILE}}' 2>/dev/null)" = '{{.INPUTS_HASH}}'
     cmds:
-      - rm -rf '{{.CLIENT_DIR}}' && mkdir -p '{{.CLIENT_DIR}}'{% endraw %}{% if not deploy_as_executable %}{% raw %}
-      # frontend/Dockerfile generates the image's copy with the same Kiota flags: change both together{% endraw %}{% endif %}{% raw %}
+      - rm -rf '{{.CLIENT_DIR}}' && mkdir -p '{{.CLIENT_DIR}}'
       - docker run --rm --user $(id -u):$(id -g) -e KIOTA_OFFLINE_ENABLED=true -e KIOTA_CLI_TELEMETRY_OPTOUT=true -v "./{{.CLIENT_DIR}}:/app/output" -v "./{{.OPENAPI_SNAPSHOT}}:/app/openapi.json" mcr.microsoft.com/openapi/kiota:{% endraw %}{{ kiota_cli_version }}{% raw %} generate -l typescript -c BackendClient -n client -d openapi.json --exclude-backward-compatible --clean-output --additional-data false
       - python3 frontend/kiota_nullable_fixer.py
       - echo '{{.INPUTS_HASH}}' > '{{.CLIENT_DIR}}/{{.INPUTS_STAMP_FILE}}'{% endraw %}{% endif %}{% if has_backend and backend_uses_graphql %}{% raw %}

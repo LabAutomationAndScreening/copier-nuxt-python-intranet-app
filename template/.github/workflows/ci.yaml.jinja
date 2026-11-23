@@ -262,7 +262,7 @@ jobs:
     needs:
       - lint
       - unit-test-frontend{% endraw %}{% if has_backend %}{% raw %}
-      - unit-test-backend{% endraw %}{% endif %}{% if has_backend and deploy_as_executable %}{% raw %}
+      - unit-test-backend
       - generate-api-clients{% endraw %}{% endif %}{% raw %}
       - check-skip-duplicate
       - changes
@@ -273,9 +273,11 @@ jobs:
       id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
     with:
       context: ./frontend
-      build-contexts: repo-root=.
-      # the image generates its API client from the snapshot, which is outside the context, so the image tag must hash it
-      additional-hash-paths: pnpm-workspace.yaml pnpm-lock.yaml{% endraw %}{% if has_backend %}{% raw %} backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json{% endraw %}{% endif %}{% raw %}
+      build-contexts: repo-root=.{% endraw %}{% if has_backend %}{% raw %}
+      # the backend's API client is not committed: the image is built with the copy generate-api-clients made, and
+      # its tag hashes that copy, so the tag changes exactly when the client does
+      download-artifact-name: generated-api-clients{% endraw %}{% endif %}{% raw %}
+      additional-hash-paths: pnpm-workspace.yaml pnpm-lock.yaml{% endraw %}{% if has_backend %}{% raw %} frontend/app/generated/open-api/backend{% endraw %}{% endif %}{% raw %}
       save-as-artifact: true
       tag-for-production: ${{ github.ref == 'refs/heads/main' }}
       repository: {% endraw %}{{ frontend_ecr_base_url }}{% raw %}

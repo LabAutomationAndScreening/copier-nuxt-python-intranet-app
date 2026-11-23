@@ -1,20 +1,4 @@
-{% if has_backend %}{% raw %}# ------------ Stage 0: Backend API client ------------
-# The client is not committed, so the image generates it from the committed OpenAPI snapshot. Same Kiota version and
-# flags as gen-frontend-openapi-client in .config/taskfiles/codegen.yaml: change both together.
-FROM mcr.microsoft.com/openapi/kiota:{% endraw %}{{ kiota_cli_version }}{% raw %} AS api-client
-
-ENV KIOTA_OFFLINE_ENABLED=true \
-    KIOTA_CLI_TELEMETRY_OPTOUT=true
-
-# repo-root is a named --build-context, not a FROM alias, so DL3022 doesn't apply here
-# hadolint ignore=DL3022
-COPY --from=repo-root backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json /app/openapi.json
-
-# The image has no shell, so RUN takes the exec form, and its entrypoint runs kiota.dll from /app, so the working
-# directory stays /app.
-RUN ["dotnet", "kiota.dll", "generate", "-l", "typescript", "-c", "BackendClient", "-n", "client", "-d", "openapi.json", "--exclude-backward-compatible", "--clean-output", "--additional-data", "false", "-o", "generated"]
-
-{% endraw %}{% endif %}{% raw %}# ------------ Stage 1: Build ------------
+{% raw %}# ------------ Stage 1: Build ------------
 FROM node:{% endraw %}{{ node_version }}{% raw %}-{% endraw %}{{ debian_release_name }}{% raw %} AS builder
 
 # docker build --build-context repo-root=.. -t my-nuxt-app .
@@ -40,13 +24,7 @@ COPY scripts/postinstall.mjs ./frontend/scripts/postinstall.mjs
 RUN pnpm ci
 
 COPY . ./frontend/
-{% endraw %}{% if has_backend %}{% raw %}
-COPY --from=api-client /app/generated ./frontend/app/generated/open-api/backend
-# the fixer reads the snapshot from where it sits in the repo, relative to the fixer itself
-# hadolint ignore=DL3022
-COPY --from=repo-root backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json ./backend/tests/unit/__snapshots__/test_basic_server_functionality/test_openapi_schema.json
-RUN python3 frontend/kiota_nullable_fixer.py
-{% endraw %}{% endif %}{% raw %}
+
 # build the Nuxt app (generates .output folder in Nuxt 4)
 RUN pnpm list && pnpm --filter ./frontend generate
 

@@ -77,7 +77,7 @@ The Kiota clients of the backend (`frontend/app/generated/open-api/backend/` and
 
 - `task gen-openapi-clients` brings them up to date, and does nothing when they already are. Git hooks run it before each commit and after checkouts, merges and rebases, and a new devcontainer runs it once when it is created. Creating a git worktree fires no hook, so run it yourself in a new worktree.
 - After changing the API, `task gen-openapi-snapshot` refreshes the snapshot and then the clients. Updating the snapshot with a bare `pytest --snapshot-update` leaves the clients stale until the next hook or task run.
-- CI generates the clients in one job and hands them to the jobs that need them{% endraw %}{% if not deploy_as_executable %}{% raw %}, and the frontend image generates its own copy while it builds{% endraw %}{% endif %}{% raw %}.
+- CI generates the clients in one job and hands them to every job that needs them, the frontend build included.{% endraw %}{% if not deploy_as_executable %}{% raw %} A local `docker compose build` takes the frontend client from your working tree, so generate it first.{% endraw %}{% endif %}{% raw %}
 
 Clients of other services, generated from something other than a committed file, are still committed.{% endraw %}{% endif %}{% endif %}{% raw %}
 
