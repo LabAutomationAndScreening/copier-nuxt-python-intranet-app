@@ -6,6 +6,10 @@ vars:
   # inputs. Task's own sources/generates checksum is not used because Task stores the new checksum before the commands
   # run, so a killed run would look fresh, and `task --list-all --json` stores it without running the task at all.
   # The task's first command deletes the client folder, so a missing folder or a failed run always regenerates.
+  # Known limit: two runs generating the same client at the same moment can leave a partial client under a valid
+  # stamp, since one run's stamp can land in the folder the other recreated. TODO if that ever happens in practice:
+  # hold one `flock` per client folder across the stamp check and the generation, which means moving both out of
+  # Task's status: into a script.
   INPUTS_STAMP_FILE: .inputs-sha256
 {% endraw %}{% endif %}{% raw %}
 tasks:
