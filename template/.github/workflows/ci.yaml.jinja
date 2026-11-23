@@ -124,13 +124,49 @@ jobs:
       python-version: {% endraw %}{{ python_version }}{% raw %}
       setup-node: true
       node-version: {% endraw %}{{ node_version }}{% raw %}
+{% endraw %}{% if has_backend %}{% raw %}
+  generate-api-clients:
+    # The clients are not committed, so this generates them once from the committed snapshot and every job that imports
+    # one downloads this artifact. Lint doesn't: its pre-commit run generates its own copy through the generate hook.
+    name: Generate API Clients
+    timeout-minutes: {% endraw %}{{ gha_short_timeout_minutes }}{% raw %}
+    runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
+    needs:
+      - check-skip-duplicate
+    if: needs.check-skip-duplicate.outputs.should-run == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
 
+      - name: Install latest versions of python packages
+        uses: ./.github/actions/install_deps
+        with:
+          python-version: {% endraw %}{{ python_version }}{% raw %}
+          skip-installing-ssm-plugin-manager: true
+
+      - name: Generate the clients
+        run: task gen-openapi-clients
+
+      - name: Upload the clients
+        uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
+        with:
+          name: generated-api-clients
+          path: |
+            frontend/app/generated/open-api/backend
+            backend/tests/e2e/generated/open_api/backend
+          if-no-files-found: error
+          include-hidden-files: true # the inputs stamp, so the generate task is a no-op wherever the clients are downloaded
+          retention-days: 5
+
+      - uses: ./.github/actions/confirm-git-tree-clean
+{% endraw %}{% endif %}{% raw %}
   unit-test-frontend:
     name: Unit Test Frontend${{ fromJSON(needs.changes.outputs.classes).frontend != true && ' (skipped, no frontend changes)' || '' }}
     timeout-minutes: {% endraw %}{{ gha_medium_timeout_minutes }}{% raw %}
     runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
     needs:
-      - lint
+      - lint{% endraw %}{% if has_backend %}{% raw %}
+      - generate-api-clients{% endraw %}{% endif %}{% raw %}
       - check-skip-duplicate
       - changes
     if: needs.check-skip-duplicate.outputs.should-run == 'true'
@@ -147,7 +183,14 @@ jobs:
         with:
           node-version: {% endraw %}{{ node_version }}{% raw %}
           skip-installing-ssm-plugin-manager: true
-
+{% endraw %}{% if has_backend %}{% raw %}
+      - name: Download the generated API clients
+        if: env.RUN_JOB == 'true'
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: generated-api-clients
+          path: .
+{% endraw %}{% endif %}{% raw %}
       - name: Unit test
         if: env.RUN_JOB == 'true'
         run: pnpm --dir=frontend test-unit
@@ -219,7 +262,8 @@ jobs:
     needs:
       - lint
       - unit-test-frontend{% endraw %}{% if has_backend %}{% raw %}
-      - unit-test-backend{% endraw %}{% endif %}{% raw %}
+      - unit-test-backend
+      - generate-api-clients{% endraw %}{% endif %}{% raw %}
       - check-skip-duplicate
       - changes
 {% endraw %}{% if not deploy_as_executable %}{% raw %}    if: needs.check-skip-duplicate.outputs.should-run == 'true' && fromJSON(needs.changes.outputs.classes).code
@@ -229,8 +273,11 @@ jobs:
       id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
     with:
       context: ./frontend
-      build-contexts: repo-root=.
-      additional-hash-paths: pnpm-workspace.yaml pnpm-lock.yaml
+      build-contexts: repo-root=.{% endraw %}{% if has_backend %}{% raw %}
+      # the backend's API client is not committed: the image is built with the copy generate-api-clients made, and
+      # its tag hashes that copy, so the tag changes exactly when the client does
+      download-artifact-name: generated-api-clients{% endraw %}{% endif %}{% raw %}
+      additional-hash-paths: pnpm-workspace.yaml pnpm-lock.yaml{% endraw %}{% if has_backend %}{% raw %} frontend/app/generated/open-api/backend{% endraw %}{% endif %}{% raw %}
       save-as-artifact: true
       tag-for-production: ${{ github.ref == 'refs/heads/main' }}
       repository: {% endraw %}{{ frontend_ecr_base_url }}{% raw %}
@@ -253,7 +300,14 @@ jobs:
         with:
           node-version: {% endraw %}{{ node_version }}{% raw %}
           skip-installing-ssm-plugin-manager: true
-
+{% endraw %}{% if has_backend %}{% raw %}
+      - name: Download the generated API clients
+        if: env.RUN_JOB == 'true'
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: generated-api-clients
+          path: .
+{% endraw %}{% endif %}{% raw %}
       - name: Build frontend
         if: env.RUN_JOB == 'true'
         run: task build-frontend
@@ -371,7 +425,8 @@ jobs:
       RUN_JOB: ${{ fromJSON(needs.changes.outputs.classes).frontend }}
       INSTALL_PLAYWRIGHT_BROWSERS: "1" # createPage() drives a real browser
     needs:
-      - unit-test-frontend
+      - unit-test-frontend{% endraw %}{% if has_backend %}{% raw %}
+      - generate-api-clients{% endraw %}{% endif %}{% raw %}
       - check-skip-duplicate
       - changes
     if: needs.check-skip-duplicate.outputs.should-run == 'true'
@@ -386,7 +441,14 @@ jobs:
         with:
           node-version: {% endraw %}{{ node_version }}{% raw %}
           skip-installing-ssm-plugin-manager: true
-
+{% endraw %}{% if has_backend %}{% raw %}
+      - name: Download the generated API clients
+        if: env.RUN_JOB == 'true'
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: generated-api-clients
+          path: .
+{% endraw %}{% endif %}{% raw %}
       - name: Test
         if: env.RUN_JOB == 'true'
         run: pnpm --dir=frontend test-compiled-dev
@@ -551,6 +613,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     needs:
       - build-backend
+      - generate-api-clients
       - check-skip-duplicate
       - changes
     if: needs.check-skip-duplicate.outputs.should-run == 'true'
@@ -567,6 +630,13 @@ jobs:
         with:
           python-version: {% endraw %}{{ python_version }}{% raw %}
           skip-installing-ssm-plugin-manager: true
+
+      - name: Download the generated API clients
+        if: env.RUN_JOB == 'true'
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: generated-api-clients
+          path: .
 
       - name: Download Backend Artifact
         if: env.RUN_JOB == 'true'
@@ -694,7 +764,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     needs:
       - build-frontend{% endraw %}{% if has_backend %}{% raw %}
-      - build-backend{% endraw %}{% endif %}{% raw %}
+      - build-backend
+      - generate-api-clients{% endraw %}{% endif %}{% raw %}
       - check-skip-duplicate
       - changes
     if: needs.check-skip-duplicate.outputs.should-run == 'true'
@@ -713,7 +784,14 @@ jobs:
         if: env.RUN_JOB == 'true'
         uses: ./.github/actions/install_deps
         with:
-          node-version: {% endraw %}{{ node_version }}{% raw %}{% endraw %}{% if not deploy_as_executable %}{% raw %}
+          node-version: {% endraw %}{{ node_version }}{% raw %}{% endraw %}{% if has_backend %}{% raw %}
+
+      - name: Download the generated API clients
+        if: env.RUN_JOB == 'true'
+        uses: actions/download-artifact@{% endraw %}{{ gha_download_artifact }}{% raw %}
+        with:
+          name: generated-api-clients
+          path: .{% endraw %}{% endif %}{% raw %}{% endraw %}{% if not deploy_as_executable %}{% raw %}
 {% endraw %}{% if has_backend %}{% raw %}
       - name: Download Backend Artifact
         if: env.RUN_JOB == 'true'
@@ -889,6 +967,7 @@ jobs:
       - lint
       - unit-test-frontend
       - build-frontend{% endraw %}{% if has_backend %}{% raw %}
+      - generate-api-clients
       - unit-test-backend
       - build-backend{% endraw %}{% endif %}{% raw %}{% endraw %}{% if create_docker_image_tar_artifact %}{% raw %}
       - package-images{% endraw %}{% endif %}{% raw %}

@@ -111,6 +111,7 @@
     "{% endraw %}{{ backend_deployed_port_number }}{% raw %}": { "label": "Backend (deployed)" }{% endraw %}{% endif %}{% raw %}
   },
   "initializeCommand": "sh .devcontainer/initialize-command.sh",
-  "onCreateCommand": "sh .devcontainer/on-create-command.sh",
+  "onCreateCommand": "sh .devcontainer/on-create-command.sh",{% endraw %}{% if has_backend %}{% raw %}
+  "postCreateCommand": "task gen-openapi-clients",{% endraw %}{% endif %}{% raw %}
   "postStartCommand": "sh .devcontainer/post-start-command.sh"
 }{% endraw %}
