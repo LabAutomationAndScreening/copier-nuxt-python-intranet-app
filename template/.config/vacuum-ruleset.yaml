@@ -286,7 +286,8 @@ rules:
   # definition MUST be the same for the request and response body"), widened to the whole API: a property name has
   # one definition (type, format, `$ref` target, item type, enum) in every component schema, nullability and
   # required-ness aside. Uses consistentPropertyTypes.js. Left out are schemas whose field names we don't choose:
-  # FastAPI's generated validation-error models, and ProblemDetails, whose `status` and `detail` RFC 9457 names.
+  # FastAPI's generated validation-error models, and ProblemDetails and its subclass ValidationProblemDetails, whose
+  # `status` and `detail` RFC 9457 names.
   consistent-property-types:
     description: A property name must have the same type in every schema.
     given: $.components.schemas
@@ -299,6 +300,7 @@ rules:
           - HTTPValidationError
           - ValidationError
           - ProblemDetails
+          - ValidationProblemDetails
 
   # ENABLED (Zalando 110, "MUST always return JSON objects as top-level data structures",
   # https://opensource.zalando.com/restful-api-guidelines/#110): no response body may be a bare JSON array,

@@ -10,7 +10,8 @@
 // Run on `$.components.schemas` unresolved, so a `$ref` compares by the component it names. Each conflicting
 // property is reported at its own path, so a deliberate clash can be exempted in .config/vacuum-ignore.yaml.
 // functionOptions.ignoreSchemas lists schemas whose field names this project doesn't choose: FastAPI's generated
-// validation errors, and ProblemDetails, whose `status` (the HTTP status code) and `detail` are named by RFC 9457.
+// validation errors, and ProblemDetails and its subclass ValidationProblemDetails, whose `status` (the HTTP status
+// code) and `detail` are named by RFC 9457.
 
 function getSchema() {
   return {
