@@ -62,6 +62,8 @@ function walk(node, location, type, results) {
       results.push({ message: where + " allows null as well as " + type });
     }
   }
+  // Known gap, accepted: every member is walked, `examples` included, so example data that is itself an object with a
+  // `type` key such as ["boolean", "null"] would be read as a schema. Nothing FastAPI generates has such an example.
   for (var key in node) {
     walk(node[key], location + "." + key, type, results);
   }
