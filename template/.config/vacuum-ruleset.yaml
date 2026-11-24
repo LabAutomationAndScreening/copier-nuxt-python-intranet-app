@@ -144,13 +144,36 @@ rules:
   # every documented error response (each 4xx and 5xx, and the `default` catch-all) is application/problem+json,
   # the media type the exception handlers send, so a client generated from the schema reads errors as the
   # ProblemDetails they are. Narrower than response-media-type-json above, which also lets an error be plain JSON.
-  # Uses .config/vacuum-functions/errorResponsesProblemJson.js.
-  error-responses-problem-json:
-    description: Error responses must be application/problem+json.
-    given: $.paths[*][*].responses
+  # Two rules, one per half: every media type an error response documents is application/problem+json, and
+  # application/problem+json is among them (an error response with no content fails too, since a client generated
+  # from the schema would then miss the problem details it is sent).
+  # vacuum rejects regex filters, so `@property >= '400'` picks the error responses by string comparison: every
+  # 4xx/5xx code, `4XX`/`5XX`, and `default` sort at or above '400', while 1xx-3xx codes and wildcards sort below.
+  # An `x-` extension key under `responses` would also sort above it; FastAPI writes none.
+  error-response-media-types-problem-json:
+    description: Error responses must be application/problem+json, not any other media type.
+    given: "$.paths[*][*].responses[?(@property >= '400')].content"
     severity: error
     then:
-      function: errorResponsesProblemJson
+      field: "@key"
+      function: pattern
+      functionOptions:
+        match: "^application/problem\\+json$"
+
+  error-responses-document-problem-json:
+    description: Error responses must document application/problem+json content.
+    given: "$.paths[*][*].responses[?(@property >= '400')]"
+    severity: error
+    then:
+      function: schema
+      functionOptions:
+        schema:
+          type: object
+          required: [content]
+          properties:
+            content:
+              type: object
+              required: [application/problem+json]
 
   # ENABLED (gov.au API Request): request bodies must be application/json. Fires zero violations against
   # the current snapshot.

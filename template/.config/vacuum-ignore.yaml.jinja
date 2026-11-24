@@ -34,5 +34,5 @@ response-body-example:
 
 # Strawberry's router answers GET /api/graphql itself with a plain-text 404 when GraphiQL or queries via GET are off,
 # without going through the app's exception handlers, so that error response can't be application/problem+json.
-error-responses-problem-json:
-  - "$.paths['/api/graphql'].get.responses"{% endraw %}{% endif %}
+error-responses-document-problem-json:
+  - "$.paths['/api/graphql'].get.responses['404']"{% endraw %}{% endif %}
