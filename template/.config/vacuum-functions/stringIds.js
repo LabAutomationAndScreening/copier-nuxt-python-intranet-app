@@ -41,17 +41,39 @@ function nonNullTypes(schema) {
   return kept;
 }
 
-function nonNullBranch(schema) {
-  var branches = schema && (schema.anyOf || schema.oneOf);
+// One array of strings, none of which can be null; a `type` list such as ["array", "null"] still counts as an array.
+function isStringArray(schema) {
+  var types = nonNullTypes(schema);
+  if (types.length !== 1) {
+    return false;
+  }
+  if (types[0] !== "array") {
+    return false;
+  }
+  return isOnlyString(schema.items) && !admitsNull(schema.items);
+}
+
+// Every non-null alternative is an array of non-null strings (Pydantic writes `list[UUID] | list[str]` as two), and
+// there is one; a schema with no anyOf/oneOf must be such an array itself.
+function isIdArray(schema) {
+  if (!schema || typeof schema !== "object") {
+    return false;
+  }
+  var branches = schema.anyOf || schema.oneOf;
   if (!Array.isArray(branches)) {
-    return schema;
+    return isStringArray(schema);
   }
+  var arrays = 0;
   for (var i = 0; i < branches.length; i++) {
-    if (branches[i] && branches[i].type !== "null") {
-      return branches[i];
+    if (!branches[i] || branches[i].type === "null") {
+      continue;
     }
+    if (!isStringArray(branches[i])) {
+      return false;
+    }
+    arrays++;
   }
-  return schema;
+  return arrays > 0;
 }
 
 // Whether a schema accepts null, by its own type or by any anyOf/oneOf branch (how Pydantic writes `str | None`).
@@ -96,9 +118,7 @@ function problem(kind, name, schema) {
     return kind + " '" + name + '\' is an identifier, so it must be a string (an integer key can be sent as "42")';
   }
   if (/^ids$|Ids$|_ids$/.test(name)) {
-    var types = nonNullTypes(schema);
-    var array = nonNullBranch(schema);
-    if (types.length === 1 && types[0] === "array" && isOnlyString(array.items) && !admitsNull(array.items)) {
+    if (isIdArray(schema)) {
       return null;
     }
     return kind + " '" + name + "' holds identifiers, so it must be an array of strings, none of them null";
