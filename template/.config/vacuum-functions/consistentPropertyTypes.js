@@ -132,6 +132,10 @@ function definition(schema) {
   if (typeof schema.format === "string") {
     text += " (" + schema.format + ")";
   }
+  // `const` is left out on purpose: Pydantic writes a one-value Literal as `const`, which is how a discriminated
+  // union's tag looks (`type: Literal["cat"]` in one variant, `Literal["dog"]` in the next), and those differ by design.
+  // Enum values compare in their order on purpose: the same field listing its values in two orders comes from two
+  // hand-written copies rather than one shared type (a Literal alias or an Enum class), which this rule is here to catch.
   if (enumValues !== null) {
     text += " enum " + JSON.stringify(enumValues);
   }
