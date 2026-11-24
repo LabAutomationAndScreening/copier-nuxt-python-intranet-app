@@ -10,6 +10,8 @@
 // or time can't be a bare string or an epoch number. `…At` and `…Timestamp` names are refused outright, since
 // they are the other common convention for instants and would otherwise pass as unsuffixed names. Booleans are
 // skipped: a flag can't hold a date, so a name like `alreadyUpToDate` is an idiom, not a misnamed date.
+// Path parameters are snake_case (path-param-snake-case, since FastAPI maps each to a Python argument), so for
+// them the suffixes are `_date_time`, `_date` and `_time`, and `_at`/`_timestamp` are refused.
 //
 // The input is either one (resolved) model schema from `$.components.schemas[*]`, whose own properties are
 // checked (a referenced model is checked as its own component), or one operation parameter. A nullable value's
@@ -48,20 +50,36 @@ function isBooleanSchema(schema) {
   return Array.isArray(schema.type) && schema.type.indexOf("boolean") !== -1;
 }
 
-function suffixFormat(name) {
-  if (/DateTime$/.test(name) || name === "dateTime") {
-    return "date-time";
-  }
-  if (/Date$/.test(name) || name === "date") {
-    return "date";
-  }
-  if (/Time$/.test(name) || name === "time") {
-    return "time";
+// Each style lists its suffixes longest first, so `_date_time` is matched before `_time`.
+var CAMEL = {
+  suffixes: [
+    { pattern: /DateTime$/, bare: "dateTime", format: "date-time" },
+    { pattern: /Date$/, bare: "date", format: "date" },
+    { pattern: /Time$/, bare: "time", format: "time" },
+  ],
+  suffixForFormat: { "date-time": "DateTime", date: "Date", time: "Time" },
+  instantName: /[a-z0-9](At|Timestamp)$/,
+  instantStyle: "…At/…Timestamp",
+};
+var SNAKE = {
+  suffixes: [
+    { pattern: /_date_time$/, bare: "date_time", format: "date-time" },
+    { pattern: /_date$/, bare: "date", format: "date" },
+    { pattern: /_time$/, bare: "time", format: "time" },
+  ],
+  suffixForFormat: { "date-time": "_date_time", date: "_date", time: "_time" },
+  instantName: /[a-z0-9]_(at|timestamp)$/,
+  instantStyle: "…_at/…_timestamp",
+};
+
+function suffixFormat(name, style) {
+  for (var i = 0; i < style.suffixes.length; i++) {
+    if (style.suffixes[i].pattern.test(name) || name === style.suffixes[i].bare) {
+      return style.suffixes[i].format;
+    }
   }
   return null;
 }
-
-var SUFFIX_FOR_FORMAT = { "date-time": "DateTime", date: "Date", time: "Time" };
 
 function describeFormat(format) {
   if (format === null) {
@@ -70,14 +88,23 @@ function describeFormat(format) {
   return "its format is " + format;
 }
 
-function problem(kind, name, format, isBoolean) {
+function problem(kind, name, format, isBoolean, style) {
   if (isBoolean) {
     return null;
   }
-  var expectedFormat = suffixFormat(name);
-  var expectedSuffix = SUFFIX_FOR_FORMAT[format];
-  if (/[a-z0-9](At|Timestamp)$/.test(name) || name === "timestamp") {
-    return kind + " '" + name + "' is named as an instant in the …At/…Timestamp style; end it in DateTime instead";
+  var expectedFormat = suffixFormat(name, style);
+  var expectedSuffix = style.suffixForFormat[format];
+  if (style.instantName.test(name) || name === "timestamp") {
+    return (
+      kind +
+      " '" +
+      name +
+      "' is named as an instant in the " +
+      style.instantStyle +
+      " style; end it in " +
+      style.suffixForFormat["date-time"] +
+      " instead"
+    );
   }
   if (expectedFormat !== null) {
     if (expectedFormat === format) {
@@ -102,6 +129,7 @@ function runRule(input) {
       input.name,
       schemaFormat(input.schema),
       isBooleanSchema(input.schema),
+      input.in === "path" ? SNAKE : CAMEL,
     );
     if (parameterProblem !== null) {
       results.push({ message: parameterProblem });
@@ -113,7 +141,13 @@ function runRule(input) {
     return results;
   }
   for (var name in properties) {
-    var propertyProblem = problem("property", name, schemaFormat(properties[name]), isBooleanSchema(properties[name]));
+    var propertyProblem = problem(
+      "property",
+      name,
+      schemaFormat(properties[name]),
+      isBooleanSchema(properties[name]),
+      CAMEL,
+    );
     if (propertyProblem !== null) {
       results.push({ message: propertyProblem });
     }
