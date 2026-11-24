@@ -42,6 +42,9 @@ function admitsTypeAndNull(node, type) {
 
 // A nested node with both `title` and `properties` is a model referenced from this one, already resolved in
 // place; it is checked as its own component, so walking it here would report its fields a second time.
+// Known gap, accepted: an inline object schema that has a title but is no component would be skipped too. FastAPI
+// never writes one: Pydantic always emits a nested model as a `$ref` to its own component, so every titled object
+// found here is a resolved reference.
 function isNestedModel(node, location) {
   return location !== "" && typeof node.title === "string" && node.properties && typeof node.properties === "object";
 }
