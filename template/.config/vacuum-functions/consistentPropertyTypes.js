@@ -100,7 +100,8 @@ function runRule(input) {
   var options = context.ruleAction.functionOptions || {};
   var ignored = Array.isArray(options.ignoreSchemas) ? options.ignoreSchemas : [];
   var ignoredProperties = Array.isArray(options.ignoreProperties) ? options.ignoreProperties : [];
-  var uses = {};
+  // Prototype-free maps, so a property named `constructor` or `toString` isn't mistaken for an existing entry.
+  var uses = Object.create(null);
   for (var schemaName in input) {
     if (ignored.indexOf(schemaName) !== -1) {
       continue;
@@ -121,7 +122,7 @@ function runRule(input) {
   }
   var results = [];
   for (var name in uses) {
-    var byDefinition = {};
+    var byDefinition = Object.create(null);
     var definitionCount = 0;
     for (var i = 0; i < uses[name].length; i++) {
       var use = uses[name][i];
