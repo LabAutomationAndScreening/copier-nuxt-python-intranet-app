@@ -8,6 +8,8 @@
 //
 // Run on `$.components.schemas`, one property per finding at its own path, so a deliberate exception can be exempted
 // in .config/vacuum-ignore.yaml. Arrays are plain `type: array`: no-nullable-array already refuses nullable ones.
+// Known gap, accepted: the one-element type list `type: ["array"]`, which JSON Schema also allows, isn't recognized.
+// FastAPI never writes it (Pydantic writes a list as `type: "array"`), so no array property escapes the check.
 // functionOptions.ignoreSchemas lists schemas whose field names this project doesn't choose.
 
 function getSchema() {
