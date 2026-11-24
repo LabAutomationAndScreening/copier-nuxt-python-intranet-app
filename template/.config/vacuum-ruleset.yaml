@@ -368,6 +368,9 @@ rules:
     given: $..[?search(@.description, '^Extensible enum[.]')]
     severity: error
     then:
+      # truthy first: pattern skips a field that is absent, so without it a schema with no `type` would pass.
+      - field: type
+        function: truthy
       - field: type
         function: pattern
         functionOptions:
