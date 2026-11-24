@@ -84,6 +84,9 @@ function definition(schema) {
   if (typeof schema.format === "string") {
     text += " (" + schema.format + ")";
   }
+  // Known gap, accepted: an enum that lists null itself (`enum: ["READY", null]`) compares unequal to the same enum
+  // without it, though nullability is meant to be left out. Pydantic never writes that: `Literal[...] | None` and
+  // `MyEnum | None` put null in a separate `{type: null}` branch, which nonNullBranches drops.
   if (Array.isArray(schema.enum)) {
     text += " enum " + JSON.stringify(schema.enum);
   }
