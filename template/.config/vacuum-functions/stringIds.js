@@ -74,9 +74,18 @@ function admitsNull(schema) {
   return false;
 }
 
+// Every non-null alternative is a string (Pydantic writes `UUID | str` as two string branches), and there is one.
 function isOnlyString(schema) {
   var types = nonNullTypes(schema);
-  return types.length === 1 && types[0] === "string";
+  if (types.length === 0) {
+    return false;
+  }
+  for (var i = 0; i < types.length; i++) {
+    if (types[i] !== "string") {
+      return false;
+    }
+  }
+  return true;
 }
 
 function problem(kind, name, schema) {
