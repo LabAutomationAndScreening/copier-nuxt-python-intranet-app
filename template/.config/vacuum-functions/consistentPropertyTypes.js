@@ -11,12 +11,17 @@
 // property is reported at its own path, so a deliberate clash can be exempted in .config/vacuum-ignore.yaml.
 // functionOptions.ignoreSchemas lists schemas whose field names this project doesn't choose: FastAPI's generated
 // validation errors, and ProblemDetails and its subclass ValidationProblemDetails, whose `status` (the HTTP status
-// code) and `detail` are named by RFC 9457.
+// code) and `detail` are named by RFC 9457. functionOptions.ignoreProperties lists property names left out in every
+// schema: `data`, the envelope collection-in-data puts every collection's items in, holds a different item type in
+// each collection by design.
 
 function getSchema() {
   return {
     name: "consistentPropertyTypes",
-    properties: [{ name: "ignoreSchemas", description: "component schema names to leave out" }],
+    properties: [
+      { name: "ignoreSchemas", description: "component schema names to leave out" },
+      { name: "ignoreProperties", description: "property names to leave out, in every schema" },
+    ],
   };
 }
 
@@ -94,6 +99,7 @@ function runRule(input) {
   }
   var options = context.ruleAction.functionOptions || {};
   var ignored = Array.isArray(options.ignoreSchemas) ? options.ignoreSchemas : [];
+  var ignoredProperties = Array.isArray(options.ignoreProperties) ? options.ignoreProperties : [];
   var uses = {};
   for (var schemaName in input) {
     if (ignored.indexOf(schemaName) !== -1) {
@@ -104,6 +110,9 @@ function runRule(input) {
       continue;
     }
     for (var propertyName in properties) {
+      if (ignoredProperties.indexOf(propertyName) !== -1) {
+        continue;
+      }
       if (!uses[propertyName]) {
         uses[propertyName] = [];
       }
