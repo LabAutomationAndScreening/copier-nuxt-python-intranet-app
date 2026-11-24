@@ -26,6 +26,9 @@ function isUnconstrained(property) {
   return true;
 }
 
+// Known gap, accepted: an outer `type` that excludes null beside a nullable anyOf/oneOf (`type: string` with
+// anyOf [string, null]) still counts as nullable here, though the outer type rejects null. Pydantic never writes
+// both: it puts `type` either on the schema or in each branch.
 function admitsNull(property) {
   if (property.type === "null" || isUnconstrained(property)) {
     return true;
