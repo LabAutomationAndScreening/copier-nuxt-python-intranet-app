@@ -6,9 +6,10 @@
 // fine sent as "42". It also keeps an int64 key out of a JavaScript number, which loses precision above 2^53.
 //
 // A name `id`, ending in `Id` or (a path parameter, which is snake_case) in `_id` must be a string; `ids`, `…Ids`
-// or `…_ids` must be an array of strings. The input is either one (resolved) model schema from
-// `$.components.schemas[*]`, whose own properties are checked, or one operation parameter. A nullable value's type
-// is a `type` list or an anyOf/oneOf branch (how Pydantic emits `str | None`), so both shapes are read.
+// or `…_ids` must be an array of strings, none of which can be null (the array itself may be nullable). The input is
+// either one (resolved) model schema from `$.components.schemas[*]`, whose own properties are checked, or one
+// operation parameter. A nullable value's type is a `type` list or an anyOf/oneOf branch (how Pydantic emits
+// `str | None`), so both shapes are read.
 
 function getSchema() {
   return { name: "stringIds" };
@@ -53,6 +54,26 @@ function nonNullBranch(schema) {
   return schema;
 }
 
+// Whether a schema accepts null, by its own type or by any anyOf/oneOf branch (how Pydantic writes `str | None`).
+function admitsNull(schema) {
+  if (!schema || typeof schema !== "object") {
+    return false;
+  }
+  if (schema.type === "null" || (Array.isArray(schema.type) && schema.type.indexOf("null") !== -1)) {
+    return true;
+  }
+  var branches = schema.anyOf || schema.oneOf;
+  if (!Array.isArray(branches)) {
+    return false;
+  }
+  for (var i = 0; i < branches.length; i++) {
+    if (admitsNull(branches[i])) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function isOnlyString(schema) {
   var types = nonNullTypes(schema);
   return types.length === 1 && types[0] === "string";
@@ -68,10 +89,10 @@ function problem(kind, name, schema) {
   if (/^ids$|Ids$|_ids$/.test(name)) {
     var types = nonNullTypes(schema);
     var array = nonNullBranch(schema);
-    if (types.length === 1 && types[0] === "array" && isOnlyString(array.items)) {
+    if (types.length === 1 && types[0] === "array" && isOnlyString(array.items) && !admitsNull(array.items)) {
       return null;
     }
-    return kind + " '" + name + "' holds identifiers, so it must be an array of strings";
+    return kind + " '" + name + "' holds identifiers, so it must be an array of strings, none of them null";
   }
   return null;
 }
