@@ -33,6 +33,15 @@ function admitsNull(property) {
   if (property.type === "null" || isUnconstrained(property)) {
     return true;
   }
+  // Pydantic writes `Literal["READY", None]` as `enum: ["READY", null]`, with no `type`
+  if (Array.isArray(property.enum)) {
+    if (property.enum.indexOf(null) !== -1) {
+      return true;
+    }
+  }
+  if (property.const === null) {
+    return true;
+  }
   if (Array.isArray(property.type)) {
     return property.type.indexOf("null") !== -1;
   }
