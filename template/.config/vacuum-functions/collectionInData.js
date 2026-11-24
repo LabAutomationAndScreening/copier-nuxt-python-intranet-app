@@ -21,6 +21,9 @@ function lastSegmentIsParameter(pathKey) {
   return last.charAt(0) === "{";
 }
 
+// Known gap, accepted: only `type: "array"` counts as an array, not the one-element type list `type: ["array"]` that
+// JSON Schema also allows. FastAPI never writes that form (Pydantic writes a list as `type: "array"`, and a nullable
+// list as anyOf [array, null], which no-nullable-array refuses), so it can't hide a collection here.
 function topLevelArrayProperties(schema) {
   var names = [];
   if (!schema || typeof schema !== "object") {
