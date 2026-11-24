@@ -42,8 +42,9 @@ function admitsTypeAndNull(node, type) {
     var types = branchTypes(branches);
     return types.indexOf(type) !== -1 && types.indexOf("null") !== -1;
   }
-  // Pydantic writes `Literal[True, None]` as `enum: [true, null]`, with no `type`
-  if (Array.isArray(node.enum)) {
+  // Pydantic writes `Literal[True, None]` as `enum: [true, null]`, with no `type`; with a `type`, that type decides
+  // (a `type: boolean` beside `enum: [true, null]` still rejects null)
+  if (Array.isArray(node.enum) && node.type === undefined) {
     var valueTypes = enumValueTypes(node.enum);
     return valueTypes.indexOf(type) !== -1 && valueTypes.indexOf("null") !== -1;
   }
