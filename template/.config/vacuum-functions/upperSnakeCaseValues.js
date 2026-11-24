@@ -8,13 +8,17 @@
 //
 // Run unresolved on each component schema and each operation's parameters, request body and responses, walking the
 // schemas nested inside. A finding is reported at the input it was found in (a component schema, say, which is where an
-// ignore entry names it) and its message gives the path within it. Example data (`example`, `examples`, `default`) isn't
-// walked, so an object in it is never read as a schema; a property named `enum` or `const` is a schema object, not
-// values, so it is walked rather than checked.
+// ignore entry names it) and its message gives the path within it. On a schema object, `enum`, `const`, `example`,
+// `examples` and `default` hold data, so they are never walked and an object in them is never read as a schema; in a
+// `properties` map the same words are property names, whose schemas are walked like any other.
 
 var UPPER_SNAKE_CASE = /^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$/;
 
-var EXAMPLE_DATA_KEYS = ["example", "examples", "default"];
+// Keywords of a schema object whose value is data, not a schema: checked where they hold enum values, never walked.
+var DATA_KEYWORDS = ["enum", "const", "example", "examples", "default"];
+
+// Keywords whose keys are property names, so every key, even `default` or `const`, names a schema to walk.
+var NAME_MAPS = ["properties", "patternProperties"];
 
 function getSchema() {
   return { name: "upperSnakeCaseValues" };
@@ -47,13 +51,22 @@ function isExtensibleEnum(node) {
   return typeof node.description === "string" && /^Extensible enum[.]/.test(node.description);
 }
 
-function walk(node, where, results) {
+function walkNameMap(map, where, results) {
+  if (!map || typeof map !== "object") {
+    return;
+  }
+  for (var name in map) {
+    walkSchema(map[name], joined(where, name), results);
+  }
+}
+
+function walkSchema(node, where, results) {
   if (!node || typeof node !== "object") {
     return;
   }
   if (Array.isArray(node)) {
     for (var i = 0; i < node.length; i++) {
-      walk(node[i], where + "[" + i + "]", results);
+      walkSchema(node[i], where + "[" + i + "]", results);
     }
     return;
   }
@@ -67,20 +80,19 @@ function walk(node, where, results) {
     }
   }
   for (var key in node) {
-    if (EXAMPLE_DATA_KEYS.indexOf(key) !== -1) {
+    if (DATA_KEYWORDS.indexOf(key) !== -1) {
       continue;
     }
-    if (key === "enum") {
-      if (Array.isArray(node.enum)) {
-        continue;
-      }
+    if (NAME_MAPS.indexOf(key) !== -1) {
+      walkNameMap(node[key], joined(where, key), results);
+      continue;
     }
-    walk(node[key], joined(where, key), results);
+    walkSchema(node[key], joined(where, key), results);
   }
 }
 
 function runRule(input) {
   var results = [];
-  walk(input, "", results);
+  walkSchema(input, "", results);
   return results;
 }
