@@ -557,18 +557,22 @@ rules:
 
   # ENABLED (Zalando 240, "SHOULD declare enum values using UPPER_SNAKE_CASE string",
   # https://opensource.zalando.com/restful-api-guidelines/#240): one casing for every enum value, so a client
-  # never has to guess whether a status is `ok`, `Ok` or `OK`. vacuum's `macro` casing is UPPER_SNAKE_CASE.
-  # Covers the known values of an extensible enum (see extensible-enum-shape) as well as a closed `enum`.
+  # never has to guess whether a status is `ok`, `Ok` or `OK`. Covers the known values of an extensible enum (see
+  # extensible-enum-shape) and a `const`, which is how Pydantic writes a one-value Literal (a discriminated union's
+  # tag, say), as well as a closed `enum`. Uses .config/vacuum-functions/upperSnakeCaseValues.js rather than vacuum's
+  # `casing`, which under this ruleset's contract also fails integer, boolean and null enum values.
   enum-values-upper-snake-case:
     description: Enum values must be UPPER_SNAKE_CASE.
     given:
-      - $..enum[*]
-      - $..[?search(@.description, '^Extensible enum[.]')].examples[*]
+      - $.components.schemas[*]
+      - $.paths[*][*].parameters
+      - $.paths[*][*].requestBody
+      - $.paths[*][*].responses
+    # unresolved, so a component's values are reported once, at the component, where an ignore entry can name them
+    resolved: false
     severity: error
     then:
-      function: casing
-      functionOptions:
-        type: macro
+      function: upperSnakeCaseValues
 
   # ENABLED (Zalando 243, "MUST use official HTTP status codes", https://opensource.zalando.com/restful-api-guidelines/#243):
   # every response code is registered in the IANA HTTP Status Code Registry
