@@ -26,6 +26,17 @@ function isUnconstrained(property) {
   return true;
 }
 
+// Whether the schema's own `type` leaves null allowed: no `type` at all, or a type list that names null.
+function typeAllowsNull(property) {
+  if (property.type === undefined) {
+    return true;
+  }
+  if (Array.isArray(property.type)) {
+    return property.type.indexOf("null") !== -1;
+  }
+  return property.type === "null";
+}
+
 // Known gap, accepted: an outer `type` that excludes null beside a nullable anyOf/oneOf (`type: string` with
 // anyOf [string, null]) still counts as nullable here, though the outer type rejects null. Pydantic never writes
 // both: it puts `type` either on the schema or in each branch.
@@ -33,14 +44,17 @@ function admitsNull(property) {
   if (property.type === "null" || isUnconstrained(property)) {
     return true;
   }
-  // Pydantic writes `Literal["READY", None]` as `enum: ["READY", null]`, with no `type`
-  if (Array.isArray(property.enum)) {
-    if (property.enum.indexOf(null) !== -1) {
+  // Pydantic writes `Literal["READY", None]` as `enum: ["READY", null]`, with no `type`; a `type` that excludes null
+  // (`type: boolean` beside `enum: [true, null]`) still rejects it
+  if (typeAllowsNull(property)) {
+    if (Array.isArray(property.enum)) {
+      if (property.enum.indexOf(null) !== -1) {
+        return true;
+      }
+    }
+    if (property.const === null) {
       return true;
     }
-  }
-  if (property.const === null) {
-    return true;
   }
   if (Array.isArray(property.type)) {
     return property.type.indexOf("null") !== -1;
