@@ -15,6 +15,8 @@ function getSchema() {
   return { name: "collectionInData" };
 }
 
+// A trailing slash would make the last segment empty, but vacuum's built-in path-keys-no-trailing-slash (enabled in
+// the recommended set) already fails any such path, so this relies on it rather than stripping empty segments.
 function lastSegmentIsParameter(pathKey) {
   var segments = pathKey.split("/");
   var last = segments[segments.length - 1];
