@@ -28,6 +28,9 @@ function branchTypes(branches) {
   return types;
 }
 
+// Known gap, accepted: an outer `type` that excludes null beside a nullable anyOf/oneOf (`type: boolean` with
+// anyOf [boolean, null]) is still reported, though the outer type rejects null. Pydantic never writes both: it puts
+// `type` either on the schema or in each branch.
 function admitsTypeAndNull(node, type) {
   if (Array.isArray(node.type)) {
     return node.type.indexOf(type) !== -1 && node.type.indexOf("null") !== -1;
