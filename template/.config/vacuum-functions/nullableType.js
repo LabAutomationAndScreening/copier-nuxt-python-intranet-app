@@ -18,6 +18,8 @@ function getSchema() {
   };
 }
 
+// Known gap, accepted: only a branch's single `type` is read, not a type list inside a branch
+// (anyOf [{type: ["boolean", "string"]}, {type: null}]). Pydantic writes `bool | str | None` as one type per branch.
 function branchTypes(branches) {
   var types = [];
   for (var i = 0; i < branches.length; i++) {
