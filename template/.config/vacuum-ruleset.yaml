@@ -332,7 +332,9 @@ rules:
   # https://opensource.zalando.com/restful-api-guidelines/#110): no response body may be a bare JSON array,
   # so metadata such as pagination can later be added beside the items without breaking clients.
   # `resolved: true` follows `$ref`, so a component that is itself an array (a Pydantic RootModel[list[...]])
-  # is caught as well as an inline `list[...]` return type.
+  # is caught as well as an inline `list[...]` return type. Known gap, accepted: a top-level array inside anyOf/oneOf
+  # (a union response model such as `list[X] | X`) has no `type` of its own, so `pattern` skips it. Routes don't
+  # return union bodies in practice, and catching it would take a custom function in place of this one-line rule.
   response-body-not-top-level-array:
     description: Response bodies must be JSON objects, never a top-level array.
     given: $.paths[*][*].responses[*].content[*].schema
