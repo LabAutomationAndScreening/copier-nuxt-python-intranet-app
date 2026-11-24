@@ -40,7 +40,24 @@ function admitsTypeAndNull(node, type) {
     var types = branchTypes(branches);
     return types.indexOf(type) !== -1 && types.indexOf("null") !== -1;
   }
+  // Pydantic writes `Literal[True, None]` as `enum: [true, null]`, with no `type`
+  if (Array.isArray(node.enum)) {
+    var valueTypes = enumValueTypes(node.enum);
+    return valueTypes.indexOf(type) !== -1 && valueTypes.indexOf("null") !== -1;
+  }
   return false;
+}
+
+function enumValueTypes(values) {
+  var types = [];
+  for (var i = 0; i < values.length; i++) {
+    if (values[i] === null) {
+      types.push("null");
+      continue;
+    }
+    types.push(typeof values[i]);
+  }
+  return types;
 }
 
 // A nested node with both `title` and `properties` is a model referenced from this one, already resolved in
