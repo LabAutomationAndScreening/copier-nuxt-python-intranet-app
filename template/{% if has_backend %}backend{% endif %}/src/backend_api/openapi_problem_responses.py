@@ -3,6 +3,8 @@ from http import HTTPStatus
 from typing import Any
 from typing import NamedTuple
 
+from fastapi import HTTPException
+
 from .fast_api_exception_handlers import EXAMPLE_TRACE_ID
 from .fast_api_exception_handlers import PROBLEM_JSON_MEDIA_TYPE
 from .fast_api_exception_handlers import ProblemDetails
@@ -30,6 +32,8 @@ def _problem_body(*, status_code: int, detail: str, instance: str) -> dict[str, 
         status=status_code,
         detail=detail,
         instance=instance,
+        # routes raise every problem they document as an HTTPException, so that is the class the handler reports
+        error_type=HTTPException.__name__,
         trace_id=EXAMPLE_TRACE_ID,
     )
     return listing_its_validation_issues(problem).model_dump(mode="json", by_alias=True)

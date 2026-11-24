@@ -67,11 +67,7 @@ class ProblemDetails(CamelCaseModel):
         examples=["/api/healthcheck"],
         description="The path of the request that met this problem, without its query string.",
     )
-    error_type: str | None = Field(
-        default=None,
-        examples=["ValueError"],
-        description="The internal exception class name, when available.",
-    )
+    error_type: str = Field(examples=["ValueError"], description="The internal exception class name.")
     trace_id: str = Field(
         examples=[EXAMPLE_TRACE_ID],
         description="Identifies this occurrence in the server's logs: search them for it to find what led to the problem.",

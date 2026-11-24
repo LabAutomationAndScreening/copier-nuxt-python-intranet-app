@@ -1,5 +1,11 @@
 {% raw %}# Ignored vacuum findings, with justification.
-#{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+#
+# ParameterLocation's values are OpenAPI's own names for where a parameter is sent (`in: query`), so a client can
+# match a validation issue to the parameter it describes in the schema. Zalando 240 exempts enum values that another
+# standard defines from UPPER_SNAKE_CASE.
+enum-values-upper-snake-case:
+  - "$.components.schemas['ParameterLocation']"{% endraw %}{% if is_circuit_python_driver %}{% raw %}
+
 # A generated driver only ever manages a single physical device connection at a time, so its
 # resource paths are intentionally singular ("driver", not "drivers") rather than REST-collection plural.
 resources-plural:
@@ -14,12 +20,14 @@ resources-plural:
   - "$.paths['/api/driver/{sensor_id}/clear-memory']"
   - "$.paths['/api/driver/{sensor_id}/measure/export']"
 
-# no-request-body flags DELETE with a body as non-RESTful. DELETE /device-connection removes a
-# device by mDNS service name with no resource ID in the path, so the service name must travel
-# in the body. The rule stays enabled for future endpoints; only this one is exempted.
+# no-request-body and no-body-on-get-or-delete flag DELETE with a body as non-RESTful. DELETE /device-connection
+# removes a device by mDNS service name with no resource ID in the path, so the service name must travel
+# in the body. The rules stay enabled for future endpoints; only this one is exempted.
 no-request-body:
-  - "$.paths['/api/driver/device-connection'].delete"{% endraw %}{% endif %}{% if backend_uses_graphql %}{% if is_circuit_python_driver %}
-{% endif %}{% raw %}
+  - "$.paths['/api/driver/device-connection'].delete"
+no-body-on-get-or-delete:
+  - "$.paths['/api/driver/device-connection'].delete"{% endraw %}{% endif %}{% if backend_uses_graphql %}{% raw %}
+
 # /api/graphql's 200 response body is arbitrary JSON shaped by the caller's GraphQL query/GraphiQL page;
 # there is no single representative example to attach without misleadingly implying a fixed response shape.
 response-body-example:
@@ -28,5 +36,5 @@ response-body-example:
 
 # Strawberry's router answers GET /api/graphql itself with a plain-text 404 when GraphiQL or queries via GET are off,
 # without going through the app's exception handlers, so that error response can't be application/problem+json.
-error-responses-problem-json:
-  - "$.paths['/api/graphql'].get.responses"{% endraw %}{% endif %}
+error-responses-document-problem-json:
+  - "$.paths['/api/graphql'].get.responses['404']"{% endraw %}{% endif %}

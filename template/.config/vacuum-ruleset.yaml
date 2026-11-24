@@ -1,11 +1,16 @@
 # Curated vacuum ruleset for the backend OpenAPI schema.
 #
 # Extends vacuum's built-in OpenAPI "recommended" set, then disables two rules that are noise/false
-# positives for a FastAPI-generated spec and enables a handful of opt-in best-practice rules plus three
-# OWASP data-hardening rules. Every non-default rule carries a comment explaining WHY.
+# positives for a FastAPI-generated spec and enables a handful of opt-in best-practice rules. Three OWASP
+# data-hardening rules are loaded but not yet enabled (see the TODO below). Every non-default rule carries a
+# comment explaining WHY.
 extends:
   - - vacuum:oas
     - recommended
+  # Loads the OWASP rules with all of them off, so the few chosen below can be named and switched on; a rule
+  # from a set that isn't extended is silently dropped, even when set to `true`.
+  - - vacuum:owasp
+    - "off"
 rules:
   # DISABLED: flags identical description strings, but ours repeat legitimately — the same field
   # (e.g. SensorInfo.id) is inherited across many response models, and the same 404 text is reused
@@ -61,17 +66,27 @@ rules:
   # `properties`. Catches real bugs (typo'd/removed field left in required) that break client codegen.
   required-fields-defined: true
 
-  # ENABLED (OWASP): three data-hardening rules worth keeping even on an air-gapped/no-auth API. The
-  # rest of the OWASP pack (auth/HTTPS/rate-limit/protection-*/string-restricted) is intentionally NOT
-  # enabled for this trusted air-gapped, no-auth deployment; revisit if the API is ever exposed/authed.
-  owasp-define-error-validation: true
+  # TODO: enable (set to `true`) the five OWASP data-hardening rules below, worth keeping even on an
+  # air-gapped/no-auth API. Until the `vacuum:owasp` extend above was added they never ran, though set to `true`,
+  # so turning them on surfaces findings projects have never had to fix: every Pydantic `int` field needs a
+  # `format` and bounds (e.g. a shared `Annotated[int, Field(ge=..., le=..., json_schema_extra={"format": "int64"})]`
+  # type), every `str` in a request body a `max_length` (or a `Literal`/enum), every `list` there a `max_length`, and
+  # every operation its 400/422 validation response documented.
+  # The rest of the OWASP pack (auth/HTTPS/rate-limit/protection-*/string-restricted) is intentionally NOT wanted
+  # for this trusted air-gapped, no-auth deployment; revisit if the API is ever exposed/authed.
+  owasp-define-error-validation: "off"
 
   # Integers must declare int32/int64 `format` so codegen picks the right numeric type.
-  # (Config, not `true`: OWASP rules aren't in the extended set, so `true` would be dropped.)
-  owasp-integer-format: true
+  owasp-integer-format: "off"
 
   # Integers must declare min/max bounds (input validation / resource-exhaustion guard).
-  owasp-integer-limit: true
+  owasp-integer-limit: "off"
+
+  # Request-body strings must declare `maxLength` (or be a `const`/`enum`), the same guard for text.
+  owasp-string-limit: "off"
+
+  # Request-body arrays must declare `maxItems`, the same guard for lists.
+  owasp-array-limit: "off"
 
   # ENABLED: path id parameters must be explicit and resource-qualified, never a bare generic
   # identifier. Bare `{id}` is ambiguous in a multi-resource spec and produces collision-prone Kiota
@@ -129,13 +144,36 @@ rules:
   # every documented error response (each 4xx and 5xx, and the `default` catch-all) is application/problem+json,
   # the media type the exception handlers send, so a client generated from the schema reads errors as the
   # ProblemDetails they are. Narrower than response-media-type-json above, which also lets an error be plain JSON.
-  # Uses .config/vacuum-functions/errorResponsesProblemJson.js.
-  error-responses-problem-json:
-    description: Error responses must be application/problem+json.
-    given: $.paths[*][*].responses
+  # Two rules, one per half: every media type an error response documents is application/problem+json, and
+  # application/problem+json is among them (an error response with no content fails too, since a client generated
+  # from the schema would then miss the problem details it is sent).
+  # vacuum rejects regex filters, so `@property >= '400'` picks the error responses by string comparison: every
+  # 4xx/5xx code, `4XX`/`5XX`, and `default` sort at or above '400', while 1xx-3xx codes and wildcards sort below.
+  # An `x-` extension key under `responses` would also sort above it; FastAPI writes none.
+  error-response-media-types-problem-json:
+    description: Error responses must be application/problem+json, not any other media type.
+    given: "$.paths[*][*].responses[?(@property >= '400')].content"
     severity: error
     then:
-      function: errorResponsesProblemJson
+      field: "@key"
+      function: pattern
+      functionOptions:
+        match: "^application/problem\\+json$"
+
+  error-responses-document-problem-json:
+    description: Error responses must document application/problem+json content.
+    given: "$.paths[*][*].responses[?(@property >= '400')]"
+    severity: error
+    then:
+      function: schema
+      functionOptions:
+        schema:
+          type: object
+          required: [content]
+          properties:
+            content:
+              type: object
+              required: [application/problem+json]
 
   # ENABLED (gov.au API Request): request bodies must be application/json. Fires zero violations against
   # the current snapshot.
@@ -189,6 +227,18 @@ rules:
       field: headers.Location
       function: truthy
 
+  # ENABLED (AGENTS.md: every status code a route raises is documented in its `responses`): an operation whose path
+  # names a resource by parameter can be asked for one that doesn't exist, so it documents the 404 it answers with.
+  # Stricter than Zalando 151, which lets a standard 404 go undocumented: a client generated from the schema only
+  # gets a typed error for the responses the schema lists.
+  path-parameter-operations-document-404:
+    description: An operation on a path with a parameter must document a 404 response.
+    given: $.paths[?(@property.match(/\{/))][get,put,post,delete,options,head,patch,trace].responses
+    severity: error
+    then:
+      field: "404"
+      function: truthy
+
   # ENABLED (gov.au Naming: plural resources). Static path segments should be plural resource nouns.
   # Declarative casing/pattern rules cannot pluralize, so this uses a custom JavaScript function
   # (.config/vacuum-functions/resourcesPlural.js) run via `vacuum lint -f .config/vacuum-functions`. The
@@ -239,3 +289,315 @@ rules:
     severity: error
     then:
       function: bodyExample
+
+  # ENABLED (gov.au Naming Conventions, https://api.gov.au/sections/naming-conventions.html): a date/time field's
+  # name ends in its type, `DateTime` for an instant, `Date` for a calendar day, `Time` for a time of day, and each
+  # suffix requires that format, so a reader of the raw JSON, a CSV export or a database column knows whether time
+  # zones apply without the schema. Applied to query and path parameters too, since gov.au has their names follow
+  # the field names. Chosen over Zalando 235's `…At` style (refused outright, along with `…Timestamp`); it also
+  # covers Zalando 169 ("MUST use standard formats for date and time properties"). Uses dateTimeSuffix.js.
+  date-time-suffix:
+    description: A date/time field must end in DateTime, Date or Time, matching its format.
+    given:
+      - $.components.schemas[*]
+      - $.paths[*][*].parameters[*]
+    severity: error
+    then:
+      function: dateTimeSuffix
+
+  # ENABLED (gov.au Naming Conventions, https://api.gov.au/sections/naming-conventions.html, "The object and field
+  # definition MUST be the same for the request and response body"), widened to the whole API: a property name has
+  # one definition (type, format, `$ref` target, item type, enum) in every component schema, nullability and
+  # required-ness aside. Uses consistentPropertyTypes.js. Left out are schemas whose field names we don't choose:
+  # FastAPI's generated validation-error models, and ProblemDetails and its subclass ValidationProblemDetails, whose
+  # `status` and `detail` RFC 9457 names. Also left out, in every schema, is `data`: collection-in-data puts each
+  # collection's items there, so it is an array of a different item type in each collection by design.
+  consistent-property-types:
+    description: A property name must have the same type in every schema.
+    given: $.components.schemas
+    resolved: false
+    severity: error
+    then:
+      function: consistentPropertyTypes
+      functionOptions:
+        ignoreSchemas:
+          - HTTPValidationError
+          - ValidationError
+          - ProblemDetails
+          - ValidationProblemDetails
+        ignoreProperties:
+          - data
+
+  # ENABLED (Zalando 110, "MUST always return JSON objects as top-level data structures",
+  # https://opensource.zalando.com/restful-api-guidelines/#110): every response body is a JSON object, never a bare
+  # array or scalar, so metadata such as pagination can later be added beside the data without breaking clients.
+  # `resolved: true` follows `$ref`, so a component that is itself an array (a Pydantic RootModel[list[...]])
+  # is caught as well as an inline `list[...]` or `str` return type. Known gap, accepted: a body schema with no `type`
+  # of its own, such as a union response model (`list[X] | X`) or a free-form one, is skipped by `pattern`. Routes
+  # don't return union bodies in practice, and catching it would take a custom function in place of this rule.
+  response-body-is-object:
+    description: Response bodies must be JSON objects, never a top-level array or scalar.
+    given: $.paths[*][*].responses[*].content[*].schema
+    resolved: true
+    severity: error
+    then:
+      field: type
+      function: pattern
+      functionOptions:
+        match: "^object$"
+
+  # ENABLED (Zalando 110, as above; the key name is from gov.au API Responses, "Operations on a Resource
+  # Collection", which requires a collection be returned in a "data" array): a GET listing a collection
+  # holds its items in a top-level `data` array, so every collection has the same path to its items. Uses
+  # .config/vacuum-functions/collectionInData.js, which tells a collection from a single resource by the
+  # path's last segment (static, not `{param}`) and from a static singleton by the body having an array.
+  collection-in-data:
+    description: A GET listing a collection must return its items in a top-level `data` array.
+    given: $.paths
+    resolved: true
+    severity: error
+    then:
+      function: collectionInData
+
+  # ENABLED (Zalando 112, "SHOULD use open-ended list of values (via examples) for enumeration types",
+  # https://opensource.zalando.com/restful-api-guidelines/#112): a closed `enum` makes every added value a
+  # breaking change for clients, while an extensible enum tells them up front to handle values they don't know.
+  # Whether an enum is open or closed is a per-enum judgment lint can't make, so this only checks that a schema
+  # declared open, by a description starting "Extensible enum.", has the shape Zalando gives it: a string
+  # listing its known values in `examples`, with no `enum` that would close it again.
+  extensible-enum-shape:
+    description: An extensible enum must be a string listing its known values in `examples`, with no `enum`.
+    given: $..[?search(@.description, '^Extensible enum[.]')]
+    severity: error
+    then:
+      # truthy first: pattern skips a field that is absent, so without it a schema with no `type` would pass.
+      - field: type
+        function: truthy
+      - field: type
+        function: pattern
+        functionOptions:
+          match: "^string$"
+      - field: examples
+        function: truthy
+      - field: enum
+        function: falsy
+
+  # ENABLED (Zalando 115, "MUST not use URL versioning", https://opensource.zalando.com/restful-api-guidelines/#115):
+  # a `/v2/` path makes the new version a different resource, so clients must rewrite every URL to move and
+  # links stored by one version break in the other. Evolve the API compatibly instead. Chosen over gov.au
+  # API Versioning (https://api.gov.au/sections/api-versioning.html), which requires `/v{MAJOR}` in the URI.
+  no-url-versioning:
+    description: Paths must not contain a version segment such as /v1/.
+    given: $.paths[*]~
+    severity: error
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: "(^|/)v[0-9]+(/|$)"
+
+  # ENABLED (Zalando 116, "MUST use semantic versioning", https://opensource.zalando.com/restful-api-guidelines/#116;
+  # gov.au API Versioning also MUSTs semver): `info.version` is MAJOR.MINOR.PATCH, with no pre-release or build
+  # suffix, so a client can tell a breaking release from a compatible one. It comes from pyproject.toml's version.
+  info-version-semver:
+    description: info.version must be a MAJOR.MINOR.PATCH semantic version.
+    given: $.info.version
+    severity: error
+    then:
+      function: pattern
+      functionOptions:
+        match: "^(0|[1-9][0-9]*)[.](0|[1-9][0-9]*)[.](0|[1-9][0-9]*)$"
+
+  # ENABLED (Zalando 120, "SHOULD pluralize array names", https://opensource.zalando.com/restful-api-guidelines/#120;
+  # gov.au Naming Conventions says the same): an array property's name is a plural noun. Heuristic, via
+  # .config/vacuum-functions/pluralArrayNames.js: it passes names ending in "s" or in one of `pluralWords` (add an
+  # irregular plural there rather than exempting it per project). FastAPI's validation-error models are left out.
+  plural-array-names:
+    description: Array properties must be named with a plural noun.
+    given: $.components.schemas
+    resolved: false
+    severity: error
+    then:
+      function: pluralArrayNames
+      functionOptions:
+        pluralWords:
+          - data
+          - children
+          - people
+          - criteria
+          - media
+        ignoreSchemas:
+          - HTTPValidationError
+          - ValidationError
+
+  # ENABLED (Zalando 122, "MUST not use `null` for boolean properties",
+  # https://opensource.zalando.com/restful-api-guidelines/#122): a `bool | None` field is a three-valued
+  # flag whose null rarely means anything a client can act on; give it a default instead. Uses
+  # .config/vacuum-functions/nullableType.js, run over every component schema and every operation parameter.
+  # Boolean names may start with `is`/`has`: gov.au Naming Conventions' SHOULD NOT is deliberately not enforced,
+  # since the bare adjective or noun is often ambiguous (`raw` beside a measurement value, `more` for pagination).
+  no-nullable-boolean:
+    description: Boolean properties must not be nullable.
+    given:
+      - $.components.schemas[*]
+      - $.paths[*][*].parameters[*]
+    severity: error
+    then:
+      function: nullableType
+      functionOptions:
+        type: boolean
+
+  # ENABLED (Zalando 123, "MUST use same semantics for `null` and absent properties",
+  # https://opensource.zalando.com/restful-api-guidelines/#123): the rule is about meaning, which lint can't
+  # see, so this checks the shape that lets absent and null differ: a property both optional and nullable.
+  # Each property is either required and nullable (always sent, may be null) or optional and never null
+  # (in Pydantic, `X | SkipJsonSchema[None] = None`). Uses .config/vacuum-functions/optionalNullable.js.
+  no-optional-nullable:
+    description: A property must not be both optional and nullable.
+    given: $.components.schemas[*]
+    severity: error
+    then:
+      function: optionalNullable
+
+  # ENABLED (Zalando 124, "SHOULD not use `null` for empty arrays",
+  # https://opensource.zalando.com/restful-api-guidelines/#124): an empty array already says "none", so a
+  # `list[X] | None` field gives clients two ways to say the same thing. Uses nullableType.js, as Zalando 122 does.
+  no-nullable-array:
+    description: Array properties must not be nullable; use an empty array.
+    given:
+      - $.components.schemas[*]
+      - $.paths[*][*].parameters[*]
+    severity: error
+    then:
+      function: nullableType
+      functionOptions:
+        type: array
+
+  # ENABLED (Zalando 132, "SHOULD use kebab-case with uppercase separate words for HTTP headers",
+  # https://opensource.zalando.com/restful-api-guidelines/#132): header names are case-insensitive on the wire,
+  # but the spec and generated clients show them as written, so one style (`Content-Type`, `Location`) keeps
+  # them consistent. Abbreviations stay uppercase (`X-Flow-ID`, `ETag`). FastAPI derives a header parameter's
+  # name in lowercase (`x_token` becomes `x-token`), so declare it with `Header(alias="X-Token")`.
+  header-names-capitalized-kebab-case:
+    description: HTTP header names must be capitalized words joined by hyphens, like Content-Type.
+    given:
+      - $.paths[*][*].parameters[?(@.in=='header')].name
+      - $.paths[*][*].responses[*].headers[*]~
+    severity: error
+    then:
+      function: pattern
+      functionOptions:
+        match: "^[A-Z][A-Za-z0-9]*(-[A-Z0-9][A-Za-z0-9]*)*$"
+
+  # ENABLED (Zalando 136, "MUST use normalized paths without empty path segments and trailing slashes",
+  # https://opensource.zalando.com/restful-api-guidelines/#136): the recommended set already rejects a
+  # trailing slash (path-keys-no-trailing-slash) and an empty `{}` (path-declarations-must-exist); this adds
+  # the empty segment (`//`) neither catches. FastAPI serves "/a//b" and "/a/b" as different routes.
+  no-empty-path-segments:
+    description: Paths must not contain empty segments.
+    given: $.paths[*]~
+    severity: error
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: "//"
+
+  # ENABLED (Zalando 148, "MUST use HTTP methods correctly", https://opensource.zalando.com/restful-api-guidelines/#148):
+  # GET and DELETE carry no request body. HTTP gives a body on them no defined meaning, so proxies, caches and client
+  # libraries may drop it; pass what they need in the path or query instead.
+  no-body-on-get-or-delete:
+    description: GET and DELETE operations must not have a request body.
+    given: $.paths[*][get,delete]
+    severity: error
+    then:
+      field: requestBody
+      function: falsy
+
+  # ENABLED (Zalando 150, "SHOULD only use most common HTTP status codes",
+  # https://opensource.zalando.com/restful-api-guidelines/#150): no response uses a code Zalando's list marks "do not
+  # use", each having no good use in a REST API (206 Partial Content is not for pagination, 408 is for connections,
+  # not APIs). Codes missing from the list stay allowed, as Zalando allows them when the response describes them.
+  # Redirects are no-redirect-responses' job and unofficial codes official-status-codes'. 422 is marked "do not use"
+  # too, in favor of 400, but is allowed: FastAPI answers request validation failures with it.
+  no-discouraged-status-codes:
+    description: Responses must not use a status code Zalando marks "do not use".
+    given: $.paths[*][*].responses[*]~
+    severity: error
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: "^(205|206|408|417|424|505|511)$"
+
+  # TODO: uncomment to enable (Zalando 171, "MUST define a format for number and integer types",
+  # https://opensource.zalando.com/restful-api-guidelines/#171): every `number` declares float, double or decimal,
+  # so a client knows which floating-point type to decode into; the integer half is owasp-integer-format's.
+  # Commented out rather than "off" because vacuum can't define a custom rule and leave it disabled. Pydantic emits
+  # no format for `float`, so before enabling, have custom_openapi add `format: double` to every bare `number` (a
+  # Python float is always an IEEE 754 double). Uses .config/vacuum-functions/numberFormat.js.
+  # number-format:
+  #   description: Numbers must declare a float, double or decimal format.
+  #   given:
+  #     - $.components.schemas[*]
+  #     - $.paths[*][*].parameters[*]
+  #   severity: error
+  #   then:
+  #     function: numberFormat
+
+  # ENABLED (Zalando 174, "MUST use common field names and semantics",
+  # https://opensource.zalando.com/restful-api-guidelines/#174): an identifier (`id`, `…Id`, a path parameter's
+  # `…_id`) is an opaque string, and `…Ids` an array of them. Not a UUID requirement (Zalando 144 discourages UUIDs
+  # unless needed): an autoincrement key is sent as "42". Uses .config/vacuum-functions/stringIds.js.
+  string-ids:
+    description: Identifiers must be strings, and arrays of identifiers arrays of strings.
+    given:
+      - $.components.schemas[*]
+      - $.paths[*][*].parameters[*]
+    severity: error
+    then:
+      function: stringIds
+
+  # ENABLED (Zalando 240, "SHOULD declare enum values using UPPER_SNAKE_CASE string",
+  # https://opensource.zalando.com/restful-api-guidelines/#240): one casing for every enum value, so a client
+  # never has to guess whether a status is `ok`, `Ok` or `OK`. Covers the known values of an extensible enum (see
+  # extensible-enum-shape) and a `const`, which is how Pydantic writes a one-value Literal (a discriminated union's
+  # tag, say), as well as a closed `enum`. Uses .config/vacuum-functions/upperSnakeCaseValues.js rather than vacuum's
+  # `casing`, which under this ruleset's contract also fails integer, boolean and null enum values.
+  enum-values-upper-snake-case:
+    description: Enum values must be UPPER_SNAKE_CASE.
+    given:
+      - $.components.schemas[*]
+      - $.components.parameters[*]
+      - $.paths[*][*].parameters
+      - $.paths[*][*].requestBody
+      - $.paths[*][*].responses
+    # unresolved, so a component's values are reported once, at the component, where an ignore entry can name them
+    resolved: false
+    severity: error
+    then:
+      function: upperSnakeCaseValues
+
+  # ENABLED (Zalando 243, "MUST use official HTTP status codes", https://opensource.zalando.com/restful-api-guidelines/#243):
+  # every response code is registered in the IANA HTTP Status Code Registry
+  # (https://www.iana.org/assignments/http-status-codes/), so clients and proxies know what it means; a vendor code
+  # such as nginx's 499 does not. Left out: 306 and 418 (registered as unused), 510 (obsoleted) and 104 (temporary,
+  # expired). `default` and the OpenAPI ranges (`4XX`) are allowed.
+  official-status-codes:
+    description: Responses must use a status code registered with IANA.
+    given: $.paths[*][*].responses[*]~
+    severity: error
+    then:
+      function: pattern
+      functionOptions:
+        match: "^(10[0-3]|20[0-8]|226|30[0-57-8]|40[0-9]|41[0-7]|42[1-689]|431|451|50[0-8]|511|[1-5]XX|default)$"
+
+  # ENABLED (Zalando 251, "SHOULD not use redirection codes", https://opensource.zalando.com/restful-api-guidelines/#251):
+  # clients follow redirects inconsistently (some not at all for non-GET requests, older ones turn a redirected POST
+  # into a GET), and every case has a direct answer: keep a moved URL working or return 404/410, answer a repeated
+  # idempotent POST with 200 and Location, a duplicate create with 409. 304 Not Modified is caching, not a redirect.
+  no-redirect-responses:
+    description: Operations must not respond with a 3xx redirect (304 Not Modified is allowed).
+    given: $.paths[*][*].responses[*]~
+    severity: error
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: "^3(0[0-35-9]|[1-9][0-9]|XX)$"

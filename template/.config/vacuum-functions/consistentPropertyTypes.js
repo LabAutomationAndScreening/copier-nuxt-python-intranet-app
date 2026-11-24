@@ -1,0 +1,205 @@
+// Vacuum custom JS function (goja runtime: no npm, no require/import — plain self-contained JS).
+//
+// gov.au Naming Conventions: "The object and field definition MUST be the same for the request and response body".
+// Enforced across the whole API rather than per resource (which lint would have to guess from the paths): every
+// property with a given name, in any component schema, has the same definition, so a client never meets one name
+// meaning two shapes. A definition here is the type, format, `$ref` target, array item type and enum values.
+// Nullability and required-ness are left out, since a payload and a response legitimately differ there (an `id`
+// optional on create, always present when read), as are descriptions and bounds, which can fairly depend on context.
+//
+// Run on `$.components.schemas` unresolved, so a `$ref` compares by the component it names. Each conflicting
+// property is reported at its own path, so a deliberate clash can be exempted in .config/vacuum-ignore.yaml.
+// functionOptions.ignoreSchemas lists schemas whose field names this project doesn't choose: FastAPI's generated
+// validation errors, and ProblemDetails and its subclass ValidationProblemDetails, whose `status` (the HTTP status
+// code) and `detail` are named by RFC 9457. functionOptions.ignoreProperties lists property names left out in every
+// schema: `data`, the envelope collection-in-data puts every collection's items in, holds a different item type in
+// each collection by design.
+
+function getSchema() {
+  return {
+    name: "consistentPropertyTypes",
+    properties: [
+      { name: "ignoreSchemas", description: "component schema names to leave out" },
+      { name: "ignoreProperties", description: "property names to leave out, in every schema" },
+    ],
+  };
+}
+
+function nonNullBranches(schema) {
+  var branches = schema.anyOf || schema.oneOf;
+  if (!Array.isArray(branches)) {
+    return null;
+  }
+  var kept = [];
+  for (var i = 0; i < branches.length; i++) {
+    if (branches[i] && branches[i].type === "null") {
+      continue;
+    }
+    kept.push(branches[i]);
+  }
+  return kept;
+}
+
+function nonNullType(type) {
+  if (!Array.isArray(type)) {
+    return type;
+  }
+  var kept = [];
+  for (var i = 0; i < type.length; i++) {
+    if (type[i] === "null") {
+      continue;
+    }
+    kept.push(type[i]);
+  }
+  if (kept.length === 1) {
+    return kept[0];
+  }
+  return kept;
+}
+
+function nonNullValues(values) {
+  var kept = [];
+  for (var i = 0; i < values.length; i++) {
+    if (values[i] === null) {
+      continue;
+    }
+    kept.push(values[i]);
+  }
+  return kept;
+}
+
+function valueType(value) {
+  if (typeof value === "number") {
+    if (Number.isInteger(value)) {
+      return "integer";
+    }
+    return "number";
+  }
+  return typeof value;
+}
+
+// The JSON Schema type of a list of enum values: one name when they share a type, else the list of names.
+function valuesType(values) {
+  var types = [];
+  for (var i = 0; i < values.length; i++) {
+    var type = valueType(values[i]);
+    if (types.indexOf(type) === -1) {
+      types.push(type);
+    }
+  }
+  if (types.length === 1) {
+    return types[0];
+  }
+  return types;
+}
+
+function refName(ref) {
+  var parts = ref.split("/");
+  return parts[parts.length - 1];
+}
+
+function definition(schema) {
+  if (!schema || typeof schema !== "object") {
+    return "?";
+  }
+  var branches = nonNullBranches(schema);
+  if (branches !== null) {
+    if (branches.length === 1) {
+      return definition(branches[0]);
+    }
+    var parts = [];
+    for (var i = 0; i < branches.length; i++) {
+      parts.push(definition(branches[i]));
+    }
+    return "oneOf(" + parts.join(" | ") + ")";
+  }
+  if (typeof schema.$ref === "string") {
+    return refName(schema.$ref);
+  }
+  // Pydantic writes `Literal["READY", None]` as `enum: ["READY", null]` with no `type`, so null is dropped from the
+  // values and the type read from them, making it compare equal to `Literal["READY"]` (`type: string`).
+  var enumValues = null;
+  if (Array.isArray(schema.enum)) {
+    enumValues = nonNullValues(schema.enum);
+  }
+  var type = schema.type;
+  if (type === undefined) {
+    if (enumValues !== null) {
+      type = valuesType(enumValues);
+    }
+  }
+  var text = JSON.stringify(nonNullType(type));
+  if (typeof schema.format === "string") {
+    text += " (" + schema.format + ")";
+  }
+  // `const` is left out on purpose: Pydantic writes a one-value Literal as `const`, which is how a discriminated
+  // union's tag looks (`type: Literal["cat"]` in one variant, `Literal["dog"]` in the next), and those differ by design.
+  // Enum values compare in their order on purpose: the same field listing its values in two orders comes from two
+  // hand-written copies rather than one shared type (a Literal alias or an Enum class), which this rule is here to catch.
+  if (enumValues !== null) {
+    text += " enum " + JSON.stringify(enumValues);
+  }
+  if (schema.items) {
+    text += " of " + definition(schema.items);
+  }
+  return text;
+}
+
+function runRule(input) {
+  if (!input || typeof input !== "object") {
+    return [];
+  }
+  var options = context.ruleAction.functionOptions || {};
+  var ignored = Array.isArray(options.ignoreSchemas) ? options.ignoreSchemas : [];
+  var ignoredProperties = Array.isArray(options.ignoreProperties) ? options.ignoreProperties : [];
+  // Prototype-free maps, so a property named `constructor` or `toString` isn't mistaken for an existing entry.
+  var uses = Object.create(null);
+  for (var schemaName in input) {
+    if (ignored.indexOf(schemaName) !== -1) {
+      continue;
+    }
+    var properties = input[schemaName] && input[schemaName].properties;
+    if (!properties || typeof properties !== "object") {
+      continue;
+    }
+    for (var propertyName in properties) {
+      if (ignoredProperties.indexOf(propertyName) !== -1) {
+        continue;
+      }
+      if (!uses[propertyName]) {
+        uses[propertyName] = [];
+      }
+      uses[propertyName].push({ schema: schemaName, definition: definition(properties[propertyName]) });
+    }
+  }
+  var results = [];
+  for (var name in uses) {
+    var byDefinition = Object.create(null);
+    var definitionCount = 0;
+    for (var i = 0; i < uses[name].length; i++) {
+      var use = uses[name][i];
+      if (!byDefinition[use.definition]) {
+        byDefinition[use.definition] = [];
+        definitionCount++;
+      }
+      byDefinition[use.definition].push(use.schema);
+    }
+    if (definitionCount < 2) {
+      continue;
+    }
+    for (var j = 0; j < uses[name].length; j++) {
+      var others = [];
+      for (var otherDefinition in byDefinition) {
+        if (otherDefinition === uses[name][j].definition) {
+          continue;
+        }
+        others.push(otherDefinition + " in " + byDefinition[otherDefinition].join(", "));
+      }
+      results.push({
+        message: uses[name][j].schema + "." + name + " is " + uses[name][j].definition + ", but " + others.join("; "),
+        path: "$.components.schemas['" + uses[name][j].schema + "'].properties['" + name + "']",
+      });
+    }
+  }
+  return results;
+}
