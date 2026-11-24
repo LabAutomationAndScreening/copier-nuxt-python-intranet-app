@@ -565,6 +565,7 @@ rules:
     description: Enum values must be UPPER_SNAKE_CASE.
     given:
       - $.components.schemas[*]
+      - $.components.parameters[*]
       - $.paths[*][*].parameters
       - $.paths[*][*].requestBody
       - $.paths[*][*].responses
