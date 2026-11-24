@@ -20,10 +20,12 @@ resources-plural:
   - "$.paths['/api/driver/{sensor_id}/clear-memory']"
   - "$.paths['/api/driver/{sensor_id}/measure/export']"
 
-# no-request-body flags DELETE with a body as non-RESTful. DELETE /device-connection removes a
-# device by mDNS service name with no resource ID in the path, so the service name must travel
-# in the body. The rule stays enabled for future endpoints; only this one is exempted.
+# no-request-body and no-body-on-get-or-delete flag DELETE with a body as non-RESTful. DELETE /device-connection
+# removes a device by mDNS service name with no resource ID in the path, so the service name must travel
+# in the body. The rules stay enabled for future endpoints; only this one is exempted.
 no-request-body:
+  - "$.paths['/api/driver/device-connection'].delete"
+no-body-on-get-or-delete:
   - "$.paths['/api/driver/device-connection'].delete"{% endraw %}{% endif %}{% if backend_uses_graphql %}{% raw %}
 
 # /api/graphql's 200 response body is arbitrary JSON shaped by the caller's GraphQL query/GraphiQL page;
