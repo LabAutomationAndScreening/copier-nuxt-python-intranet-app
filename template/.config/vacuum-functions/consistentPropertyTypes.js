@@ -57,6 +57,42 @@ function nonNullType(type) {
   return kept;
 }
 
+function nonNullValues(values) {
+  var kept = [];
+  for (var i = 0; i < values.length; i++) {
+    if (values[i] === null) {
+      continue;
+    }
+    kept.push(values[i]);
+  }
+  return kept;
+}
+
+function valueType(value) {
+  if (typeof value === "number") {
+    if (Number.isInteger(value)) {
+      return "integer";
+    }
+    return "number";
+  }
+  return typeof value;
+}
+
+// The JSON Schema type of a list of enum values: one name when they share a type, else the list of names.
+function valuesType(values) {
+  var types = [];
+  for (var i = 0; i < values.length; i++) {
+    var type = valueType(values[i]);
+    if (types.indexOf(type) === -1) {
+      types.push(type);
+    }
+  }
+  if (types.length === 1) {
+    return types[0];
+  }
+  return types;
+}
+
 function refName(ref) {
   var parts = ref.split("/");
   return parts[parts.length - 1];
@@ -80,15 +116,24 @@ function definition(schema) {
   if (typeof schema.$ref === "string") {
     return refName(schema.$ref);
   }
-  var text = JSON.stringify(nonNullType(schema.type));
+  // Pydantic writes `Literal["READY", None]` as `enum: ["READY", null]` with no `type`, so null is dropped from the
+  // values and the type read from them, making it compare equal to `Literal["READY"]` (`type: string`).
+  var enumValues = null;
+  if (Array.isArray(schema.enum)) {
+    enumValues = nonNullValues(schema.enum);
+  }
+  var type = schema.type;
+  if (type === undefined) {
+    if (enumValues !== null) {
+      type = valuesType(enumValues);
+    }
+  }
+  var text = JSON.stringify(nonNullType(type));
   if (typeof schema.format === "string") {
     text += " (" + schema.format + ")";
   }
-  // Known gap, accepted: an enum that lists null itself (`enum: ["READY", null]`) compares unequal to the same enum
-  // without it, though nullability is meant to be left out. Pydantic never writes that: `Literal[...] | None` and
-  // `MyEnum | None` put null in a separate `{type: null}` branch, which nonNullBranches drops.
-  if (Array.isArray(schema.enum)) {
-    text += " enum " + JSON.stringify(schema.enum);
+  if (enumValues !== null) {
+    text += " enum " + JSON.stringify(enumValues);
   }
   if (schema.items) {
     text += " of " + definition(schema.items);
