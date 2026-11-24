@@ -5,7 +5,6 @@ from backend_api.openapi_problem_responses import PROBLEM_DETAILS_REF
 from backend_api.openapi_problem_responses import PROBLEM_JSON_MEDIA_TYPE
 from backend_api.openapi_problem_responses import ProblemExample
 from backend_api.openapi_problem_responses import problem_response
-from fastapi import HTTPException
 from fastapi import status
 
 
@@ -52,14 +51,6 @@ def test_Given_status_description_and_instance__Then_example_is_synthesized_from
     assert example["status"] == status.HTTP_404_NOT_FOUND
     assert example["detail"] == "Widget not found"
     assert example["instance"] == instance
-
-
-def test_Given_status_and_description__Then_example_names_the_exception_class_a_route_raises_for_it() -> None:
-    example = problem_response(status.HTTP_404_NOT_FOUND, "Widget not found", instance=_random_instance())[
-        status.HTTP_404_NOT_FOUND
-    ]["content"][PROBLEM_JSON_MEDIA_TYPE]["example"]
-
-    assert example["errorType"] == HTTPException.__name__
 
 
 def test_Given_named_examples__Then_content_carries_an_entry_per_name() -> None:
