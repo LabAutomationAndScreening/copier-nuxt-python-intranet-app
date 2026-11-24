@@ -13,7 +13,23 @@ function getSchema() {
   return { name: "optionalNullable" };
 }
 
+// Keywords any one of which constrains what a schema accepts; a schema with none of them (Pydantic's `x: Any = None`
+// is just a title and a default) accepts every JSON value, null included.
+var CONSTRAINING_KEYWORDS = ["type", "$ref", "anyOf", "oneOf", "allOf", "enum", "const", "properties", "items"];
+
+function isUnconstrained(property) {
+  for (var i = 0; i < CONSTRAINING_KEYWORDS.length; i++) {
+    if (property[CONSTRAINING_KEYWORDS[i]] !== undefined) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function admitsNull(property) {
+  if (property.type === "null" || isUnconstrained(property)) {
+    return true;
+  }
   if (Array.isArray(property.type)) {
     return property.type.indexOf("null") !== -1;
   }
