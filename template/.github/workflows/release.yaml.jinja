@@ -93,19 +93,57 @@ jobs:
             echo "docker-image-tag=${{ steps.get-version.outputs.version }}" >> $GITHUB_OUTPUT
           fi
 
-{% endraw %}{% if not deploy_as_executable and push_to_ecr %}{% raw %}
+{% endraw %}{% if not deploy_as_executable and push_to_ecr %}{% if has_backend %}{% raw %}
+  generate-api-clients:
+    # The frontend image's tag hashes the generated API client, so this run needs its own copy to find the image CI built
+    name: Generate API Clients
+    needs:
+      - guard
+    timeout-minutes: {% endraw %}{{ gha_short_timeout_minutes }}{% raw %}
+    runs-on: {% endraw %}{{ gha_linux_runner }}{% raw %}
+    permissions:
+      contents: read # needed for checkout
+      id-token: write # needed to assume OIDC roles (e.g. for downloading from CodeArtifact)
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@{% endraw %}{{ gha_checkout }}{% raw %}
+
+      - name: Install latest versions of python packages
+        uses: ./.github/actions/install_deps
+        with:
+          python-version: {% endraw %}{{ python_version }}{% raw %}
+          skip-installing-ssm-plugin-manager: true
+
+      - name: Generate the clients
+        run: task gen-openapi-clients
+
+      - name: Upload the clients
+        uses: actions/upload-artifact@{% endraw %}{{ gha_upload_artifact }}{% raw %}
+        with:
+          name: generated-api-clients
+          path: |
+            frontend/app/generated/open-api/backend
+            backend/tests/e2e/generated/open_api/backend
+          if-no-files-found: error
+          include-hidden-files: true # the inputs stamp is part of what the image tag hashes, as in CI
+          retention-days: 5
+{% endraw %}{% endif %}{% raw %}
   tag-frontend-image:
     name: Tag Frontend Image
     needs:
-      - guard
+      - guard{% endraw %}{% if has_backend %}{% raw %}
+      - generate-api-clients{% endraw %}{% endif %}{% raw %}
     uses: ./.github/workflows/build-docker-image.yaml
     permissions:
       contents: write # needed for mutex
       id-token: write # needed to assume OIDC roles for ECR push
     with:
       context: ./frontend
-      build-contexts: repo-root=.
-      additional-hash-paths: pnpm-workspace.yaml pnpm-lock.yaml
+      build-contexts: repo-root=.{% endraw %}{% if has_backend %}{% raw %}
+      # the backend's API client is not committed: the image is built with the copy generate-api-clients made, and
+      # its tag hashes that copy, so the tag changes exactly when the client does
+      download-artifact-name: generated-api-clients{% endraw %}{% endif %}{% raw %}
+      additional-hash-paths: pnpm-workspace.yaml pnpm-lock.yaml{% endraw %}{% if has_backend %}{% raw %} frontend/app/generated/open-api/backend{% endraw %}{% endif %}{% raw %}
       repository: {% endraw %}{{ frontend_ecr_base_url }}{% raw %}
       image_name: {% endraw %}{{ frontend_image_name }}{% raw %}
       push-role-name: {% endraw %}{{ frontend_ecr_push_role_name }}{% raw %}
