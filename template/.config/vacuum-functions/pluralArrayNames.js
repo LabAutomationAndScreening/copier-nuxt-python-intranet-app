@@ -7,7 +7,9 @@
 // word, so `metricData` passes as well as `data`.
 //
 // Run on `$.components.schemas`, one property per finding at its own path, so a deliberate exception can be exempted
-// in .config/vacuum-ignore.yaml. Arrays are plain `type: array`: no-nullable-array already refuses nullable ones.
+// in .config/vacuum-ignore.yaml. A property counts as an array when its type is `array` or every non-null anyOf/oneOf
+// branch is one (Pydantic writes `list[str] | list[int]` that way); a nullable array counts too, since its name should
+// be plural whatever no-nullable-array says about it.
 // Known gap, accepted: the one-element type list `type: ["array"]`, which JSON Schema also allows, isn't recognized.
 // FastAPI never writes it (Pydantic writes a list as `type: "array"`), so no array property escapes the check.
 // functionOptions.ignoreSchemas lists schemas whose field names this project doesn't choose.
@@ -37,6 +39,30 @@ function isPlural(name, pluralWords) {
   return pluralWords.indexOf(lastWord(name)) !== -1;
 }
 
+function isArray(property) {
+  if (!property || typeof property !== "object") {
+    return false;
+  }
+  if (property.type === "array") {
+    return true;
+  }
+  var branches = property.anyOf || property.oneOf;
+  if (!Array.isArray(branches)) {
+    return false;
+  }
+  var arrays = 0;
+  for (var i = 0; i < branches.length; i++) {
+    if (!branches[i] || branches[i].type === "null") {
+      continue;
+    }
+    if (branches[i].type !== "array") {
+      return false;
+    }
+    arrays++;
+  }
+  return arrays > 0;
+}
+
 function runRule(input) {
   if (!input || typeof input !== "object") {
     return [];
@@ -55,7 +81,7 @@ function runRule(input) {
     }
     for (var propertyName in properties) {
       var property = properties[propertyName];
-      if (!property || property.type !== "array") {
+      if (!isArray(property)) {
         continue;
       }
       if (isPlural(propertyName, pluralWords)) {
