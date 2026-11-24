@@ -21,6 +21,9 @@ function getSchema() {
   return { name: "dateTimeSuffix" };
 }
 
+// The schema's format, read from its non-null anyOf/oneOf branches when it has none of its own. When those branches
+// disagree (Pydantic's `datetime | date`, or `datetime | str`), returns the list of their formats (null for a branch
+// with none), since no single suffix fits such a field.
 function schemaFormat(schema) {
   if (!schema || typeof schema !== "object") {
     return null;
@@ -32,12 +35,34 @@ function schemaFormat(schema) {
   if (!Array.isArray(branches)) {
     return null;
   }
+  var formats = [];
   for (var i = 0; i < branches.length; i++) {
-    if (branches[i] && typeof branches[i].format === "string") {
-      return branches[i].format;
+    if (!branches[i] || branches[i].type === "null") {
+      continue;
+    }
+    var format = typeof branches[i].format === "string" ? branches[i].format : null;
+    if (formats.indexOf(format) === -1) {
+      formats.push(format);
     }
   }
-  return null;
+  if (formats.length === 0) {
+    return null;
+  }
+  if (formats.length === 1) {
+    return formats[0];
+  }
+  return formats;
+}
+
+var DATE_TIME_FORMATS = ["date-time", "date", "time"];
+
+function mixesDateTimeFormats(formats) {
+  for (var i = 0; i < formats.length; i++) {
+    if (DATE_TIME_FORMATS.indexOf(formats[i]) !== -1) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function isBooleanSchema(schema) {
@@ -91,6 +116,23 @@ function describeFormat(format) {
 function problem(kind, name, format, isBoolean, style) {
   if (isBoolean) {
     return null;
+  }
+  if (Array.isArray(format)) {
+    if (suffixFormat(name, style) === null && !mixesDateTimeFormats(format)) {
+      return null;
+    }
+    var shown = [];
+    for (var i = 0; i < format.length; i++) {
+      shown.push(format[i] === null ? "no format" : format[i]);
+    }
+    return (
+      kind +
+      " '" +
+      name +
+      "' accepts values of several formats (" +
+      shown.join(", ") +
+      "); a date/time field needs exactly one"
+    );
   }
   var expectedFormat = suffixFormat(name, style);
   var expectedSuffix = style.suffixForFormat[format];
